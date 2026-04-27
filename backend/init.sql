@@ -1,0 +1,2 @@
+CREATE DATABASE users_db;
+CREATE DATABASE contracts_db;

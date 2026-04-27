@@ -40,7 +40,7 @@ To develop a functional, secure, and scalable software solution that promotes th
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack & Architecture
 
 | Component | Technology | Description |
 | :--- | :--- | :--- |
@@ -51,6 +51,12 @@ To develop a functional, secure, and scalable software solution that promotes th
 | **Document Mgmt.** | *TBD* | Tool for generating and storing digital contracts. |
 | **ID Validation** | Custom / API | Integration with a 3rd-party service or a simplified custom implementation. |
 | **Version Control**| Git / GitHub | Code tracking and collaborative group development. |
+
+### Microservices Ecosystem
+* `api-gateway`: Entry point and routing for all client requests.
+* `ms-users`: Identity management, profiles, authentication, and KYC flow.
+* `ms-catalog`: Offers and demands CRUD, integrated with OpenSearch.
+* `ms-contracts`: Automatic PDF generation and OTP signature flows.
 
 ---
 
@@ -65,6 +71,8 @@ This group Master's Thesis is developed using an **incremental and iterative met
 1. Clone the repository:
    ```bash
    git clone [https://github.com/your-username/the-circle.git](https://github.com/your-username/the-circle.git)
+   cd the-circle
+   docker compose up -d
    ```
    
 2. Install frontend dependencies:
