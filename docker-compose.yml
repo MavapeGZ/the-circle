@@ -1,5 +1,4 @@
 services:
-  # 1. Base de datos relacional para ms-users y ms-contracts
   postgres:
     image: postgres:15-alpine
     container_name: thecircle-postgres
@@ -19,7 +18,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # 2. Cliente visual para PostgreSQL
   pgadmin:
     image: dpage/pgadmin4
     container_name: thecircle-pgadmin
@@ -33,7 +31,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # 3. Motor de búsqueda y persistencia para ms-catalog
   opensearch:
     image: opensearchproject/opensearch:2.11.0
     container_name: thecircle-opensearch
@@ -61,7 +58,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # 4. Cliente visual para OpenSearch
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:2.11.0
     container_name: thecircle-os-dashboards
