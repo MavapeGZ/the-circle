@@ -26,7 +26,7 @@ public class AuthService {
 
     public AuthenticationResponse register(RegisterRequest request) {
         if (repository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("El email ya está registrado");
+            throw new IllegalArgumentException("Email already in use");
         }
 
         var user = User.builder()

@@ -68,6 +68,11 @@ This group Master's Thesis is developed using an **incremental and iterative met
 
 ## 🚀 Setup & Installation
 
+### Important Prerequisite (Linux / WSL2 users)
+OpenSearch requires a high virtual memory map limit. If the `opensearch` container crashes on startup with a `max virtual memory areas vm.max_map_count [65530] is too low` error, you must increase this limit on your host machine:
+* **Linux:** Run `sudo sysctl -w vm.max_map_count=262144`
+* **Windows (WSL2):** Open PowerShell, run `wsl -d docker-desktop`, then run the `sysctl` command above.
+
 1. Clone the repository:
    ```bash
    git clone [https://github.com/your-username/the-circle.git](https://github.com/your-username/the-circle.git)
