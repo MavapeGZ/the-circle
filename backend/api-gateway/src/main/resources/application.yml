@@ -19,19 +19,19 @@ spring:
     gateway:
       routes:
         - id: ms-users-auth
-          uri: http://127.0.0.1:8081
+          uri: ${MS_USERS_URL:http://localhost:8081}
           predicates:
             - Path=/api/auth/**
         - id: ms-users
-          uri: http://127.0.0.1:8081
+          uri: ${MS_USERS_URL:http://localhost:8081}
           predicates:
             - Path=/api/users/**
         - id: ms-catalog
-          uri: http://localhost:8082
+          uri: ${MS_CATALOG_URL:http://localhost:8082}
           predicates:
             - Path=/api/catalog/**
         - id: ms-contracts
-          uri: http://localhost:8083
+          uri: ${MS_CONTRACTS_URL:http://localhost:8083}
           predicates:
             - Path=/api/contracts/**
 
