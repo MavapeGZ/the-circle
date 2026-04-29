@@ -37,6 +37,6 @@ spring:
 
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
-    reactor.netty.http.client: DEBUG
-    reactor.netty.http.server: DEBUG
+    org.springframework.cloud.gateway: ${GATEWAY_LOG_LEVEL:INFO}
+    reactor.netty.http.client: ${REACTOR_NETTY_HTTP_CLIENT_LOG_LEVEL:INFO}
+    reactor.netty.http.server: ${REACTOR_NETTY_HTTP_SERVER_LOG_LEVEL:INFO}
