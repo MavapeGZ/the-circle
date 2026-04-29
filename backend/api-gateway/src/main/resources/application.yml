@@ -1,0 +1,42 @@
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: when_authorized
+    gateway:
+      enabled: true
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: ms-users-auth
+          uri: ${MS_USERS_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/auth/**
+        - id: ms-users
+          uri: ${MS_USERS_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/users/**
+        - id: ms-catalog
+          uri: ${MS_CATALOG_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/catalog/**
+        - id: ms-contracts
+          uri: ${MS_CONTRACTS_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/contracts/**
+
+logging:
+  level:
+    org.springframework.cloud.gateway: ${GATEWAY_LOG_LEVEL:INFO}
+    reactor.netty.http.client: ${REACTOR_NETTY_HTTP_CLIENT_LOG_LEVEL:INFO}
+    reactor.netty.http.server: ${REACTOR_NETTY_HTTP_SERVER_LOG_LEVEL:INFO}

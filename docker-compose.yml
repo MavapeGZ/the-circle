@@ -3,9 +3,9 @@ services:
     image: postgres:15-alpine
     container_name: thecircle-postgres
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER:-thecircle}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_DB: ${DB_NAME:-thecircledb}
     ports:
       - "5432:5432"
     volumes:
