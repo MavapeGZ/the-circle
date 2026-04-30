@@ -1,0 +1,10 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: ms-catalog
+  main:
+    allow-bean-definition-overriding: true
+  opensearch:
+    uris: http://127.0.0.1:9200
