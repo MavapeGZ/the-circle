@@ -19,6 +19,7 @@ public class ArticleService {
     private final ArticleRepository repository;
 
     public Article createArticle(Article article) {
+        article.setId(null);
         article.setCreatedAt(LocalDateTime.now());
         validateAndAdjustPrice(article);
         return repository.save(article);

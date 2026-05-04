@@ -37,11 +37,10 @@ public class ArticleController {
     // 4. Update
     @PutMapping("/{id}")
     public ResponseEntity<Article> update(@PathVariable String id, @RequestBody Article article) {
-        try {
-            return ResponseEntity.ok(service.updateArticle(id, article));
-        } catch (RuntimeException e) {
+        if (service.getArticleById(id).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+        return ResponseEntity.ok(service.updateArticle(id, article));
     }
 
     // 5. Delete
