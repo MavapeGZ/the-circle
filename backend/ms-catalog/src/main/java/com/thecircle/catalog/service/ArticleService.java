@@ -1,15 +1,17 @@
 package com.thecircle.catalog.service;
 
 import com.thecircle.catalog.model.Article;
+import com.thecircle.catalog.model.ArticleType;
 import com.thecircle.catalog.model.TransactionMode;
 import com.thecircle.catalog.repository.ArticleRepository;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -20,7 +22,7 @@ public class ArticleService {
 
     public Article createArticle(Article article) {
         article.setId(null);
-        article.setCreatedAt(LocalDateTime.now());
+        article.setCreatedAt(java.time.Instant.now());
         validateAndAdjustPrice(article);
         return repository.save(article);
     }
@@ -51,12 +53,20 @@ public class ArticleService {
     }
 
     private void validateAndAdjustPrice(Article article) {
-        if (article.getTransactionMode() == TransactionMode.DONATE || article.getTransactionMode() == TransactionMode.GIFT) {
+        if (article.getTransactionMode() == TransactionMode.DONATE
+                || article.getTransactionMode() == TransactionMode.GIFT) {
             article.setPrice(0.0);
         } else {
             if (article.getPrice() == null) {
-                article.setPrice(0.0); 
+                article.setPrice(0.0);
             }
         }
+    }
+
+    public Page<Article> searchArticles(String query, ArticleType type, Pageable pageable) {
+        if (type != null) {
+            return repository.findByFuzzySearchAndType(query, type, pageable);
+        }
+        return repository.findByFuzzySearch(query, pageable);
     }
 }

@@ -5,8 +5,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
-
-import java.time.LocalDateTime;
+import org.springframework.data.elasticsearch.annotations.DateFormat;
 
 @Document(indexName = "articles", createIndex = true)
 @Getter
@@ -42,6 +41,6 @@ public class Article {
     @Field(type = FieldType.Long, name = "author_id")
     private Long authorId;
 
-    @Field(type = FieldType.Date, name = "created_at")
-    private LocalDateTime createdAt;
+    @Field(type = FieldType.Date, format = DateFormat.strict_date_optional_time_nanos, name = "created_at")
+    private java.time.Instant createdAt;
 }
