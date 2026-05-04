@@ -28,6 +28,9 @@ public class Article {
     @Field(type = FieldType.Keyword, name = "type")
     private ArticleType type; // OFFER o DEMAND
 
+    @Field(type = FieldType.Keyword, name = "transaction_mode")
+    private TransactionMode transactionMode; // RENT, SELL, DONATE, GIFT
+
     @Field(type = FieldType.Keyword, name = "category")
     private String category;
 

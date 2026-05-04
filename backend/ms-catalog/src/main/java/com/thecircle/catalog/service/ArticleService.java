@@ -1,9 +1,13 @@
 package com.thecircle.catalog.service;
 
 import com.thecircle.catalog.model.Article;
+import com.thecircle.catalog.model.TransactionMode;
 import com.thecircle.catalog.repository.ArticleRepository;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -16,6 +20,7 @@ public class ArticleService {
 
     public Article createArticle(Article article) {
         article.setCreatedAt(LocalDateTime.now());
+        validateAndAdjustPrice(article);
         return repository.save(article);
     }
 
@@ -36,10 +41,21 @@ public class ArticleService {
             // Do not update creation date or author ID as they should remain unchanged to
             // preserve data integrity
             return repository.save(existing);
-        }).orElseThrow(() -> new RuntimeException("Artículo no encontrado con ID: " + id));
+        }).orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Article not found with ID: " + id));
     }
 
     public void deleteArticle(String id) {
         repository.deleteById(id);
+    }
+
+    private void validateAndAdjustPrice(Article article) {
+        if (article.getTransactionMode() == TransactionMode.DONATE || article.getTransactionMode() == TransactionMode.GIFT) {
+            article.setPrice(0.0);
+        } else {
+            if (article.getPrice() == null) {
+                article.setPrice(0.0); 
+            }
+        }
     }
 }
