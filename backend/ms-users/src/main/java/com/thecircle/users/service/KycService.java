@@ -1,0 +1,89 @@
+package com.thecircle.users.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.thecircle.users.model.User;
+import com.thecircle.users.model.KycStatus;
+import com.thecircle.users.repository.UserRepository;
+import com.thecircle.users.security.JwtService;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class KycService {
+
+    private final UserRepository userRepository;
+    private final KycValidationService kycValidationService;
+    private final JwtService jwtService;
+
+    private final Path uploadsRoot = Path.of("uploads", "users");
+
+    /**
+     * Processes KYC: saves files, sets status to PENDING_REVIEW, calls provider.
+     * Returns a refreshed JWT when user is VERIFIED, otherwise returns null.
+     */
+    public String processKyc(Long userId, MultipartFile front, MultipartFile back) throws Exception {
+        Optional<User> maybe = userRepository.findById(userId);
+        if (maybe.isEmpty()) return null;
+
+        User user = maybe.get();
+
+        // Mark pending and save
+        user.setKycStatus(KycStatus.PENDING_REVIEW);
+        userRepository.save(user);
+
+        // Ensure folder exists
+        Path userDir = uploadsRoot.resolve(String.valueOf(userId));
+        Files.createDirectories(userDir);
+
+        // Save files
+        String frontName = safeFilename(front.getOriginalFilename(), "front");
+        String backName = safeFilename(back.getOriginalFilename(), "back");
+        Path frontPath = userDir.resolve(frontName);
+        Path backPath = userDir.resolve(backName);
+
+        try {
+            Files.copy(front.getInputStream(), frontPath, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(back.getInputStream(), backPath, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            log.error("Error saving uploaded files for user {}: {}", userId, e.getMessage());
+            throw e;
+        }
+
+        // Call validation provider
+        boolean ok = kycValidationService.validate(userId, front, back);
+
+        if (ok) {
+            user.setKycStatus(KycStatus.VERIFIED);
+            userRepository.save(user);
+
+            // regenerate jwt with claim
+            Map<String, Object> claims = new HashMap<>();
+            claims.put("kyc_verified", true);
+            String token = jwtService.generateToken(claims, user);
+            return token;
+        } else {
+            user.setKycStatus(KycStatus.REJECTED);
+            userRepository.save(user);
+            return null;
+        }
+    }
+
+    private String safeFilename(String original, String fallback) {
+        if (original == null) return fallback;
+        String clean = original.replaceAll("[^a-zA-Z0-9._-]", "_");
+        return clean;
+    }
+}

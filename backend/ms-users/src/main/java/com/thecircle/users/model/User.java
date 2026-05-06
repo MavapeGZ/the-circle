@@ -35,8 +35,9 @@ public class User implements UserDetails {
     @Column(nullable = false, length = 100)
     private String lastName;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private boolean kycVerified = false;
+    private KycStatus kycStatus = KycStatus.UNVERIFIED;
 
     @Column(nullable = false)
     private String role = "ROLE_USER";
