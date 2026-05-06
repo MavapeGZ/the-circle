@@ -47,6 +47,10 @@ public class ArticleController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
+        if (page < 0 || size < 1) {
+            return ResponseEntity.badRequest().build();
+        }
+
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(service.searchArticles(q, type, pageable));
     }
