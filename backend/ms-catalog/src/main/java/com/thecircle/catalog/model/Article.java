@@ -41,6 +41,10 @@ public class Article {
     @Field(type = FieldType.Long, name = "author_id")
     private Long authorId;
 
+    // NOTE: changing this annotation will NOT update the mapping for deployments
+    // where the "articles" index already exists. createIndex = true only creates
+    // missing indexes. To apply a different date mapping in production you must
+    // perform a migration/reindex so the new mapping takes effect.
     @Field(type = FieldType.Date, format = DateFormat.strict_date_optional_time_nanos, name = "created_at")
     private java.time.Instant createdAt;
 }

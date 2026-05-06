@@ -47,7 +47,12 @@ public class ArticleController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
-        Pageable pageable = PageRequest.of(page, size);
+        int maxSize = Math.min(size, 100);
+        int maxResultWindow = 10000;
+        if ((long) page * maxSize >= maxResultWindow) {
+            return ResponseEntity.badRequest().build();
+        }
+        Pageable pageable = PageRequest.of(page, maxSize);
         return ResponseEntity.ok(service.searchArticles(q, type, pageable));
     }
 
