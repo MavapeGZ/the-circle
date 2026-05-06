@@ -20,6 +20,6 @@ public interface ArticleRepository extends ElasticsearchRepository<Article, Stri
     @Query("{ \"bool\": { \"must\": [ { \"multi_match\": { \"query\": \"?0\", \"fields\": [\"title\", \"description\"], \"fuzziness\": \"AUTO\" } } ] } }")
     Page<Article> findByFuzzySearch(String query, Pageable pageable);
 
-    @Query("{ \"bool\": { \"must\": [ { \"term\": { \"type\": \"?1\" } }, { \"multi_match\": { \"query\": \"?0\", \"fields\": [\"title\", \"description\"], \"fuzziness\": \"AUTO\" } } ] } }")
+    @Query("{ \"bool\": { \"must\": [ { \"multi_match\": { \"query\": \"?0\", \"fields\": [\"title\", \"description\"], \"fuzziness\": \"AUTO\" } } ], \"filter\": [ { \"term\": { \"type\": \"?1\" } } ] } }")
     Page<Article> findByFuzzySearchAndType(String query, ArticleType type, Pageable pageable);
 }
