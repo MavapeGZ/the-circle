@@ -33,8 +33,6 @@ public class UserController {
         return "ms-users OK";
     }
 
-    // Endpoint para subir dos documentos de identidad (anverso y reverso) y verificarlo (simulado)
-    // Acceso limitado al propio usuario o administradores
     @PostMapping("/{userId}/kyc")
     public ResponseEntity<KycResponse> uploadIdentity(
             @PathVariable Long userId,
@@ -60,8 +58,6 @@ public class UserController {
         }
     }
 
-    // Endpoint para consultar el estado de verificación del usuario
-    // Acceso limitado al propio usuario o administradores
     @GetMapping("/{userId}/kyc/status")
     public ResponseEntity<KycResponse> kycStatus(@PathVariable Long userId, Authentication authentication) {
         if (!isOwnerOrAdmin(authentication, userId)) {
