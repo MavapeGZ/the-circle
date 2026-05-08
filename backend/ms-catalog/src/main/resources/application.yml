@@ -1,0 +1,8 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: ms-catalog
+  opensearch:
+    uris: http://127.0.0.1:9200
