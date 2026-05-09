@@ -11,6 +11,7 @@ import com.thecircle.users.repository.UserRepository;
 import com.thecircle.users.security.JwtService;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -48,10 +49,7 @@ public class KycService {
         if (maybe.isEmpty()) return null;
 
         User user = maybe.get();
-
-        // Mark pending and save
-        user.setKycStatus(KycStatus.PENDING_REVIEW);
-        userRepository.save(user);
+        KycStatus originalStatus = user.getKycStatus();
 
         // Ensure folder exists
         Path userDir = uploadsRoot.resolve(String.valueOf(userId));
@@ -64,29 +62,56 @@ public class KycService {
         Path backPath = userDir.resolve(backName);
 
         try {
-            Files.copy(front.getInputStream(), frontPath, StandardCopyOption.REPLACE_EXISTING);
-            Files.copy(back.getInputStream(), backPath, StandardCopyOption.REPLACE_EXISTING);
+            copyMultipartFile(front, frontPath);
+            copyMultipartFile(back, backPath);
         } catch (IOException e) {
-            log.error("Error saving uploaded files for user {}: {}", userId, e.getMessage());
+            deleteUploadedFiles(frontPath, backPath);
+            log.error("Error saving uploaded files for user {}", userId, e);
             throw e;
         }
 
-        // Call validation provider
-        boolean ok = kycValidationService.validate(userId, front, back);
+        user.setKycStatus(KycStatus.PENDING_REVIEW);
+        userRepository.save(user);
 
-        if (ok) {
-            user.setKycStatus(KycStatus.VERIFIED);
-            userRepository.save(user);
+        try {
+            boolean ok = kycValidationService.validate(userId, front, back);
 
-            // regenerate jwt with claim
-            Map<String, Object> claims = new HashMap<>();
-            claims.put("kyc_verified", true);
-            String token = jwtService.generateToken(claims, user);
-            return token;
-        } else {
+            if (ok) {
+                user.setKycStatus(KycStatus.VERIFIED);
+                userRepository.save(user);
+
+                // regenerate jwt with claim
+                Map<String, Object> claims = new HashMap<>();
+                claims.put("kyc_verified", true);
+                String token = jwtService.generateToken(claims, user);
+                return token;
+            }
+
+            deleteUploadedFiles(frontPath, backPath);
             user.setKycStatus(KycStatus.REJECTED);
             userRepository.save(user);
             return null;
+        } catch (Exception e) {
+            deleteUploadedFiles(frontPath, backPath);
+            user.setKycStatus(originalStatus);
+            userRepository.save(user);
+            throw e;
+        }
+    }
+
+    private void copyMultipartFile(MultipartFile file, Path target) throws IOException {
+        try (InputStream inputStream = file.getInputStream()) {
+            Files.copy(inputStream, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    private void deleteUploadedFiles(Path... paths) {
+        for (Path path : paths) {
+            try {
+                Files.deleteIfExists(path);
+            } catch (IOException e) {
+                log.warn("Failed to delete uploaded file {}", path, e);
+            }
         }
     }
 
