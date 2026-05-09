@@ -178,6 +178,32 @@ class KycServiceTest {
                     .orElseThrow();
         }
         assertTrue(storedFrontName.length() <= 255);
+        assertTrue(storedFrontName.endsWith(".jpg"));
+    }
+
+    @Test
+    void processKyc_whenFilenameContainsPathSeparators_usesFallbackName() throws Exception {
+        UserRepository userRepository = mock(UserRepository.class);
+        KycValidationService kycValidationService = mock(KycValidationService.class);
+        JwtService jwtService = mock(JwtService.class);
+        KycService kycService = new KycService(userRepository, kycValidationService, jwtService, tempDir.toString());
+
+        Long userId = 6L;
+        User user = buildUser(userId, KycStatus.UNVERIFIED);
+        MockMultipartFile front = new MockMultipartFile("front", "../front.jpg", "image/jpeg", new byte[]{1, 2, 3});
+        MockMultipartFile back = new MockMultipartFile("back", "back.jpg", "image/jpeg", new byte[]{4, 5, 6});
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(kycValidationService.validate(userId, front, back)).thenReturn(true);
+        when(jwtService.generateToken(anyMap(), any(User.class))).thenReturn("jwt-token");
+
+        String token = kycService.processKyc(userId, front, back);
+
+        assertEquals("jwt-token", token);
+        Path userDir = tempDir.resolve(String.valueOf(userId));
+        assertTrue(Files.exists(userDir.resolve("front")));
+        assertFalse(Files.exists(tempDir.resolve("front.jpg")));
     }
 
     private static User buildUser(Long userId, KycStatus status) {

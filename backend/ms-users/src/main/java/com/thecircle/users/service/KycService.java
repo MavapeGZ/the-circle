@@ -118,7 +118,10 @@ public class KycService {
     }
 
     private Path resolveUserFile(Path userDir, String filename) throws IOException {
-        Path resolved = userDir.resolve(Path.of(filename).getFileName().toString()).normalize();
+        if (filename.contains("/") || filename.contains("\\")) {
+            throw new IOException("Invalid upload filename");
+        }
+        Path resolved = userDir.resolve(filename).normalize();
         if (!resolved.startsWith(userDir)) {
             throw new IOException("Invalid upload filename");
         }
@@ -141,15 +144,38 @@ public class KycService {
 
     private String sanitizeFilename(String filename) {
         if (filename != null) {
+            if (filename.contains("/") || filename.contains("\\")) {
+                return null;
+            }
             String clean = filename.replaceAll("[^a-zA-Z0-9._-]", "_");
             if (clean.length() > MAX_FILENAME_LENGTH) {
-                return clean.substring(0, MAX_FILENAME_LENGTH);
+                return truncateFilename(clean);
             }
             if (isUsableFilename(clean)) {
                 return clean;
             }
         }
         return null;
+    }
+
+    private String truncateFilename(String filename) {
+        int extensionSeparator = filename.lastIndexOf('.');
+        if (extensionSeparator <= 0 || extensionSeparator == filename.length() - 1) {
+            return filename.substring(0, MAX_FILENAME_LENGTH);
+        }
+
+        String extension = filename.substring(extensionSeparator);
+        int maxBaseLength = MAX_FILENAME_LENGTH - extension.length();
+        if (maxBaseLength <= 0) {
+            return filename.substring(0, MAX_FILENAME_LENGTH);
+        }
+
+        String baseName = filename.substring(0, extensionSeparator);
+        if (baseName.length() > maxBaseLength) {
+            baseName = baseName.substring(0, maxBaseLength);
+        }
+
+        return baseName + extension;
     }
 
     private boolean isUsableFilename(String name) {

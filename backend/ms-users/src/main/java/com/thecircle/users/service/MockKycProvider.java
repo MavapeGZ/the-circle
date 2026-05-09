@@ -11,9 +11,15 @@ public class MockKycProvider implements KycValidationService {
     private static final long MAX_BYTES = 5 * 1024 * 1024L; // 5 MB
 
     @Override
-    public boolean validate(Long userId, MultipartFile front, MultipartFile back) throws Exception {
+    public boolean validate(Long userId, MultipartFile front, MultipartFile back) {
         // Simulate processing time
-        Thread.sleep(2000);
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("MockKycProvider interrupted for user {}", userId, e);
+            return false;
+        }
 
         if (front == null || front.isEmpty() || back == null || back.isEmpty()) {
             log.debug("MockKycProvider: missing front/back files for user {}", userId);
@@ -40,4 +46,3 @@ public class MockKycProvider implements KycValidationService {
         return true;
     }
 }
-
