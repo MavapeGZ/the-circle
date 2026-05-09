@@ -84,6 +84,9 @@ OpenSearch requires a high virtual memory map limit. If the `opensearch` contain
     ```bash
     cd frontend
     npm install
+    npm install react-router-dom
+    npm install -D tailwindcss@3 postcss autoprefixer
+    npx tailwindcss init -p
     npm run dev
     ```
    
