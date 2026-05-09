@@ -91,8 +91,22 @@ public class KycService {
     }
 
     private String safeFilename(String original, String fallback) {
-        if (original == null) return fallback;
-        String clean = original.replaceAll("[^a-zA-Z0-9._-]", "_");
-        return clean;
+        if (original != null) {
+            String clean = original.replaceAll("[^a-zA-Z0-9._-]", "_");
+            if (isUsableFilename(clean)) {
+                return clean;
+            }
+        }
+
+        String safeFallback = fallback == null ? null : fallback.replaceAll("[^a-zA-Z0-9._-]", "_");
+        if (isUsableFilename(safeFallback)) {
+            return safeFallback;
+        }
+
+        return "file";
+    }
+
+    private boolean isUsableFilename(String name) {
+        return name != null && !name.trim().isEmpty() && !".".equals(name) && !"..".equals(name);
     }
 }
