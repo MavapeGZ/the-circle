@@ -8,6 +8,7 @@ import com.thecircle.users.model.User;
 import com.thecircle.users.model.KycStatus;
 import com.thecircle.users.dto.UserProfileDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -23,6 +24,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
+@Slf4j
 public class UserController {
 
     private final KycService kycService;
@@ -54,7 +56,8 @@ public class UserController {
                 return ResponseEntity.ok(new KycResponse(false, "Document received; verification pending or rejected", null));
             }
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(new KycResponse(false, "Verification failed: " + e.getMessage(), null));
+            log.error("KYC verification failed for user {}", userId, e);
+            return ResponseEntity.internalServerError().body(new KycResponse(false, "Verification failed. Please try again later.", null));
         }
     }
 
