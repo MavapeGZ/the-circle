@@ -48,12 +48,17 @@ public class UserController {
                 return ResponseEntity.status(403).body(new KycResponse(false, "Forbidden", null));
             }
 
+            Optional<User> maybeUser = userRepository.findById(userId);
+            if (maybeUser.isEmpty()) {
+                return ResponseEntity.status(404).body(new KycResponse(false, "User not found", null));
+            }
+
             String newJwt = kycService.processKyc(userId, front, back);
             if (newJwt != null) {
                 return ResponseEntity.ok(new KycResponse(true, "User verified", newJwt));
             } else {
-                // If provider returned false, we consider it rejected/pending
-                return ResponseEntity.ok(new KycResponse(false, "Document received; verification pending or rejected", null));
+                // Documents were accepted, but verification is not yet complete or was rejected
+                return ResponseEntity.accepted().body(new KycResponse(false, "Document received; verification pending or rejected", null));
             }
         } catch (Exception e) {
             log.error("KYC verification failed for user {}", userId, e);
