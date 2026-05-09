@@ -66,18 +66,21 @@ public class User implements UserDetails {
     @PostLoad
     protected void applyLegacyKycVerified() {
         if (Boolean.TRUE.equals(legacyKycVerified)
-                && (kycStatus == null || kycStatus == KycStatus.UNVERIFIED)) {
+                && (normalizeKycStatus() == KycStatus.UNVERIFIED)) {
             this.kycStatus = KycStatus.VERIFIED;
-        } else if (kycStatus == null) {
-            this.kycStatus = KycStatus.UNVERIFIED;
         }
     }
 
     private void syncLegacyKycVerified() {
+        normalizeKycStatus();
+        legacyKycVerified = kycStatus == KycStatus.VERIFIED;
+    }
+
+    private KycStatus normalizeKycStatus() {
         if (kycStatus == null) {
             kycStatus = KycStatus.UNVERIFIED;
         }
-        legacyKycVerified = kycStatus == KycStatus.VERIFIED;
+        return kycStatus;
     }
 
     @Override
