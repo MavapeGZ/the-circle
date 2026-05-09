@@ -23,6 +23,8 @@ import java.util.Optional;
 @Slf4j
 public class KycService {
 
+    private static final int MAX_FILENAME_LENGTH = 255;
+
     private final UserRepository userRepository;
     private final KycValidationService kycValidationService;
     private final JwtService jwtService;
@@ -58,8 +60,8 @@ public class KycService {
         // Save files
         String frontName = safeFilename(front.getOriginalFilename(), "front");
         String backName = safeFilename(back.getOriginalFilename(), "back");
-        Path frontPath = userDir.resolve(frontName);
-        Path backPath = userDir.resolve(backName);
+        Path frontPath = resolveUserFile(userDir, frontName);
+        Path backPath = resolveUserFile(userDir, backName);
 
         try {
             copyMultipartFile(front, frontPath);
@@ -115,20 +117,39 @@ public class KycService {
         }
     }
 
+    private Path resolveUserFile(Path userDir, String filename) throws IOException {
+        Path resolved = userDir.resolve(Path.of(filename).getFileName().toString()).normalize();
+        if (!resolved.startsWith(userDir)) {
+            throw new IOException("Invalid upload filename");
+        }
+        return resolved;
+    }
+
     private String safeFilename(String original, String fallback) {
-        if (original != null) {
-            String clean = original.replaceAll("[^a-zA-Z0-9._-]", "_");
-            if (isUsableFilename(clean)) {
-                return clean;
-            }
+        String clean = sanitizeFilename(original);
+        if (isUsableFilename(clean)) {
+            return clean;
         }
 
-        String safeFallback = fallback == null ? null : fallback.replaceAll("[^a-zA-Z0-9._-]", "_");
+        String safeFallback = sanitizeFilename(fallback);
         if (isUsableFilename(safeFallback)) {
             return safeFallback;
         }
 
         return "file";
+    }
+
+    private String sanitizeFilename(String filename) {
+        if (filename != null) {
+            String clean = filename.replaceAll("[^a-zA-Z0-9._-]", "_");
+            if (clean.length() > MAX_FILENAME_LENGTH) {
+                return clean.substring(0, MAX_FILENAME_LENGTH);
+            }
+            if (isUsableFilename(clean)) {
+                return clean;
+            }
+        }
+        return null;
     }
 
     private boolean isUsableFilename(String name) {

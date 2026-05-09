@@ -147,6 +147,39 @@ class KycServiceTest {
         assertFalse(Files.exists(userDir.resolve("back.jpg")));
     }
 
+    @Test
+    void processKyc_whenFilenameIsTooLong_truncatesStoredName() throws Exception {
+        UserRepository userRepository = mock(UserRepository.class);
+        KycValidationService kycValidationService = mock(KycValidationService.class);
+        JwtService jwtService = mock(JwtService.class);
+        KycService kycService = new KycService(userRepository, kycValidationService, jwtService, tempDir.toString());
+
+        Long userId = 5L;
+        User user = buildUser(userId, KycStatus.UNVERIFIED);
+        String longFilename = "a".repeat(300) + ".jpg";
+        MockMultipartFile front = new MockMultipartFile("front", longFilename, "image/jpeg", new byte[]{1, 2, 3});
+        MockMultipartFile back = new MockMultipartFile("back", "back.jpg", "image/jpeg", new byte[]{4, 5, 6});
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(kycValidationService.validate(userId, front, back)).thenReturn(true);
+        when(jwtService.generateToken(anyMap(), any(User.class))).thenReturn("jwt-token");
+
+        String token = kycService.processKyc(userId, front, back);
+
+        assertEquals("jwt-token", token);
+        Path userDir = tempDir.resolve(String.valueOf(userId));
+        String storedFrontName;
+        try (var paths = Files.list(userDir)) {
+            storedFrontName = paths
+                    .map(path -> path.getFileName().toString())
+                    .filter(name -> !"back.jpg".equals(name))
+                    .findFirst()
+                    .orElseThrow();
+        }
+        assertTrue(storedFrontName.length() <= 255);
+    }
+
     private static User buildUser(Long userId, KycStatus status) {
         return User.builder()
                 .id(userId)
