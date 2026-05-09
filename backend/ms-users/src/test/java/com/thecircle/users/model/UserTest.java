@@ -12,9 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class UserTest {
 
     @Test
-    void applyLegacyKycVerified_usesLegacyColumnWhenEnumIsMissing() throws Exception {
+    void applyLegacyKycVerified_backfillsKycStatusWhenLegacyUserWasVerified() throws Exception {
         User user = new User();
-        user.setKycStatus(null);
+        user.setKycStatus(KycStatus.UNVERIFIED);
         setLegacyKycVerified(user, true);
 
         invokeLifecycleMethod(user, "applyLegacyKycVerified");

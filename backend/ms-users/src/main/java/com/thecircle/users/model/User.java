@@ -65,10 +65,11 @@ public class User implements UserDetails {
 
     @PostLoad
     protected void applyLegacyKycVerified() {
-        if (kycStatus == null) {
-            this.kycStatus = Boolean.TRUE.equals(legacyKycVerified)
-                    ? KycStatus.VERIFIED
-                    : KycStatus.UNVERIFIED;
+        if (Boolean.TRUE.equals(legacyKycVerified)
+                && (kycStatus == null || kycStatus == KycStatus.UNVERIFIED)) {
+            this.kycStatus = KycStatus.VERIFIED;
+        } else if (kycStatus == null) {
+            this.kycStatus = KycStatus.UNVERIFIED;
         }
     }
 
