@@ -44,6 +44,18 @@ class UserControllerTest {
     @InjectMocks
     private UserController userController;
 
+    private static User buildUser(Long userId) {
+        return User.builder()
+                .id(userId)
+                .email("owner@example.com")
+                .password("password")
+                .firstName("Owner")
+                .lastName("User")
+                .kycStatus(KycStatus.UNVERIFIED)
+                .role("ROLE_USER")
+                .build();
+    }
+
     @Test
     void uploadIdentity_whenKycProcessingFails_returnsGenericInternalServerError() throws Exception {
         Long userId = 1L;
@@ -64,24 +76,8 @@ class UserControllerTest {
                 principal.getAuthorities()
         );
 
-        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(User.builder()
-                .id(userId)
-                .email("owner@example.com")
-                .password("password")
-                .firstName("Owner")
-                .lastName("User")
-                .kycStatus(KycStatus.UNVERIFIED)
-                .role("ROLE_USER")
-                .build()));
-        when(userRepository.findById(userId)).thenReturn(Optional.of(User.builder()
-                .id(userId)
-                .email("owner@example.com")
-                .password("password")
-                .firstName("Owner")
-                .lastName("User")
-                .kycStatus(KycStatus.UNVERIFIED)
-                .role("ROLE_USER")
-                .build()));
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(buildUser(userId)));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(buildUser(userId)));
         when(kycService.processKyc(userId, front, back)).thenThrow(new RuntimeException("provider exploded"));
 
         try {
