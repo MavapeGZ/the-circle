@@ -28,3 +28,6 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000 # 1 day in milliseconds
+
+kyc:
+  upload-dir: ${KYC_UPLOAD_DIR:${user.home}/the-circle/uploads/users}

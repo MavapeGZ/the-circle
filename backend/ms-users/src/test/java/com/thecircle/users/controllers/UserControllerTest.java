@@ -73,6 +73,15 @@ class UserControllerTest {
                 .kycStatus(KycStatus.UNVERIFIED)
                 .role("ROLE_USER")
                 .build()));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(User.builder()
+                .id(userId)
+                .email("owner@example.com")
+                .password("password")
+                .firstName("Owner")
+                .lastName("User")
+                .kycStatus(KycStatus.UNVERIFIED)
+                .role("ROLE_USER")
+                .build()));
         when(kycService.processKyc(userId, front, back)).thenThrow(new RuntimeException("provider exploded"));
 
         try {

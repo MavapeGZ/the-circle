@@ -1,7 +1,7 @@
 package com.thecircle.users.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -10,7 +10,6 @@ import com.thecircle.users.model.KycStatus;
 import com.thecircle.users.repository.UserRepository;
 import com.thecircle.users.security.JwtService;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,15 +19,25 @@ import java.util.Map;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class KycService {
 
     private final UserRepository userRepository;
     private final KycValidationService kycValidationService;
     private final JwtService jwtService;
+    private final Path uploadsRoot;
 
-    private final Path uploadsRoot = Path.of("uploads", "users");
+    public KycService(
+            UserRepository userRepository,
+            KycValidationService kycValidationService,
+            JwtService jwtService,
+            @Value("${kyc.upload-dir:${user.home}/the-circle/uploads/users}") String uploadsRoot
+    ) {
+        this.userRepository = userRepository;
+        this.kycValidationService = kycValidationService;
+        this.jwtService = jwtService;
+        this.uploadsRoot = Path.of(uploadsRoot).toAbsolutePath().normalize();
+    }
 
     /**
      * Processes KYC: saves files, sets status to PENDING_REVIEW, calls provider.
