@@ -3,8 +3,6 @@ package com.thecircle.users.service;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
-import java.util.concurrent.CompletableFuture;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 public class MockKycProviderTest {
@@ -24,46 +22,17 @@ public class MockKycProviderTest {
         MockMultipartFile badExtensionFront = new MockMultipartFile("front", "front.exe", "application/octet-stream", new byte[10]);
         MockMultipartFile badExtensionBack = new MockMultipartFile("back", "back.jpg", "image/jpeg", new byte[10]);
 
-        CompletableFuture<Boolean> validResult = CompletableFuture.supplyAsync(() -> {
-            try {
-                return new MockKycProvider().validate(1L, validFront, validBack);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-
-        CompletableFuture<Boolean> tooLargeResult = CompletableFuture.supplyAsync(() -> {
-            try {
-                return new MockKycProvider().validate(2L, tooLargeFront, tooLargeBack);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-
-        CompletableFuture<Boolean> missingFileResult = CompletableFuture.supplyAsync(() -> {
-            try {
-                return new MockKycProvider().validate(3L, missingFront, missingBack);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-
-        CompletableFuture<Boolean> badExtensionResult = CompletableFuture.supplyAsync(() -> {
-            try {
-                return new MockKycProvider().validate(4L, badExtensionFront, badExtensionBack);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-
-        CompletableFuture.allOf(validResult, tooLargeResult, missingFileResult, badExtensionResult).join();
+        MockKycProvider provider = new MockKycProvider();
+        boolean validResult = provider.validate(1L, validFront, validBack);
+        boolean tooLargeResult = provider.validate(2L, tooLargeFront, tooLargeBack);
+        boolean missingFileResult = provider.validate(3L, missingFront, missingBack);
+        boolean badExtensionResult = provider.validate(4L, badExtensionFront, badExtensionBack);
 
         assertAll(
-                () -> assertTrue(validResult.join(), "Valid JPEG files should be accepted by the mock provider"),
-                () -> assertFalse(tooLargeResult.join(), "Files larger than 5MB should be rejected"),
-                () -> assertFalse(missingFileResult.join(), "Missing front or back file must be rejected"),
-                () -> assertFalse(badExtensionResult.join(), "Unsupported file extensions should be rejected")
+                () -> assertTrue(validResult, "Valid JPEG files should be accepted by the mock provider"),
+                () -> assertFalse(tooLargeResult, "Files larger than 5MB should be rejected"),
+                () -> assertFalse(missingFileResult, "Missing front or back file must be rejected"),
+                () -> assertFalse(badExtensionResult, "Unsupported file extensions should be rejected")
         );
     }
 }
-

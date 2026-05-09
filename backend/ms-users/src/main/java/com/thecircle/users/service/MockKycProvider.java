@@ -12,15 +12,6 @@ public class MockKycProvider implements KycValidationService {
 
     @Override
     public boolean validate(Long userId, MultipartFile front, MultipartFile back) {
-        // Simulate processing time
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.warn("MockKycProvider interrupted for user {}", userId, e);
-            return false;
-        }
-
         if (front == null || front.isEmpty() || back == null || back.isEmpty()) {
             log.debug("MockKycProvider: missing front/back files for user {}", userId);
             return false;
