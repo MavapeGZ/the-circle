@@ -19,7 +19,15 @@ spring:
       hibernate:
         format_sql: true
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
 # Secret key for JWT token generation and validation
 jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000 # 1 day in milliseconds
+
+kyc:
+  upload-dir: ${KYC_UPLOAD_DIR:${user.home}/the-circle/uploads/users}

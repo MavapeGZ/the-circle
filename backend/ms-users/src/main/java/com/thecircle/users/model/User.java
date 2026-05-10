@@ -35,9 +35,17 @@ public class User implements UserDetails {
     @Column(nullable = false, length = 100)
     private String lastName;
 
-    @Column(nullable = false)
-    private boolean kycVerified = false;
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "kyc_status", nullable = false)
+    private KycStatus kycStatus = KycStatus.UNVERIFIED;
 
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    @Column(name = "kyc_verified")
+    private Boolean legacyKycVerified;
+
+    @Builder.Default
     @Column(nullable = false)
     private String role = "ROLE_USER";
 
@@ -47,6 +55,32 @@ public class User implements UserDetails {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        syncLegacyKycVerified();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        syncLegacyKycVerified();
+    }
+
+    @PostLoad
+    protected void applyLegacyKycVerified() {
+        if (Boolean.TRUE.equals(legacyKycVerified)
+                && (normalizeKycStatus() == KycStatus.UNVERIFIED)) {
+            this.kycStatus = KycStatus.VERIFIED;
+        }
+    }
+
+    private void syncLegacyKycVerified() {
+        normalizeKycStatus();
+        legacyKycVerified = kycStatus == KycStatus.VERIFIED;
+    }
+
+    private KycStatus normalizeKycStatus() {
+        if (kycStatus == null) {
+            kycStatus = KycStatus.UNVERIFIED;
+        }
+        return kycStatus;
     }
 
     @Override

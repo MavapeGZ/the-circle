@@ -4,6 +4,7 @@ import com.thecircle.users.dto.AuthenticationRequest;
 import com.thecircle.users.dto.AuthenticationResponse;
 import com.thecircle.users.dto.RegisterRequest;
 import com.thecircle.users.model.User;
+import com.thecircle.users.model.KycStatus;
 import com.thecircle.users.repository.UserRepository;
 import com.thecircle.users.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,9 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Service class responsible for handling authentication and registration logic.
@@ -35,12 +39,16 @@ public class AuthService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role("ROLE_USER")
-                .kycVerified(false)
+                .kycStatus(KycStatus.UNVERIFIED)
                 .build();
 
         repository.save(user);
-        var jwtToken = jwtService.generateToken(user);
-        
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("kyc_verified", user.getKycStatus() == KycStatus.VERIFIED);
+
+        var jwtToken = jwtService.generateToken(claims, user);
+
         return AuthenticationResponse.builder()
                 .token(jwtToken)
                 .build();
@@ -56,8 +64,12 @@ public class AuthService {
 
         var user = repository.findByEmail(request.getEmail())
                 .orElseThrow();
-        var jwtToken = jwtService.generateToken(user);
-        
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("kyc_verified", user.getKycStatus() == KycStatus.VERIFIED);
+
+        var jwtToken = jwtService.generateToken(claims, user);
+
         return AuthenticationResponse.builder()
                 .token(jwtToken)
                 .build();
