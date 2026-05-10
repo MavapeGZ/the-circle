@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173") // Allow requests from React frontend
+@CrossOrigin(origins = "${app.cors.allowed-origins:http://localhost:5173}") // Allow requests from configured frontend origin(s)
 public class AuthController {
 
     private final AuthService service;
