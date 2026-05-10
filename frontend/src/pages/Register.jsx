@@ -39,7 +39,6 @@ function Register() {
                         />
                     </div>
 
-                    {/* 3. Campo Last Name */}
                     <div>
                         <label className="block text-gray-700 font-semibold mb-2">Last Name</label>
                         <input
