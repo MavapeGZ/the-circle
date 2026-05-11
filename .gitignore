@@ -50,3 +50,16 @@ logs/
 .vscode/
 *.sublime-project
 *.sublime-workspace
+
+# Contracts
+contracts/
+*.pdf
+
+# Claude
+.claude/
+.claude.json
+claude.json
+.mcp.json
+mcp.json
+.claude_history
+claude_debug.log

@@ -5,7 +5,6 @@ import com.thecircle.contracts.dto.SignerDto;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
@@ -13,7 +12,6 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
 public class ContractPdfServiceTest {
 
     private final ContractPdfService service = new ContractPdfService();

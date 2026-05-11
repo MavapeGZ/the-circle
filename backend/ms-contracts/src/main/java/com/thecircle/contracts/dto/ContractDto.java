@@ -1,22 +1,28 @@
 package com.thecircle.contracts.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 public class ContractDto {
-    // Existing fields for PDF generation
+
+    @JsonProperty("id")
+    @JsonAlias({"contractId"})
     private String contractId;
+
     private String propertyAddress;
     private LocalDate startDate;
     private LocalDate endDate;
     private BigDecimal monthlyRent;
+    private BigDecimal price;
     private List<String> clauses;
     private SignerDto primarySigner;
     private SignerDto secondarySigner;
 
-    // Additional fields used by existing controllers
     private String itemId;
     private String ownerId;
     private String receiverId;
@@ -26,15 +32,13 @@ public class ContractDto {
     private String conditions;
     private LocalDateTime returnDate;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private LocalDateTime signedAt;
 
-    // No-arg constructor
     public ContractDto() {}
 
-    // Constructor matching controller usages
     public ContractDto(String contractId, String itemId, String ownerId, String receiverId,
                        ContractType type, ContractStatus status, BigDecimal guaranteeAmount,
-                       String conditions, LocalDateTime returnDate, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                       String conditions, LocalDateTime returnDate, LocalDateTime createdAt, LocalDateTime signedAt) {
         this.contractId = contractId;
         this.itemId = itemId;
         this.ownerId = ownerId;
@@ -45,10 +49,9 @@ public class ContractDto {
         this.conditions = conditions;
         this.returnDate = returnDate;
         this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+        this.signedAt = signedAt;
     }
 
-    // getters and setters
     public String getContractId() { return contractId; }
     public void setContractId(String contractId) { this.contractId = contractId; }
     public String getPropertyAddress() { return propertyAddress; }
@@ -59,6 +62,8 @@ public class ContractDto {
     public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
     public BigDecimal getMonthlyRent() { return monthlyRent; }
     public void setMonthlyRent(BigDecimal monthlyRent) { this.monthlyRent = monthlyRent; }
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
     public List<String> getClauses() { return clauses; }
     public void setClauses(List<String> clauses) { this.clauses = clauses; }
     public SignerDto getPrimarySigner() { return primarySigner; }
@@ -84,6 +89,6 @@ public class ContractDto {
     public void setReturnDate(LocalDateTime returnDate) { this.returnDate = returnDate; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public LocalDateTime getSignedAt() { return signedAt; }
+    public void setSignedAt(LocalDateTime signedAt) { this.signedAt = signedAt; }
 }

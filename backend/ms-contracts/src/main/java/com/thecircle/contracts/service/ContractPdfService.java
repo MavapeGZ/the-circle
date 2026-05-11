@@ -1,6 +1,7 @@
 package com.thecircle.contracts.service;
 
 import com.thecircle.contracts.dto.ContractDto;
+import com.thecircle.contracts.dto.SignerDto;
 import com.thecircle.contracts.util.PdfUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -10,44 +11,115 @@ import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 
 @Service
 public class ContractPdfService {
 
+    private static final String NA = "[N/A]";
+
     public byte[] generatePdf(ContractDto dto) throws IOException {
-        PDDocument doc = new PDDocument();
-        try {
+        try (PDDocument doc = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.LETTER);
             doc.addPage(page);
 
-            PDPageContentStream cs = new PDPageContentStream(doc, page);
-            PDRectangle rect = page.getMediaBox();
+            try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
+                PDRectangle rect = page.getMediaBox();
+                float width = rect.getWidth();
+                float height = rect.getHeight();
 
-            // Title
-            PdfUtils.drawTextCentered(cs, rect, "CONTRATO DE ARRENDAMIENTO CONJUNTO", rect.getHeight() - 50);
+                drawTitle(cs, width, height - 80f, "The Circle");
+                drawSubtitle(cs, width, height - 110f, "Contract");
 
-            cs.beginText();
-            cs.setFont(PDType1Font.HELVETICA, 11);
-            cs.newLineAtOffset(50, rect.getHeight() - 100);
+                SignerDto p1 = dto.getPrimarySigner();
+                SignerDto p2 = dto.getSecondarySigner();
 
-            cs.showText("Entre: " + (dto.getPrimarySigner() != null ? dto.getPrimarySigner().getFullName() : "[N/A]") );
-            cs.newLineAtOffset(0, -15);
-            cs.showText("Y: " + (dto.getSecondarySigner() != null ? dto.getSecondarySigner().getFullName() : "[N/A]") );
-            cs.newLineAtOffset(0, -15);
-            cs.showText("Domicilio del inmueble: " + (dto.getPropertyAddress() != null ? dto.getPropertyAddress() : "[N/A]") );
-            cs.newLineAtOffset(0, -15);
-            cs.showText("Periodo: " + (dto.getStartDate() != null ? dto.getStartDate().toString() : "[N/A]") + " - " + (dto.getEndDate() != null ? dto.getEndDate().toString() : "[N/A]") );
-            cs.newLineAtOffset(0, -15);
-            cs.showText("Renta mensual: " + (dto.getMonthlyRent() != null ? dto.getMonthlyRent().toString() : "[N/A]") );
+                String name1 = p1 != null && p1.getFullName() != null ? p1.getFullName() : NA;
+                String name2 = p2 != null && p2.getFullName() != null ? p2.getFullName() : NA;
+                String addr1 = p1 != null && p1.getAddress() != null ? p1.getAddress() : NA;
+                String addr2 = p2 != null && p2.getAddress() != null ? p2.getAddress() : NA;
+                String type = dto.getType() != null ? dto.getType().name() : NA;
+                String price = formatPrice(dto.getPrice());
 
-            cs.endText();
+                float x = 60f;
+                float y = height - 170f;
+                float lineGap = 18f;
 
-            cs.close();
+                cs.beginText();
+                cs.setFont(PDType1Font.HELVETICA_BOLD, 12);
+                cs.newLineAtOffset(x, y);
+                cs.showText("Party A");
+                cs.endText();
+                y -= lineGap;
+
+                y = drawLabelValue(cs, x, y, lineGap, "Full name:", name1);
+                y = drawLabelValue(cs, x, y, lineGap, "Address:", addr1);
+
+                y -= lineGap;
+                cs.beginText();
+                cs.setFont(PDType1Font.HELVETICA_BOLD, 12);
+                cs.newLineAtOffset(x, y);
+                cs.showText("Party B");
+                cs.endText();
+                y -= lineGap;
+
+                y = drawLabelValue(cs, x, y, lineGap, "Full name:", name2);
+                y = drawLabelValue(cs, x, y, lineGap, "Address:", addr2);
+
+                y -= lineGap;
+                cs.beginText();
+                cs.setFont(PDType1Font.HELVETICA_BOLD, 12);
+                cs.newLineAtOffset(x, y);
+                cs.showText("Transaction");
+                cs.endText();
+                y -= lineGap;
+
+                y = drawLabelValue(cs, x, y, lineGap, "Type:", type);
+                y = drawLabelValue(cs, x, y, lineGap, "Price:", price);
+            }
 
             return PdfUtils.toByteArray(doc);
-        } finally {
-            doc.close();
         }
     }
-}
 
+    private void drawTitle(PDPageContentStream cs, float pageWidth, float y, String text) throws IOException {
+        float fontSize = 24f;
+        cs.beginText();
+        cs.setFont(PDType1Font.HELVETICA_BOLD, fontSize);
+        float textWidth = PDType1Font.HELVETICA_BOLD.getStringWidth(text) / 1000f * fontSize;
+        cs.newLineAtOffset((pageWidth - textWidth) / 2f, y);
+        cs.showText(text);
+        cs.endText();
+    }
+
+    private void drawSubtitle(PDPageContentStream cs, float pageWidth, float y, String text) throws IOException {
+        float fontSize = 14f;
+        cs.beginText();
+        cs.setFont(PDType1Font.HELVETICA, fontSize);
+        float textWidth = PDType1Font.HELVETICA.getStringWidth(text) / 1000f * fontSize;
+        cs.newLineAtOffset((pageWidth - textWidth) / 2f, y);
+        cs.showText(text);
+        cs.endText();
+    }
+
+    private float drawLabelValue(PDPageContentStream cs, float x, float y, float lineGap, String label, String value) throws IOException {
+        cs.beginText();
+        cs.setFont(PDType1Font.HELVETICA_BOLD, 11);
+        cs.newLineAtOffset(x + 10f, y);
+        cs.showText(label);
+        cs.endText();
+
+        cs.beginText();
+        cs.setFont(PDType1Font.HELVETICA, 11);
+        cs.newLineAtOffset(x + 110f, y);
+        cs.showText(value);
+        cs.endText();
+
+        return y - lineGap;
+    }
+
+    private String formatPrice(BigDecimal price) {
+        if (price == null) return NA;
+        return price.toPlainString() + " EUR";
+    }
+}

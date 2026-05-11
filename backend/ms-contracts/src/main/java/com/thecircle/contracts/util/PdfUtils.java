@@ -7,7 +7,6 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Base64;
@@ -23,10 +22,13 @@ public class PdfUtils {
 
     public static PDImageXObject imageFromBase64(PDDocument doc, String base64) throws IOException {
         if (base64 == null || base64.isEmpty()) return null;
-        byte[] imageBytes = Base64.getDecoder().decode(base64);
-        try (ByteArrayInputStream in = new ByteArrayInputStream(imageBytes)) {
-            return PDImageXObject.createFromByteArray(doc, imageBytes, "signature");
+        final byte[] imageBytes;
+        try {
+            imageBytes = Base64.getDecoder().decode(base64);
+        } catch (IllegalArgumentException ex) {
+            throw new IOException("Invalid base64 signature image", ex);
         }
+        return PDImageXObject.createFromByteArray(doc, imageBytes, "signature");
     }
 
     public static void drawTextCentered(PDPageContentStream cs, PDRectangle pageSize, String text, float y) throws IOException {
