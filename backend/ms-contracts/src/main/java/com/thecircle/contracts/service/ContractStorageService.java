@@ -29,6 +29,11 @@ public class ContractStorageService {
         return repository.save(sc);
     }
 
+    @Transactional
+    public StoredContract saveExisting(StoredContract sc) {
+        return repository.save(sc);
+    }
+
     @Transactional(readOnly = true)
     public StoredContract get(String id) {
         return repository.findById(id).orElse(null);
