@@ -3,6 +3,7 @@ import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import Login from './Login';
 import Register from './Register';
+import Catalog from './Catalog';
 
 function App() {
   const { user, logout } = useContext(AuthContext);
@@ -49,13 +50,7 @@ function App() {
             </div>
           } />
 
-          <Route path="/catalog" element={
-            <div className="mt-10">
-              <h2 className="text-3xl font-bold text-gray-800 border-b-2 border-blue-500 pb-2 inline-block">Solidary Catalog</h2>
-              <p className="mt-4 text-gray-600">Here we will connect the endpoint of the search engine we made in the backend.</p>
-            </div>
-          } />
-
+          <Route path="/catalog" element={<Catalog />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Routes>

@@ -42,7 +42,7 @@ public class ArticleController {
     // Search with optional type filter
     @GetMapping("/search")
     public ResponseEntity<Page<Article>> search(
-            @RequestParam String q,
+            @RequestParam(required = false, defaultValue = "") String q,
             @RequestParam(required = false) ArticleType type,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
