@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import axios from 'axios'; // Import axios for proving isCancel
 import api from '../services/api';
 import ArticleCard from '../components/ArticleCard';
 
@@ -11,32 +12,58 @@ function Catalog() {
   const [query, setQuery] = useState('');
   const [type, setType] = useState(''); // '' = All, 'OFFER' = Offers, 'DEMAND' = Demands
 
+  // We use a ref to store the current AbortController, so we can cancel it if needed
+  const abortControllerRef = useRef(null);
+
   // Function that calls your API Gateway / OpenSearch
   const fetchArticles = async (searchQuery = '', searchType = '') => {
+    // If there is already a request in progress, we cancel it before launching the new one
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create a new AbortController for the new request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError('');
-    
+
     try {
       // We build the parameters. Axios converts them to: ?q=bike&type=OFFER
       const params = {};
       if (searchQuery) params.q = searchQuery;
       if (searchType) params.type = searchType;
 
-      const response = await api.get('/catalog/articles/search', { params });
-      
+      const response = await api.get('/catalog/articles/search', { params, signal: controller.signal });
+
       // OpenSearch returns { content: [...], totalElements, ... }
       setArticles(response.data.content || []);
     } catch (err) {
-      console.error(err);
-      setError('Error loading catalog. Please try again later.');
+      if (axios.isCancel(err)) {
+        console.log('Previous search request cancelled', err.message);
+        return; // Don't set error if the request was cancelled
+      } else {
+        console.error(err);
+        setError('Error loading catalog. Please try again later.');
+      }
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
   };
 
   // Load articles on page entry (empty search)
   useEffect(() => {
     fetchArticles();
+
+    // Cleanup: If the user navigates away or component unmounts, we cancel any ongoing request
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
 
   // Handler for search button
@@ -54,15 +81,17 @@ function Catalog() {
 
       {/* SEARCH BAR */}
       <form onSubmit={handleSearch} className="bg-white p-4 rounded-xl shadow-md border border-gray-200 flex flex-col md:flex-row gap-4 mb-10">
-        <input 
-          type="text" 
-          placeholder="Search for bikes, books, clothes..." 
+        <input
+          type="text"
+          aria-label="Search catalog"
+          placeholder="Search for bikes, books, clothes..."
           className="flex-grow p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        
-        <select 
+
+        <select
+          aria-label="Filter by type"
           className="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           value={type}
           onChange={(e) => setType(e.target.value)}
@@ -72,8 +101,8 @@ function Catalog() {
           <option value="DEMAND">Only Demands</option>
         </select>
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="bg-blue-600 text-white font-bold py-3 px-8 rounded hover:bg-blue-700 transition"
         >
           Search
