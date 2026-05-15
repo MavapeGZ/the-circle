@@ -77,10 +77,23 @@ OpenSearch requires a high virtual memory map limit. If the `opensearch` contain
    ```bash
    git clone [https://github.com/your-username/the-circle.git](https://github.com/your-username/the-circle.git)
    cd the-circle
+   ```
+
+2. Create a `.env` file in the project root before starting Docker Compose. At minimum, define the environment variables required by the services:
+   ```env
+   PGADMIN_DEFAULT_EMAIL=admin@example.com
+   PGADMIN_DEFAULT_PASSWORD=change-me
+   DB_USER=thecircle
+   DB_PASSWORD=change-me
+   JWT_SECRET=replace-with-a-long-random-secret
+   ```
+
+   Then start the containers:
+   ```bash
    docker compose up -d
    ```
    
-2. Install frontend dependencies:
+3. Install frontend dependencies:
     ```bash
     cd frontend
     npm install
