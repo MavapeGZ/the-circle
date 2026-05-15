@@ -64,9 +64,23 @@ public class ArticleService {
     }
 
     public Page<Article> searchArticles(String query, ArticleType type, Pageable pageable) {
-        if (type != null) {
+
+        // Prove if fronend is sending real query or just empty string with spaces, if
+        // so, treat it as no query
+        boolean hasQuery = query != null && !query.trim().isEmpty();
+
+        if (!hasQuery && type == null) {
+            // Case 1: Initial empty search, return all articles with pagination
+            return repository.findAll(pageable);
+        } else if (!hasQuery) {
+            // Case 2: Filter by type only
+            return repository.findByType(type, pageable);
+        } else if (type == null) {
+            // Case 3: Only text in search, no type filter (normal multi-match search)
+            return repository.findByFuzzySearch(query, pageable);
+        } else {
+            // Case 4: Both text and type filter (multi-match search with type filter)
             return repository.findByFuzzySearchAndType(query, type, pageable);
         }
-        return repository.findByFuzzySearch(query, pageable);
     }
 }
