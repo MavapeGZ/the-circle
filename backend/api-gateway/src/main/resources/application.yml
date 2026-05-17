@@ -47,6 +47,10 @@ spring:
           uri: ${MS_CONTRACTS_URL:http://localhost:8083}
           predicates:
             - Path=/api/contracts/**
+        - id: ms-gamification
+          uri: ${MS_GAMIFICATION_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/gamification/**
 
 logging:
   level:

@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: ms-gamification
+  datasource:
+    url: jdbc:postgresql://localhost:5432/${DB_GAMIFICATION_NAME:gamification_db}
+    username: ${DB_USER:}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 8084
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
