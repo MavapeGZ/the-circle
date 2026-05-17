@@ -47,4 +47,7 @@ public class Article {
     // perform a migration/reindex so the new mapping takes effect.
     @Field(type = FieldType.Date, format = DateFormat.strict_date_optional_time_nanos, name = "created_at")
     private java.time.Instant createdAt;
+
+    @Field(type = FieldType.Text, name = "image_base64", index = false)
+    private String imageBase64;
 }

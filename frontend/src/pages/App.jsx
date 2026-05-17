@@ -4,6 +4,10 @@ import { AuthContext } from '../context/AuthContext';
 import Login from './Login';
 import Register from './Register';
 import Catalog from './Catalog';
+import CreateArticle from './CreateArticle';
+import ArticleDetail from './ArticleDetail';
+import EditArticle from './EditArticle';
+import Home from './Home'; // <-- Importamos nuestro nuevo componente
 
 function App() {
   const { user, logout } = useContext(AuthContext);
@@ -11,48 +15,45 @@ function App() {
   return (
     <BrowserRouter>
       {/* Navigation menu with Tailwind */}
-      <nav className="bg-blue-600 p-4 text-white shadow-md flex gap-4 items-center">
+      <nav className="bg-blue-600 p-4 text-white shadow-md flex justify-between items-center relative z-10">
         {/* Left side: Brand and main links */}
         <div className="flex gap-4 items-center">
-          {/* Here we could use our logo from public/img/logo.png in the future */}
           <span className="font-extrabold text-xl tracking-wider">THE CIRCLE</span>
           <Link to="/" className="font-bold hover:text-blue-200 transition-colors ml-4">Home</Link>
           <Link to="/catalog" className="font-bold hover:text-blue-200 transition-colors">Catalog</Link>
+          {user && (
+            <Link to="/create" className="font-bold hover:text-blue-200 transition-colors">Publish</Link>
+          )}
         </div>
 
         {/* Right side: Authentication links */}
         <div className="flex gap-4 items-center">
           {user ? (
-            // If the user is logged in, show the Logout button
             <button
               onClick={logout}
-              className="font-bold bg-red-500 px-4 py-2 rounded hover:bg-red-600 transition-colors"
+              className="font-bold bg-red-500 px-4 py-2 rounded hover:bg-red-600 transition-colors shadow-sm"
             >
               Logout
             </button>
           ) : (
-            // If the user is NOT logged in, show Login and Register links
             <>
               <Link to="/login" className="font-bold hover:text-blue-200 transition-colors">Login</Link>
-              <Link to="/register" className="font-bold bg-green-500 px-4 py-2 rounded hover:bg-green-600 transition-colors">Register</Link>
+              <Link to="/register" className="font-bold bg-green-500 px-4 py-2 rounded hover:bg-green-600 transition-colors shadow-sm">Register</Link>
             </>
           )}
         </div>
       </nav>
 
-      {/* Application routes */}
-      <main className="p-8">
+      {/* Application routes (Quitado el p-8 para que el Hero ocupe el ancho completo) */}
+      <main className="flex-grow bg-gray-50">
         <Routes>
-          <Route path="/" element={
-            <div className="text-center mt-10">
-              <h1 className="text-4xl font-bold text-gray-800">Welcome to The Circle</h1>
-              <p className="mt-4 text-gray-600 text-lg">React Router and Tailwind CSS are working perfectly.</p>
-            </div>
-          } />
-
+          <Route path="/" element={<Home />} />
           <Route path="/catalog" element={<Catalog />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/create" element={<CreateArticle />} />
+          <Route path="/catalog/:id" element={<ArticleDetail />} />
+          <Route path="/catalog/edit/:id" element={<EditArticle />} />
         </Routes>
       </main>
     </BrowserRouter>
@@ -60,4 +61,3 @@ function App() {
 }
 
 export default App;
-
