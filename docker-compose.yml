@@ -34,8 +34,6 @@ services:
   opensearch:
     image: opensearchproject/opensearch:2.11.0
     container_name: thecircle-opensearch
-    sysctls:
-      - vm.max_map_count=262144
     environment:
       - discovery.type=single-node
       - bootstrap.memory_lock=true

@@ -30,6 +30,18 @@ public class ContractStorageService {
     }
 
     @Transactional
+    public StoredContract saveWithAudit(byte[] pdfBytes, String originalContractId,
+                                        String signerEmail, String clientIp, String userAgent) {
+        String id = generateNanoId();
+        String filename = id + ".pdf";
+        StoredContract sc = new StoredContract(id, filename, originalContractId, pdfBytes, LocalDateTime.now());
+        sc.setSignerEmail(signerEmail);
+        sc.setClientIp(clientIp);
+        sc.setUserAgent(userAgent);
+        return repository.save(sc);
+    }
+
+    @Transactional
     public StoredContract saveExisting(StoredContract sc) {
         return repository.save(sc);
     }
