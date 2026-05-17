@@ -63,3 +63,6 @@ claude.json
 mcp.json
 .claude_history
 claude_debug.log
+
+# Startup scripts
+start-dev.ps1

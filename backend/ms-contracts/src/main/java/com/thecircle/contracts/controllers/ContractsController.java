@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/contracts")
+@RequestMapping("/api/contracts")
 public class ContractsController {
 
     @GetMapping("/health")
