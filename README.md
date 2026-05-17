@@ -40,7 +40,7 @@ To develop a functional, secure, and scalable software solution that promotes th
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack & Architecture
 
 | Component | Technology | Description |
 | :--- | :--- | :--- |
@@ -52,6 +52,12 @@ To develop a functional, secure, and scalable software solution that promotes th
 | **ID Validation** | Custom / API | Integration with a 3rd-party service or a simplified custom implementation. |
 | **Version Control**| Git / GitHub | Code tracking and collaborative group development. |
 
+### Microservices Ecosystem
+* `api-gateway`: Entry point and routing for all client requests.
+* `ms-users`: Identity management, profiles, authentication, and KYC flow.
+* `ms-catalog`: Offers and demands CRUD, integrated with OpenSearch.
+* `ms-contracts`: Automatic PDF generation and OTP signature flows.
+
 ---
 
 ## 🔄 Methodology
@@ -62,12 +68,32 @@ This group Master's Thesis is developed using an **incremental and iterative met
 
 ## 🚀 Setup & Installation
 
+### Important Prerequisite (Linux / WSL2 users)
+OpenSearch requires a high virtual memory map limit. If the `opensearch` container crashes on startup with a `max virtual memory areas vm.max_map_count [65530] is too low` error, you must increase this limit on your host machine:
+* **Linux:** Run `sudo sysctl -w vm.max_map_count=262144`
+* **Windows (WSL2):** Open PowerShell, run `wsl -d docker-desktop`, then run the `sysctl` command above.
+
 1. Clone the repository:
    ```bash
    git clone [https://github.com/your-username/the-circle.git](https://github.com/your-username/the-circle.git)
+   cd the-circle
+   ```
+
+2. Create a `.env` file in the project root before starting Docker Compose. At minimum, define the environment variables required by the services:
+   ```env
+   PGADMIN_DEFAULT_EMAIL=admin@example.com
+   PGADMIN_DEFAULT_PASSWORD=change-me
+   DB_USER=thecircle
+   DB_PASSWORD=change-me
+   JWT_SECRET=replace-with-a-long-random-secret
+   ```
+
+   Then start the containers:
+   ```bash
+   docker compose up -d
    ```
    
-2. Install frontend dependencies:
+3. Install frontend dependencies:
     ```bash
     cd frontend
     npm install
