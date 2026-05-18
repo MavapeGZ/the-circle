@@ -52,7 +52,7 @@ logs/
 *.sublime-workspace
 
 # Contracts
-contracts/
+/contracts/
 *.pdf
 
 # Claude
