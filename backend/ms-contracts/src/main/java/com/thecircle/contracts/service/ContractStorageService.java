@@ -23,10 +23,7 @@ public class ContractStorageService {
 
     @Transactional
     public StoredContract save(byte[] pdfBytes, String originalContractId) {
-        String id = generateNanoId();
-        String filename = id + ".pdf";
-        StoredContract sc = new StoredContract(id, filename, originalContractId, pdfBytes, LocalDateTime.now());
-        return repository.save(sc);
+        return saveWithAudit(pdfBytes, originalContractId, null, null, null);
     }
 
     @Transactional
@@ -38,11 +35,6 @@ public class ContractStorageService {
         sc.setSignerEmail(signerEmail);
         sc.setClientIp(clientIp);
         sc.setUserAgent(userAgent);
-        return repository.save(sc);
-    }
-
-    @Transactional
-    public StoredContract saveExisting(StoredContract sc) {
         return repository.save(sc);
     }
 
