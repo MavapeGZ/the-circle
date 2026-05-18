@@ -143,6 +143,10 @@ public class ContractController {
         return signers;
     }
 
+    // Stored as eIDAS audit evidence. X-Forwarded-For is client-spoofable unless a
+    // trusted reverse proxy always overwrites it — this code assumes such a proxy
+    // fronts the service. If the service is ever exposed directly, the persisted IP
+    // cannot be trusted and this should fall back to getRemoteAddr() only.
     private String resolveClientIp(HttpServletRequest req) {
         String header = req.getHeader("X-Forwarded-For");
         if (header != null && !header.isEmpty()) {
