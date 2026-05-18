@@ -2,9 +2,13 @@ package com.thecircle.gamification.controller;
 
 import com.thecircle.gamification.dto.*;
 import com.thecircle.gamification.service.GamificationService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -12,7 +16,13 @@ import java.util.List;
 @RequestMapping("/api/gamification")
 public class GamificationController {
 
+    private static final String INTERNAL_KEY_HEADER = "X-Internal-Api-Key";
+
     private final GamificationService gamificationService;
+
+    // Shared secret for the internal-only /events endpoint. Blank => guard disabled (dev).
+    @Value("${gamification.internal.api-key:}")
+    private String internalApiKey;
 
     public GamificationController(GamificationService gamificationService) {
         this.gamificationService = gamificationService;
@@ -24,7 +34,9 @@ public class GamificationController {
     }
 
     @PostMapping("/events")
-    public ResponseEntity<AwardEventResponseDto> awardEvent(@RequestBody @Valid AwardEventDto dto) {
+    public ResponseEntity<AwardEventResponseDto> awardEvent(@RequestBody @Valid AwardEventDto dto,
+                                                            HttpServletRequest request) {
+        assertInternalCaller(request);
         return ResponseEntity.ok(gamificationService.processEvent(dto));
     }
 
@@ -46,5 +58,16 @@ public class GamificationController {
     @GetMapping("/leaderboard")
     public ResponseEntity<List<LeaderboardEntryDto>> getLeaderboard() {
         return ResponseEntity.ok(gamificationService.getLeaderboard());
+    }
+
+    // Awarding points is service-to-service only. When a key is configured, callers
+    // must present it; when blank (local dev) the guard is skipped.
+    private void assertInternalCaller(HttpServletRequest request) {
+        if (internalApiKey == null || internalApiKey.isBlank()) {
+            return;
+        }
+        if (!internalApiKey.equals(request.getHeader(INTERNAL_KEY_HEADER))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid or missing internal API key");
+        }
     }
 }

@@ -10,4 +10,5 @@ import java.util.List;
 public interface PointTransactionRepository extends JpaRepository<PointTransaction, Long> {
     List<PointTransaction> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
     long countByUserIdAndEventType(Long userId, EventType eventType);
+    boolean existsByUserIdAndEventTypeAndReferenceId(Long userId, EventType eventType, String referenceId);
 }

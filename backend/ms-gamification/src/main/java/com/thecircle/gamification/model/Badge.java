@@ -23,6 +23,9 @@ public class Badge {
     private String name;
 
     private String description;
+
+    // Currently holds an emoji glyph, not a URL. A real asset URL is planned
+    // but not yet decided; the field name is kept for that future contract.
     private String iconUrl;
 
     // Points threshold (null = not points-based)

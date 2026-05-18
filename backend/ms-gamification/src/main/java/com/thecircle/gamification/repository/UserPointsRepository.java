@@ -12,6 +12,6 @@ public interface UserPointsRepository extends JpaRepository<UserPoints, Long> {
 
     Optional<UserPoints> findByUserId(Long userId);
 
-    @Query("SELECT up FROM UserPoints up ORDER BY up.totalPoints DESC")
-    List<UserPoints> findTopByOrderByTotalPointsDesc(Pageable pageable);
+    @Query("SELECT up FROM UserPoints up ORDER BY up.totalPoints DESC, up.userId ASC")
+    List<UserPoints> findTopByTotalPoints(Pageable pageable);
 }

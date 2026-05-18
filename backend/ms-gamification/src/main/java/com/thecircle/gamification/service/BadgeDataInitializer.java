@@ -32,9 +32,17 @@ public class BadgeDataInitializer {
         );
 
         for (Badge badge : defaults) {
-            if (!badgeRepo.existsByCode(badge.getCode())) {
-                badgeRepo.save(badge);
-            }
+            badgeRepo.findByCode(badge.getCode()).ifPresentOrElse(
+                    existing -> {
+                        existing.setName(badge.getName());
+                        existing.setDescription(badge.getDescription());
+                        existing.setIconUrl(badge.getIconUrl());
+                        existing.setRequiredPoints(badge.getRequiredPoints());
+                        existing.setRequiredEventType(badge.getRequiredEventType());
+                        existing.setRequiredEventCount(badge.getRequiredEventCount());
+                        badgeRepo.save(existing);
+                    },
+                    () -> badgeRepo.save(badge));
         }
     }
 }

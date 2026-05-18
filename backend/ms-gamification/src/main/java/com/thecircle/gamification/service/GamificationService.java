@@ -3,6 +3,9 @@ package com.thecircle.gamification.service;
 import com.thecircle.gamification.dto.*;
 import com.thecircle.gamification.model.*;
 import com.thecircle.gamification.repository.*;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,24 +21,60 @@ public class GamificationService {
 
     private static final int RECENT_TRANSACTIONS_LIMIT = 10;
     private static final int LEADERBOARD_SIZE = 10;
+    private static final int MAX_AWARD_RETRIES = 4;
 
     private final UserPointsRepository userPointsRepo;
     private final BadgeRepository badgeRepo;
     private final UserBadgeRepository userBadgeRepo;
     private final PointTransactionRepository transactionRepo;
 
+    // Self-reference so the retry loop in processEvent invokes awardEventOnce
+    // through the Spring proxy — each attempt then runs in its own transaction.
+    private final GamificationService self;
+
     public GamificationService(UserPointsRepository userPointsRepo,
                                 BadgeRepository badgeRepo,
                                 UserBadgeRepository userBadgeRepo,
-                                PointTransactionRepository transactionRepo) {
+                                PointTransactionRepository transactionRepo,
+                                @Lazy GamificationService self) {
         this.userPointsRepo = userPointsRepo;
         this.badgeRepo = badgeRepo;
         this.userBadgeRepo = userBadgeRepo;
         this.transactionRepo = transactionRepo;
+        this.self = self;
+    }
+
+    /**
+     * Awards an event, retrying on concurrent-write conflicts. A conflict can be an
+     * optimistic-lock failure on UserPoints or a unique-constraint violation from a
+     * racing first-insert / duplicate transaction; on retry the operation observes
+     * the committed state and resolves (increment, or idempotent no-op).
+     */
+    public AwardEventResponseDto processEvent(AwardEventDto dto) {
+        int attempt = 0;
+        while (true) {
+            try {
+                return self.awardEventOnce(dto);
+            } catch (OptimisticLockingFailureException | DataIntegrityViolationException ex) {
+                if (++attempt >= MAX_AWARD_RETRIES) {
+                    throw new IllegalStateException(
+                            "Could not award event after " + attempt + " attempts", ex);
+                }
+            }
+        }
     }
 
     @Transactional
-    public AwardEventResponseDto processEvent(AwardEventDto dto) {
+    public AwardEventResponseDto awardEventOnce(AwardEventDto dto) {
+        // Idempotency: a referenced event that was already processed is a no-op.
+        if (dto.getReferenceId() != null && transactionRepo.existsByUserIdAndEventTypeAndReferenceId(
+                dto.getUserId(), dto.getEventType(), dto.getReferenceId())) {
+            int current = userPointsRepo.findByUserId(dto.getUserId())
+                    .map(UserPoints::getTotalPoints)
+                    .orElse(0);
+            return new AwardEventResponseDto(dto.getUserId(), 0, current, List.of());
+        }
+
         int pointsAwarded = dto.getEventType().getPoints();
 
         UserPoints userPoints = userPointsRepo.findByUserId(dto.getUserId())
@@ -85,7 +124,7 @@ public class GamificationService {
 
     @Transactional(readOnly = true)
     public List<LeaderboardEntryDto> getLeaderboard() {
-        List<UserPoints> top = userPointsRepo.findTopByOrderByTotalPointsDesc(PageRequest.of(0, LEADERBOARD_SIZE));
+        List<UserPoints> top = userPointsRepo.findTopByTotalPoints(PageRequest.of(0, LEADERBOARD_SIZE));
         List<LeaderboardEntryDto> result = new ArrayList<>();
         for (int i = 0; i < top.size(); i++) {
             UserPoints up = top.get(i);

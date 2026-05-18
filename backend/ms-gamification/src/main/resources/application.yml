@@ -17,6 +17,13 @@ spring:
 server:
   port: 8084
 
+# Shared secret guarding the internal-only POST /api/gamification/events endpoint.
+# Blank => guard disabled (local dev). Set GAMIFICATION_INTERNAL_KEY in staging/prod;
+# calling services must send it as the X-Internal-Api-Key header.
+gamification:
+  internal:
+    api-key: ${GAMIFICATION_INTERNAL_KEY:}
+
 management:
   endpoints:
     web:

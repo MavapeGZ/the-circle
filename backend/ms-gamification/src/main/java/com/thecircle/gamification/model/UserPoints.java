@@ -26,6 +26,9 @@ public class UserPoints {
 
     private LocalDateTime updatedAt;
 
+    @Version
+    private Long version;
+
     public UserPoints(Long userId, int totalPoints) {
         this.userId = userId;
         this.totalPoints = totalPoints;
