@@ -4,13 +4,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Primary;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
+/**
+ * Fallback OTP delivery that talks directly to SMTP. Kept for environments
+ * where ms-notifications is unavailable. HttpOtpDelivery is @Primary, so this
+ * bean only wins when explicitly selected (or HttpOtpDelivery removed).
+ */
 @Component
-@Primary
 @ConditionalOnProperty(name = "spring.mail.host")
 public class EmailOtpDelivery implements OtpDeliveryChannel {
 
