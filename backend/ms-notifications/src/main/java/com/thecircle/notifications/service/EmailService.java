@@ -54,7 +54,7 @@ public class EmailService {
             mailSender.send(message);
         } catch (MessagingException | MailException e) {
             EmailLog failed = persist(request, EmailStatus.FAILED, e.getMessage(), null, now);
-            log.error("SMTP send failed for {}", request.getTo(), e);
+            log.error("SMTP send failed for {} (emailLogId={})", request.getTo(), failed.getId(), e);
             throw new EmailDeliveryException("Failed to deliver email to " + request.getTo(), e);
         }
 
