@@ -11,6 +11,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.Base64;
+import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 @RestController
 @RequestMapping("/api/catalog/articles")
@@ -19,10 +23,38 @@ public class ArticleController {
 
     private final ArticleService service;
 
-    // Create (Register)
     @PostMapping
-    public ResponseEntity<Article> create(@RequestBody Article article) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.createArticle(article));
+    public ResponseEntity<Article> create(
+            @RequestBody Article article,
+            @RequestHeader("Authorization") String authHeader) {
+
+        try {
+            // 1. Retrieve the JWT token from the Authorization header (format: "Bearer
+            // <token>")
+            String token = authHeader.substring(7);
+
+            // 2. A JWT token has three parts: header, payload, and signature. Payload is
+            // the second part
+            String[] chunks = token.split("\\.");
+            String payload = new String(Base64.getUrlDecoder().decode(chunks[1]));
+
+            // 3. Convert the payload JSON string into a Map to extract claims
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> claims = mapper.readValue(payload, new TypeReference<Map<String, Object>>() {
+            });
+
+            // 4. Retrieve the userId claim from the token and set it as the authorId of the
+            // article
+            Long userId = Long.valueOf(claims.get("userId").toString());
+            article.setAuthorId(userId);
+
+            // 5. Save the article using the service and return the created article in the
+            // response
+            return ResponseEntity.status(HttpStatus.CREATED).body(service.createArticle(article));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
     // Read all

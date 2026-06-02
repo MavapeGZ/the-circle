@@ -9,12 +9,20 @@ export const AuthProvider = ({ children }) => {
 
   // On app load, check if there is a saved token
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      // Here you could decode the token or call a /me endpoint to get data
-      setUser({ token }); 
-    }
-    setLoading(false);
+    const checkUser = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await api.get('/users/me');
+          setUser({ ...response.data, token });
+        } catch (error) {
+          console.error('Failed to fetch user:', error);
+          setUser({ token });
+        }
+      }
+      setLoading(false);
+    };
+    checkUser();
   }, []);
 
   const login = async (email, password) => {
@@ -22,7 +30,12 @@ export const AuthProvider = ({ children }) => {
     const { token } = response.data; // Adjust according to your JSON response structure
     
     localStorage.setItem('token', token);
-    setUser({ token });
+    try {
+      const userResponse = await api.get('/users/me');
+      setUser({ ...userResponse.data, token });
+    } catch (error) {
+      setUser({ token });
+    }
   };
 
   const register = async (userData) => {
@@ -30,7 +43,12 @@ export const AuthProvider = ({ children }) => {
     const { token } = response.data; // Adjust according to your JSON response structure
 
     localStorage.setItem('token', token);
-    setUser({ token });
+    try {
+      const userResponse = await api.get('/users/me');
+      setUser({ ...userResponse.data, token });
+    } catch (error) {
+      setUser({ token });
+    }
   };
 
   const logout = () => {
