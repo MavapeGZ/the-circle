@@ -37,8 +37,8 @@ notifications:
   internal:
     api-key: ${NOTIFICATIONS_INTERNAL_KEY:}
   client:
-    connect-timeout-ms: ${NOTIFICATIONS_CONNECT_TIMEOUT_MS:2000}
-    read-timeout-ms: ${NOTIFICATIONS_READ_TIMEOUT_MS:5000}
+    connect-timeout-ms: ${NOTIFICATIONS_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${NOTIFICATIONS_READ_TIMEOUT_MS:30000}
 
 signature:
   otp:
