@@ -7,30 +7,60 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // On app load, check if there is a saved token
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) {
-      // Here you could decode the token or call a /me endpoint to get data
-      setUser({ token }); 
-    }
+    if (token) setUser({ token });
     setLoading(false);
   }, []);
 
-  const login = async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
-    const { token } = response.data; // Adjust according to your JSON response structure
-    
+  const storeToken = (token) => {
     localStorage.setItem('token', token);
     setUser({ token });
   };
 
+  // Step 1 of signup: create user, server emails OTP. Returns { sessionId }.
   const register = async (userData) => {
-    const response = await api.post('/auth/register', userData);
-    const { token } = response.data; // Adjust according to your JSON response structure
+    const { data } = await api.post('/auth/register', userData);
+    return data; // { sessionId, requiresEmailVerification, message }
+  };
 
-    localStorage.setItem('token', token);
-    setUser({ token });
+  // Step 2 of signup: confirm OTP, server returns JWT.
+  const verifyEmail = async (sessionId, otp) => {
+    const { data } = await api.post('/auth/verify-email', { sessionId, otp });
+    if (data.token) storeToken(data.token);
+    return data;
+  };
+
+  // Login. Server may return { token } (trusted device) or
+  // { sessionId, requiresOtp } (new device → OTP step required).
+  const login = async (email, password) => {
+    const { data } = await api.post('/auth/login', { email, password });
+    if (data.token) storeToken(data.token);
+    return data;
+  };
+
+  // Step 2 of login (only when requiresOtp): confirm OTP, server returns JWT
+  // and sets the device-trust cookie.
+  const verifyLoginOtp = async (sessionId, otp) => {
+    const { data } = await api.post('/auth/login-otp', { sessionId, otp });
+    if (data.token) storeToken(data.token);
+    return data;
+  };
+
+  const fetchMe = async () => {
+    const { data } = await api.get('/users/me');
+    return data; // { id, email, firstName, lastName, kycStatus }
+  };
+
+  const uploadKycDocuments = async (userId, frontFile, backFile) => {
+    const fd = new FormData();
+    fd.append('front', frontFile);
+    fd.append('back', backFile);
+    const { data } = await api.post(`/users/${userId}/kyc`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    if (data.jwt) storeToken(data.jwt);
+    return data;
   };
 
   const logout = () => {
@@ -39,7 +69,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{
+      user, loading,
+      register, verifyEmail,
+      login, verifyLoginOtp,
+      fetchMe, uploadKycDocuments,
+      logout,
+    }}>
       {!loading && children}
     </AuthContext.Provider>
   );

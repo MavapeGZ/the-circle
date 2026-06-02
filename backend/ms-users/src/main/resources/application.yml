@@ -31,3 +31,27 @@ jwt:
 
 kyc:
   upload-dir: ${KYC_UPLOAD_DIR:${user.home}/the-circle/uploads/users}
+
+notifications:
+  base-url: ${NOTIFICATIONS_BASE_URL:http://localhost:8085}
+  internal:
+    api-key: ${NOTIFICATIONS_INTERNAL_KEY:}
+  client:
+    connect-timeout-ms: ${NOTIFICATIONS_CONNECT_TIMEOUT_MS:2000}
+    read-timeout-ms: ${NOTIFICATIONS_READ_TIMEOUT_MS:5000}
+
+signature:
+  otp:
+    length: ${OTP_LENGTH:6}
+    ttl-seconds: ${OTP_TTL_SECONDS:600}
+    max-attempts: ${OTP_MAX_ATTEMPTS:5}
+  mail:
+    verify-subject: ${OTP_VERIFY_SUBJECT:The Circle - Verify your account}
+    login-subject: ${OTP_LOGIN_SUBJECT:The Circle - Sign-in code}
+
+auth:
+  device:
+    cookie:
+      max-age-days: ${DEVICE_COOKIE_MAX_AGE_DAYS:90}
+      secure: ${DEVICE_COOKIE_SECURE:false}
+      secret: ${DEVICE_COOKIE_SECRET:${jwt.secret}}
