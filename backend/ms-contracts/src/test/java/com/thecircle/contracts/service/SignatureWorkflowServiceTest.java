@@ -9,10 +9,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
-import org.springframework.mail.MailSendException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
@@ -38,7 +36,7 @@ class SignatureWorkflowServiceTest {
     private ContractStorageService storageService;
 
     @Mock
-    private JavaMailSender mailSender;
+    private OtpDeliveryChannel otpDelivery;
 
     @InjectMocks
     private SignatureWorkflowService service;
@@ -82,7 +80,7 @@ class SignatureWorkflowServiceTest {
         assertNotNull(resp.getSessionId());
         assertNotNull(resp.getMessage());
         assertNull(resp.getOtp());
-        verify(mailSender).send(any(SimpleMailMessage.class));
+        verify(otpDelivery).send(eq("signer@example.com"), any(), any());
     }
 
     @Test
@@ -95,8 +93,8 @@ class SignatureWorkflowServiceTest {
     }
 
     @Test
-    void requestOtp_mailFailure_throws502() {
-        doThrow(new MailSendException("smtp down")).when(mailSender).send(any(SimpleMailMessage.class));
+    void requestOtp_deliveryFailure_throws502() {
+        doThrow(new RestClientException("ms-notifications down")).when(otpDelivery).send(any(), any(), any());
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> service.requestOtp(buildRequest()));
         assertEquals(HttpStatus.BAD_GATEWAY, ex.getStatusCode());

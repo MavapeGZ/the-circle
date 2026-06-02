@@ -6,9 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,7 +43,7 @@ public class SignatureWorkflowService {
     private final ContractPdfService pdfService;
     private final SignatureService signatureService;
     private final ContractStorageService storageService;
-    private final JavaMailSender mailSender;
+    private final OtpDeliveryChannel otpDelivery;
 
     @Value("${signature.otp.length:6}")
     private int otpLength;
@@ -60,20 +57,14 @@ public class SignatureWorkflowService {
     @Value("${signature.otp.expose-in-response:false}")
     private boolean exposeOtp;
 
-    @Value("${signature.mail.from:no-reply@thecircle.local}")
-    private String mailFrom;
-
-    @Value("${signature.mail.subject:The Circle - Codigo de firma electronica}")
-    private String mailSubject;
-
     public SignatureWorkflowService(ContractPdfService pdfService,
                                     SignatureService signatureService,
                                     ContractStorageService storageService,
-                                    JavaMailSender mailSender) {
+                                    OtpDeliveryChannel otpDelivery) {
         this.pdfService = pdfService;
         this.signatureService = signatureService;
         this.storageService = storageService;
-        this.mailSender = mailSender;
+        this.otpDelivery = otpDelivery;
     }
 
     public SignRequestResponseDto requestOtp(SignRequestDto req) {
@@ -98,8 +89,8 @@ public class SignatureWorkflowService {
             log.warn("OTP_EXPOSE_DEV enabled — OTP for {}: {}", req.getSignerEmail(), rawOtp);
         } else {
             try {
-                sendOtpEmail(req.getSignerEmail(), rawOtp);
-            } catch (MailException ex) {
+                otpDelivery.send(req.getSignerEmail(), rawOtp, resolveSignerName(req.getContract(), req.getSignerEmail()));
+            } catch (RuntimeException ex) {
                 sessions.remove(sessionId);
                 log.error("Failed to send OTP email to {}", req.getSignerEmail(), ex);
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to send OTP email", ex);
@@ -108,9 +99,11 @@ public class SignatureWorkflowService {
 
         SignRequestResponseDto resp = new SignRequestResponseDto();
         resp.setSessionId(sessionId);
-        resp.setMessage("OTP sent to " + req.getSignerEmail());
         if (exposeOtp) {
+            resp.setMessage("OTP generated (dev mode, not sent) for " + req.getSignerEmail());
             resp.setOtp(rawOtp);
+        } else {
+            resp.setMessage("OTP sent to " + req.getSignerEmail());
         }
         return resp;
     }
@@ -197,15 +190,17 @@ public class SignatureWorkflowService {
         }
     }
 
-    private void sendOtpEmail(String to, String otp) {
-        SimpleMailMessage msg = new SimpleMailMessage();
-        msg.setFrom(mailFrom);
-        msg.setTo(to);
-        msg.setSubject(mailSubject);
-        msg.setText("Your one-time signature code is: " + otp
-                + "\nIt is valid for " + (otpTtlSeconds / 60) + " minutes."
-                + "\nIf you did not request this, ignore this email.");
-        mailSender.send(msg);
+    private String resolveSignerName(ContractDto contract, String signerEmail) {
+        if (contract == null || signerEmail == null) return null;
+        SignerDto primary = contract.getPrimarySigner();
+        if (primary != null && signerEmail.equalsIgnoreCase(primary.getEmail())) {
+            return primary.getFullName();
+        }
+        SignerDto secondary = contract.getSecondarySigner();
+        if (secondary != null && signerEmail.equalsIgnoreCase(secondary.getEmail())) {
+            return secondary.getFullName();
+        }
+        return null;
     }
 
     private String generateOtp() {
