@@ -23,6 +23,8 @@ public class EmailOtpDelivery implements OtpDeliveryChannel {
     private final String from;
     private final String subject;
 
+    @Value("${signature.otp.ttl-seconds:600}")
+    private int otpTtlSeconds;
     public EmailOtpDelivery(JavaMailSender mailSender,
                             @Value("${signature.mail.from}") String from,
                             @Value("${signature.mail.subject}") String subject) {
