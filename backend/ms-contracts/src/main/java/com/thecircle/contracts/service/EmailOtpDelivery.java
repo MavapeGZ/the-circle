@@ -22,15 +22,18 @@ public class EmailOtpDelivery implements OtpDeliveryChannel {
     private final JavaMailSender mailSender;
     private final String from;
     private final String subject;
+    private final int ttlSeconds;
 
     @Value("${signature.otp.ttl-seconds:600}")
     private int otpTtlSeconds;
     public EmailOtpDelivery(JavaMailSender mailSender,
                             @Value("${signature.mail.from}") String from,
-                            @Value("${signature.mail.subject}") String subject) {
+                            @Value("${signature.mail.subject}") String subject,
+                            @Value("${signature.otp.ttl-seconds:600}") int ttlSeconds) {
         this.mailSender = mailSender;
         this.from = from;
         this.subject = subject;
+        this.ttlSeconds = ttlSeconds;
     }
 
     @Override
@@ -41,20 +44,21 @@ public class EmailOtpDelivery implements OtpDeliveryChannel {
         msg.setSubject(subject);
         msg.setText(buildBody(otp, signerFullName));
         mailSender.send(msg);
-        log.info("OTP email enviado a {}", maskEmail(destination));
+        log.info("OTP email sent to {}", maskEmail(destination));
     }
 
     private String buildBody(String otp, String signerFullName) {
         String greeting = signerFullName != null && !signerFullName.isEmpty()
-                ? "Hola " + signerFullName + ","
-                : "Hola,";
+                ? "Hello " + signerFullName + ","
+                : "Hello,";
+        int ttlMinutes = Math.max(1, ttlSeconds / 60);
         return greeting + "\n\n"
-                + "Tu codigo de firma electronica es:\n\n"
+                + "Your electronic signature code is:\n\n"
                 + "   " + otp + "\n\n"
-                + "Introducelo en The Circle para firmar el contrato.\n"
-                + "El codigo caduca en 10 minutos.\n\n"
-                + "Si no has solicitado este codigo, ignora este mensaje.\n\n"
-                + "The Circle - Firma electronica avanzada (eIDAS).";
+                + "Enter it in The Circle to sign the contract.\n"
+                + "The code expires in " + ttlMinutes + " minute" + (ttlMinutes == 1 ? "" : "s") + ".\n\n"
+                + "If you did not request this code, please ignore this message.\n\n"
+                + "The Circle - Advanced electronic signature (eIDAS).";
     }
 
     private String maskEmail(String email) {

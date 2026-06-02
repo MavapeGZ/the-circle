@@ -99,9 +99,11 @@ public class SignatureWorkflowService {
 
         SignRequestResponseDto resp = new SignRequestResponseDto();
         resp.setSessionId(sessionId);
-        resp.setMessage("OTP sent to " + req.getSignerEmail());
         if (exposeOtp) {
+            resp.setMessage("OTP generated (dev mode, not sent) for " + req.getSignerEmail());
             resp.setOtp(rawOtp);
+        } else {
+            resp.setMessage("OTP sent to " + req.getSignerEmail());
         }
         return resp;
     }
