@@ -45,7 +45,6 @@ public class EmailController {
         } catch (EmailDeliveryException e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to deliver email", e);
         }
-        }
     }
 
     private void assertInternalCaller(HttpServletRequest request) {
