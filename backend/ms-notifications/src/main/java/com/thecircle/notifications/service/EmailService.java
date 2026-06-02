@@ -40,7 +40,7 @@ public class EmailService {
             htmlBody = renderTemplate(request.getTemplateName(), request.getVariables());
         } catch (RuntimeException e) {
             EmailLog failed = persist(request, EmailStatus.FAILED, "Template render error: " + e.getMessage(), null, now);
-            log.error("Template render failed for {} -> {}", request.getTemplateName(), request.getTo(), e);
+            log.error("Template render failed for {} -> {} (emailLogId={})", request.getTemplateName(), request.getTo(), failed.getId(), e);
             throw new EmailDeliveryException("Failed to render template: " + request.getTemplateName(), e);
         }
 
@@ -54,7 +54,7 @@ public class EmailService {
             mailSender.send(message);
         } catch (MessagingException | MailException e) {
             EmailLog failed = persist(request, EmailStatus.FAILED, e.getMessage(), null, now);
-            log.error("SMTP send failed for {}", request.getTo(), e);
+            log.error("SMTP send failed for {} (emailLogId={})", request.getTo(), failed.getId(), e);
             throw new EmailDeliveryException("Failed to deliver email to " + request.getTo(), e);
         }
 

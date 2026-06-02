@@ -43,7 +43,8 @@ public class EmailController {
         try {
             return ResponseEntity.ok(emailService.send(dto));
         } catch (EmailDeliveryException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to deliver email", e);
+        }
         }
     }
 
