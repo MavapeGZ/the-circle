@@ -3,7 +3,7 @@ package com.thecircle.contracts.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  * bean only wins when explicitly selected (or HttpOtpDelivery removed).
  */
 @Component
-@ConditionalOnProperty(name = "spring.mail.host")
+@ConditionalOnExpression("!'${spring.mail.host:}'.isBlank()")
 public class EmailOtpDelivery implements OtpDeliveryChannel {
 
     private static final Logger log = LoggerFactory.getLogger(EmailOtpDelivery.class);
