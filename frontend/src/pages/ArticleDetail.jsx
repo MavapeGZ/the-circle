@@ -58,7 +58,7 @@ function ArticleDetail() {
   };
 
   const handleRequestExchange = async () => {
-    if (!currentUser) {
+    if (!currentUser?.id) {
       alert('You must be logged in to request this article.');
       navigate('/login');
       return;
