@@ -38,7 +38,7 @@ public class EmailController {
 
     @PostMapping("/email")
     public ResponseEntity<EmailResponseDto> sendEmail(@RequestBody @Valid EmailRequestDto dto,
-                                                      HttpServletRequest request) {
+            HttpServletRequest request) {
         assertInternalCaller(request);
         try {
             return ResponseEntity.ok(emailService.send(dto));

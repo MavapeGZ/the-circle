@@ -8,14 +8,38 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) setUser({ token });
-    setLoading(false);
+    const bootstrap = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const { data } = await api.get('/users/me');
+        setUser({ ...data, token });
+      } catch (error) {
+        const status = error?.response?.status;
+        if (status === 401 || status === 403) {
+          localStorage.removeItem('token');
+          setUser(null);
+        } else {
+          setUser({ token });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    bootstrap();
   }, []);
 
-  const storeToken = (token) => {
+  const storeToken = async (token) => {
     localStorage.setItem('token', token);
-    setUser({ token });
+    try {
+      const { data } = await api.get('/users/me');
+      setUser({ ...data, token });
+    } catch (error) {
+      setUser({ token });
+    }
   };
 
   // Step 1 of signup: create user, server emails OTP. Returns { sessionId }.
@@ -27,7 +51,7 @@ export const AuthProvider = ({ children }) => {
   // Step 2 of signup: confirm OTP, server returns JWT.
   const verifyEmail = async (sessionId, otp) => {
     const { data } = await api.post('/auth/verify-email', { sessionId, otp });
-    if (data.token) storeToken(data.token);
+    if (data.token) await storeToken(data.token);
     return data;
   };
 
@@ -35,7 +59,7 @@ export const AuthProvider = ({ children }) => {
   // { sessionId, requiresOtp } (new device → OTP step required).
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
-    if (data.token) storeToken(data.token);
+    if (data.token) await storeToken(data.token);
     return data;
   };
 
@@ -43,7 +67,7 @@ export const AuthProvider = ({ children }) => {
   // and sets the device-trust cookie.
   const verifyLoginOtp = async (sessionId, otp) => {
     const { data } = await api.post('/auth/login-otp', { sessionId, otp });
-    if (data.token) storeToken(data.token);
+    if (data.token) await storeToken(data.token);
     return data;
   };
 
@@ -59,7 +83,7 @@ export const AuthProvider = ({ children }) => {
     const { data } = await api.post(`/users/${userId}/kyc`, fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    if (data.jwt) storeToken(data.jwt);
+    if (data.jwt) await storeToken(data.jwt);
     return data;
   };
 
