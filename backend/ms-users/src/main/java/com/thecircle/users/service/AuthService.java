@@ -46,6 +46,7 @@ public class AuthService {
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("kyc_verified", user.getKycStatus() == KycStatus.VERIFIED);
+        claims.put("userId", user.getId());
 
         var jwtToken = jwtService.generateToken(claims, user);
 
@@ -67,6 +68,7 @@ public class AuthService {
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("kyc_verified", user.getKycStatus() == KycStatus.VERIFIED);
+        claims.put("userId", user.getId());
 
         var jwtToken = jwtService.generateToken(claims, user);
 

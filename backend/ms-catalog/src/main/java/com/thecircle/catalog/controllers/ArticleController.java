@@ -12,6 +12,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import javax.crypto.SecretKey;
+
 @RestController
 @RequestMapping("/api/catalog/articles")
 @RequiredArgsConstructor
@@ -19,10 +26,37 @@ public class ArticleController {
 
     private final ArticleService service;
 
+    @Value("${jwt.secret}")
+    private String secretKey;
+
+    private SecretKey getSigningKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
     // Create (Register)
     @PostMapping
-    public ResponseEntity<Article> create(@RequestBody Article article) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.createArticle(article));
+    public ResponseEntity<Article> create(
+            @RequestBody Article article,
+            @RequestHeader("Authorization") String authHeader) {
+
+        try {
+            String token = authHeader.substring(7);
+
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            Long userId = Long.valueOf(claims.get("userId").toString());
+            article.setAuthorId(userId);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(service.createArticle(article));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
     // Read all
