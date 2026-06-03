@@ -20,11 +20,15 @@ function Register() {
             await register(formData);
             navigate('/');
         } catch (err) {
-            const backendError = err.response?.data?.message
-                || err.response?.data
-                || 'Error registering. Please check your details and try again.';
+            const backendError = err.response?.data?.message ?? err.response?.data;
 
-            setError(typeof backendError === 'string' ? backendError : 'Invalid registration data format.');
+            if (typeof backendError === 'string') {
+                setError(backendError.trim() || 'Error registering. Please check your details and try again.');
+            } else if (backendError) {
+                setError('Invalid registration data format.');
+            } else {
+                setError('Error registering. Please check your details and try again.');
+            }
         }
     };
 
