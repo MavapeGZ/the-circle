@@ -40,8 +40,7 @@ public class UserController {
             @PathVariable Long userId,
             @RequestParam("front") MultipartFile front,
             @RequestParam("back") MultipartFile back,
-            Authentication authentication
-    ) {
+            Authentication authentication) {
         try {
             // Security check: only owner or ADMIN can perform this
             if (!isOwnerOrAdmin(authentication, userId)) {
@@ -58,11 +57,13 @@ public class UserController {
                 return ResponseEntity.ok(new KycResponse(true, "User verified", newJwt));
             } else {
                 // Documents were accepted, but verification is not yet complete or was rejected
-                return ResponseEntity.accepted().body(new KycResponse(false, "Document received; verification pending or rejected", null));
+                return ResponseEntity.accepted()
+                        .body(new KycResponse(false, "Document received; verification pending or rejected", null));
             }
         } catch (Exception e) {
             log.error("KYC verification failed for user {}", userId, e);
-            return ResponseEntity.internalServerError().body(new KycResponse(false, "Verification failed. Please try again later.", null));
+            return ResponseEntity.internalServerError()
+                    .body(new KycResponse(false, "Verification failed. Please try again later.", null));
         }
     }
 
@@ -73,7 +74,8 @@ public class UserController {
         }
 
         Optional<User> maybe = userRepository.findById(userId);
-        if (maybe.isEmpty()) return ResponseEntity.notFound().build();
+        if (maybe.isEmpty())
+            return ResponseEntity.notFound().build();
         User user = maybe.get();
         KycStatus st = user.getKycStatus();
         if (st == KycStatus.VERIFIED) {
@@ -88,7 +90,8 @@ public class UserController {
     }
 
     private boolean isOwnerOrAdmin(Authentication authentication, Long userId) {
-        if (authentication == null || !authentication.isAuthenticated()) return false;
+        if (authentication == null || !authentication.isAuthenticated())
+            return false;
         Object principal = authentication.getPrincipal();
         String username = null;
         if (principal instanceof UserDetails ud) {
@@ -96,12 +99,15 @@ public class UserController {
         } else if (principal instanceof String s) {
             username = s;
         }
-        if (username == null) return false;
+        if (username == null)
+            return false;
 
         Optional<User> opt = userRepository.findByEmail(username);
-        if (opt.isEmpty()) return false;
+        if (opt.isEmpty())
+            return false;
         User user = opt.get();
-        if (user.getId() != null && user.getId().equals(userId)) return true;
+        if (user.getId() != null && user.getId().equals(userId))
+            return true;
 
         Collection<? extends GrantedAuthority> auths = authentication.getAuthorities();
         return auths.stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
@@ -109,23 +115,35 @@ public class UserController {
 
     @GetMapping("/{userId}")
     public ResponseEntity<UserProfileDto> getUserProfile(@PathVariable Long userId) {
-        return ResponseEntity.ok(new UserProfileDto(u.getId(), null, u.getFirstName(), u.getLastName(), u.getKycStatus().name()));
+        var u = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        UserProfileDto profileDto = new UserProfileDto(
+                u.getId(),
+                null,
+                u.getFirstName(),
+                u.getLastName(),
+                u.getKycStatus().name());
+
+        return ResponseEntity.ok(profileDto);
+    }
 
     @PostMapping("/{userId}/reviews")
     public ResponseEntity<ReviewDto> createReview(@PathVariable String userId, @RequestBody ReviewDto dto) {
-        return ResponseEntity.ok(new ReviewDto("r1", dto.reviewerId(), userId, dto.contractId(), dto.rating(), dto.comment(), LocalDateTime.now()));
+        return ResponseEntity.ok(new ReviewDto("r1", dto.reviewerId(), userId, dto.contractId(), dto.rating(),
+                dto.comment(), LocalDateTime.now()));
     }
 
     @GetMapping("/{userId}/reviews")
     public ResponseEntity<List<ReviewDto>> getUserReviews(@PathVariable String userId) {
         return ResponseEntity.ok(List.of(
-            new ReviewDto("r1", "u2", userId, "c1", 5, "Great user", LocalDateTime.now())
-        ));
+                new ReviewDto("r1", "u2", userId, "c1", 5, "Great user", LocalDateTime.now())));
     }
 
     @GetMapping("/me")
     public ResponseEntity<UserProfileDto> me(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) return ResponseEntity.status(401).build();
+        if (authentication == null || !authentication.isAuthenticated())
+            return ResponseEntity.status(401).build();
         Object principal = authentication.getPrincipal();
         String username = null;
         if (principal instanceof org.springframework.security.core.userdetails.UserDetails ud) {
@@ -133,11 +151,14 @@ public class UserController {
         } else if (principal instanceof String s) {
             username = s;
         }
-        if (username == null) return ResponseEntity.status(401).build();
+        if (username == null)
+            return ResponseEntity.status(401).build();
 
         Optional<com.thecircle.users.model.User> op = userRepository.findByEmail(username);
-        if (op.isEmpty()) return ResponseEntity.status(401).build();
+        if (op.isEmpty())
+            return ResponseEntity.status(401).build();
         com.thecircle.users.model.User u = op.get();
-        return ResponseEntity.ok(new com.thecircle.users.dto.UserProfileDto(u.getId(), u.getEmail(), u.getFirstName(), u.getLastName(), u.getKycStatus().name()));
+        return ResponseEntity.ok(new com.thecircle.users.dto.UserProfileDto(u.getId(), u.getEmail(), u.getFirstName(),
+                u.getLastName(), u.getKycStatus().name()));
     }
 }
