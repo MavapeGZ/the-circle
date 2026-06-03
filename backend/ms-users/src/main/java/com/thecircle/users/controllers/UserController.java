@@ -109,11 +109,7 @@ public class UserController {
 
     @GetMapping("/{userId}")
     public ResponseEntity<UserProfileDto> getUserProfile(@PathVariable Long userId) {
-        Optional<User> maybe = userRepository.findById(userId);
-        if (maybe.isEmpty()) return ResponseEntity.notFound().build();
-        User u = maybe.get();
-        return ResponseEntity.ok(new UserProfileDto(u.getId(), u.getEmail(), u.getFirstName(), u.getLastName(), u.getKycStatus().name()));
-    }
+        return ResponseEntity.ok(new UserProfileDto(u.getId(), null, u.getFirstName(), u.getLastName(), u.getKycStatus().name()));
 
     @PostMapping("/{userId}/reviews")
     public ResponseEntity<ReviewDto> createReview(@PathVariable String userId, @RequestBody ReviewDto dto) {
