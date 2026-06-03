@@ -11,13 +11,14 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkUser = async () => {
       const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const response = await api.get('/users/me');
-          setUser({ ...response.data, token });
         } catch (error) {
           console.error('Failed to fetch user:', error);
-          setUser({ token });
+          if (error.response?.status === 401 || error.response?.status === 403) {
+            localStorage.removeItem('token');
+            setUser(null);
+          } else {
+            setUser({ token });
+          }
         }
       }
       setLoading(false);
