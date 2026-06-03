@@ -41,7 +41,7 @@ public class EmailService {
         } catch (RuntimeException e) {
             EmailLog failed = persist(request, EmailStatus.FAILED, "Template render error: " + e.getMessage(), null, now);
             log.error("Template render failed for {} -> {} (emailLogId={})", request.getTemplateName(), request.getTo(), failed.getId(), e);
-            throw new EmailDeliveryException("Failed to render template: " + request.getTemplateName(), e);
+            throw new EmailDeliveryException("Unexpected error. Please contact our support team.", e);
         }
 
         try {
@@ -55,7 +55,7 @@ public class EmailService {
         } catch (MessagingException | MailException e) {
             EmailLog failed = persist(request, EmailStatus.FAILED, e.getMessage(), null, now);
             log.error("SMTP send failed for {} (emailLogId={})", request.getTo(), failed.getId(), e);
-            throw new EmailDeliveryException("Failed to deliver email to " + request.getTo(), e);
+            throw new EmailDeliveryException("We could not send the email right now. Please try again in a few minutes.", e);
         }
 
         Instant sentAt = Instant.now();

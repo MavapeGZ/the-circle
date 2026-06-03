@@ -17,7 +17,7 @@ public final class HashUtils {
             }
             return sb.toString();
         } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("SHA-256 not available in JVM", ex);
+            throw new IllegalStateException("Unexpected error. Please contact our support team.", ex);
         }
     }
 }

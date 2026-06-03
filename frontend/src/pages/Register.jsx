@@ -7,6 +7,14 @@ const STEP_OTP = 'otp';
 const STEP_KYC = 'kyc';
 const STEP_DONE = 'done';
 
+function describeError(err, fallback) {
+  const serverMessage = err?.response?.data?.message;
+  if (serverMessage) return serverMessage;
+  if (err?.response?.status) return `${fallback} (HTTP ${err.response.status})`;
+  if (err?.code === 'ERR_NETWORK') return 'Cannot reach the server. Is the API gateway running?';
+  return fallback;
+}
+
 function Register() {
   const { register, verifyEmail, fetchMe, uploadKycDocuments } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -34,9 +42,7 @@ function Register() {
       setSessionId(data.sessionId);
       setStep(STEP_OTP);
     } catch (err) {
-      setError(err?.response?.status === 400
-        ? 'Email already registered or invalid data.'
-        : 'Error registering. Please try again.');
+      setError(describeError(err, 'We could not create your account. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -52,7 +58,7 @@ function Register() {
       setUserId(me.id);
       setStep(STEP_KYC);
     } catch (err) {
-      setError('Invalid or expired code. Check your email and try again.');
+      setError(describeError(err, 'Invalid or expired code. Check your email and try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -71,7 +77,7 @@ function Register() {
       setKycMessage(result?.message || 'Documents received.');
       setStep(STEP_DONE);
     } catch (err) {
-      setError('Could not upload your documents. Try again.');
+      setError(describeError(err, 'Could not upload your documents. Try again.'));
     } finally {
       setSubmitting(false);
     }

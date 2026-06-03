@@ -14,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "${app.cors.allowed-origins:http://localhost:5173}", allowCredentials = "true")
 public class AuthController {
 
     private final AuthService service;
@@ -39,9 +37,18 @@ public class AuthController {
         try {
             return ResponseEntity.ok(service.register(request));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(AuthenticationResponse.builder().message(e.getMessage()).build());
         } catch (NotificationsClient.DeliveryException e) {
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(AuthenticationResponse.builder()
+                            .message("Could not send the verification email. Please try again in a moment.")
+                            .build());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AuthenticationResponse.builder()
+                            .message("Unexpected server error: " + e.getMessage())
+                            .build());
         }
     }
 
@@ -50,7 +57,8 @@ public class AuthController {
         try {
             return ResponseEntity.ok(service.verifyEmail(request));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(AuthenticationResponse.builder().message(e.getMessage()).build());
         }
     }
 
@@ -62,7 +70,10 @@ public class AuthController {
         try {
             return ResponseEntity.ok(service.authenticate(request, deviceCookie));
         } catch (NotificationsClient.DeliveryException e) {
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(AuthenticationResponse.builder()
+                            .message("Could not send the sign-in code. Please try again in a moment.")
+                            .build());
         }
     }
 
@@ -76,7 +87,8 @@ public class AuthController {
             attachDeviceCookie(httpResponse, result.deviceToken);
             return ResponseEntity.ok(AuthenticationResponse.builder().token(result.token).build());
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(AuthenticationResponse.builder().message(e.getMessage()).build());
         }
     }
 

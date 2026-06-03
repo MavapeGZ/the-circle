@@ -74,7 +74,7 @@ public class DeviceCookieService {
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             return HexFormat.of().formatHex(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
         } catch (Exception e) {
-            throw new IllegalStateException("HMAC error", e);
+            throw new IllegalStateException("Unexpected error. Please contact our support team.", e);
         }
     }
 

@@ -75,7 +75,7 @@ public class AuthService {
         AuthOtpService.OtpSession session = otpService.consume(
                 request.getSessionId(), request.getOtp(), AuthOtpService.Purpose.EMAIL_VERIFICATION);
         if (session == null) {
-            throw new IllegalArgumentException("Invalid or expired verification code");
+            throw new IllegalArgumentException("The verification code does not match or has expired. Please request a new code and try again.");
         }
         User user = repository.findById(session.userId)
                 .orElseThrow(() -> new IllegalStateException("User not found for verification session"));
@@ -124,7 +124,7 @@ public class AuthService {
         AuthOtpService.OtpSession session = otpService.consume(
                 request.getSessionId(), request.getOtp(), AuthOtpService.Purpose.LOGIN);
         if (session == null) {
-            throw new IllegalArgumentException("Invalid or expired sign-in code");
+            throw new IllegalArgumentException("The sign-in code does not match or has expired. Please request a new code and try again.");
         }
         User user = repository.findById(session.userId)
                 .orElseThrow(() -> new IllegalStateException("User not found for sign-in session"));

@@ -73,7 +73,7 @@ public class HttpOtpDelivery implements OtpDeliveryChannel {
         try {
             ResponseEntity<String> response = restTemplate.postForEntity(url, new HttpEntity<>(body, headers), String.class);
             if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new RestClientException("ms-notifications returned " + response.getStatusCode());
+                throw new RestClientException("Our notifications service is currently having problems. Please try again in a few minutes.");
             }
             log.info("OTP email dispatched via ms-notifications to {}", maskEmail(destination));
         } catch (RestClientException ex) {
