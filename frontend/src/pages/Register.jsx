@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
@@ -127,8 +127,8 @@ function Register() {
             <p className="text-gray-600 text-center">
               Upload the front and back of your government-issued ID to finish your KYC verification.
             </p>
-            <FileField label="ID — Front" file={frontFile} onChange={setFrontFile} />
-            <FileField label="ID — Back" file={backFile} onChange={setBackFile} />
+            <IdField label="ID — Front" file={frontFile} onChange={setFrontFile} fallbackName="dni-front" />
+            <IdField label="ID — Back" file={backFile} onChange={setBackFile} fallbackName="dni-back" />
             <SubmitButton disabled={submitting}>{submitting ? 'Uploading…' : 'Submit Documents'}</SubmitButton>
             <button type="button" className="text-sm text-gray-500 hover:underline"
                     onClick={() => navigate('/')}>
@@ -190,16 +190,128 @@ function Field({ label, name, value, onChange, type = 'text' }) {
   );
 }
 
-function FileField({ label, file, onChange }) {
+function IdField({ label, file, onChange, fallbackName }) {
+  const [mode, setMode] = useState('idle');
+  const [cameraError, setCameraError] = useState('');
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const stopStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    if (mode !== 'camera') {
+      stopStream();
+      return undefined;
+    }
+    setCameraError('');
+    let cancelled = false;
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+      .then((stream) => {
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      })
+      .catch((err) => {
+        setCameraError(err?.message || 'Camera unavailable.');
+        setMode('idle');
+      });
+    return () => {
+      cancelled = true;
+      stopStream();
+    };
+  }, [mode]);
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return undefined;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const snapshot = () => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const captured = new File([blob], `${fallbackName}-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      onChange(captured);
+      stopStream();
+      setMode('idle');
+    }, 'image/jpeg', 0.92);
+  };
+
   return (
     <div>
       <label className="block text-gray-700 font-semibold mb-2">{label}</label>
+      <div className="flex gap-2 mb-2">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex-1 p-2 rounded border bg-green-600 text-white border-green-600 hover:bg-green-700"
+        >
+          Upload file
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('camera')}
+          className={`flex-1 p-2 rounded border ${mode === 'camera' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300'}`}
+        >
+          Take photo
+        </button>
+      </div>
+
       <input
-        type="file" accept="image/*,application/pdf" required
-        onChange={(e) => onChange(e.target.files?.[0] || null)}
-        className="w-full p-2 border rounded"
+        ref={fileInputRef}
+        type="file" accept="image/*,application/pdf"
+        onChange={(e) => {
+          onChange(e.target.files?.[0] || null);
+          e.target.value = '';
+        }}
+        className="hidden"
       />
-      {file && <p className="text-xs text-gray-500 mt-1">{file.name}</p>}
+
+      {mode === 'camera' && (
+        <div className="flex flex-col gap-2">
+          {cameraError && <p className="text-red-600 text-sm">{cameraError}</p>}
+          <video ref={videoRef} autoPlay playsInline muted className="w-full rounded border bg-black" />
+          <button
+            type="button"
+            onClick={snapshot}
+            className="bg-green-600 text-white font-semibold p-2 rounded hover:bg-green-700"
+          >
+            Capture
+          </button>
+        </div>
+      )}
+
+      {file && (
+        <div className="mt-2 flex items-center gap-2">
+          {previewUrl && file.type?.startsWith('image/') && (
+            <img src={previewUrl} alt={`${label} preview`} className="h-16 w-auto rounded border" />
+          )}
+          <p className="text-xs text-gray-500">{file.name}</p>
+        </div>
+      )}
     </div>
   );
 }
