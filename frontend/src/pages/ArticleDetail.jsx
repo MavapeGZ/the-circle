@@ -148,7 +148,7 @@ function ArticleDetail() {
           {owner ? (
             <div className="flex items-center gap-4 mb-6">
               <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xl">
-                {owner.firstName.charAt(0)}{owner.lastName.charAt(0)}
+                {(owner.firstName?.[0] ?? '?')}{(owner.lastName?.[0] ?? '')}
               </div>
               <div>
                 <h4 className="text-lg font-bold text-gray-900">
