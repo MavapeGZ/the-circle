@@ -25,10 +25,9 @@ function ArticleDetail() {
 
         if (articleData.authorId) {
           try {
-            const ownerRes = await api.get(`/users/${articleData.authorId}`);
-            setOwner(ownerRes.data);
           } catch (ownerErr) {
             console.error('Error fetching owner profile:', ownerErr);
+            setOwner({ firstName: 'Unknown', lastName: '', kycStatus: 'UNKNOWN' });
           }
         }
       } catch (err) {
