@@ -1,7 +1,7 @@
 package com.thecircle.catalog.service;
 
 import com.thecircle.catalog.model.Article;
-import com.thecircle.catalog.model.ArticleType;
+import com.thecircle.catalog.model.ProductType;
 import com.thecircle.catalog.model.TransactionMode;
 import com.thecircle.catalog.repository.ArticleRepository;
 import lombok.RequiredArgsConstructor;
@@ -63,7 +63,7 @@ public class ArticleService {
         }
     }
 
-    public Page<Article> searchArticles(String query, ArticleType type, Pageable pageable) {
+    public Page<Article> searchArticles(String query, ProductType type, Pageable pageable) {
 
         // Prove if fronend is sending real query or just empty string with spaces, if
         // so, treat it as no query
@@ -74,7 +74,7 @@ public class ArticleService {
             return repository.findAll(pageable);
         } else if (!hasQuery) {
             // Case 2: Filter by type only
-            return repository.findByType(type, pageable);
+            return repository.findByProductType(type, pageable);
         } else if (type == null) {
             // Case 3: Only text in search, no type filter (normal multi-match search)
             return repository.findByFuzzySearch(query, pageable);

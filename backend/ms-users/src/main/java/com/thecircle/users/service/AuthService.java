@@ -137,6 +137,7 @@ public class AuthService {
         Map<String, Object> claims = new HashMap<>();
         claims.put("kyc_verified", user.getKycStatus() == KycStatus.VERIFIED);
         claims.put("email_verified", user.isEmailVerified());
+        claims.put("userId", user.getId());
         return jwtService.generateToken(claims, user);
     }
 

@@ -25,6 +25,8 @@ function ArticleDetail() {
 
         if (articleData.authorId) {
           try {
+            const ownerRes = await api.get(`/users/${articleData.authorId}`);
+            setOwner(ownerRes.data);
           } catch (ownerErr) {
             console.error('Error fetching owner profile:', ownerErr);
             setOwner({ firstName: 'Unknown', lastName: '', kycStatus: 'UNKNOWN' });
@@ -69,7 +71,7 @@ function ArticleDetail() {
         articleId: article.id,
         providerId: article.authorId,
         requesterId: currentUser.id,
-        transactionMode: article.transactionMode
+        transactionMode: article.transactionMode 
       };
       await api.post('/contracts/requests', payload);
       alert('Request sent successfully! The owner will be notified.');
@@ -86,7 +88,37 @@ function ArticleDetail() {
   if (error) return <div className="text-center mt-20 text-xl text-red-600 font-bold">{error}</div>;
   if (!article) return null;
 
-  const isOffer = article.type === 'OFFER';
+  const renderBadge = () => {
+    switch (article.productType) {
+      case 'DONATION':
+        return (
+          <span className="bg-purple-100 text-purple-800 text-xs font-extrabold px-3 py-1 rounded-full border border-purple-300 shadow-sm">
+            🎁 Donation — Free
+          </span>
+        );
+      case 'DEMAND':
+        return (
+          <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full border border-blue-300">
+            DEMAND
+          </span>
+        );
+      case 'SYMBOLIC_SALE':
+        return (
+          <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full border border-green-300">
+            SALE
+          </span>
+        );
+      case 'SYMBOLIC_RENTAL':
+        return (
+          <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full border border-green-300">
+            RENTAL
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
   const formattedDate = new Date(article.createdAt).toLocaleDateString('en-US', {
     day: '2-digit', month: 'long', year: 'numeric'
   });
@@ -114,9 +146,8 @@ function ArticleDetail() {
           <div className="p-8">
             <div className="flex justify-between items-center mb-4">
               <div className="flex gap-2">
-                <span className={`text-xs font-bold px-3 py-1 rounded-full border ${isOffer ? 'bg-green-100 text-green-800 border-green-300' : 'bg-blue-100 text-blue-800 border-blue-300'}`}>
-                  {isOffer ? 'OFFER' : 'DEMAND'}
-                </span>
+                {/* Aquí inyectamos el nuevo badge */}
+                {renderBadge()}
                 <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">
                   {article.category}
                 </span>
