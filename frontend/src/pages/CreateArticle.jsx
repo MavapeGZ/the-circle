@@ -8,9 +8,14 @@ function CreateArticle() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: 'DONATION', // Default value
-    type: 'OFFER'
+    category: 'DONATION', // Product type: DONATION | SELL | RENTAL | DEMAND
+    type: 'OFFER',
+    price: '', // Symbolic amount for SELL / RENTAL
+    rentalTimeUnit: 'DAY' // Only used for RENTAL
   });
+
+  const showPrice = formData.category === 'SELL' || formData.category === 'RENTAL';
+  const showTimeUnit = formData.category === 'RENTAL';
 
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState('');
@@ -63,14 +68,33 @@ function CreateArticle() {
     setError('');
 
     try {
+      const transactionMode =
+        formData.category === 'DONATION' ? 'DONATE'
+        : formData.category === 'SELL' ? 'SELL'
+        : formData.category === 'RENTAL' ? 'RENT'
+        : null; // DEMAND
+
+      const symbolicPrice = showPrice ? parseFloat(formData.price) : 0.0;
+      if (showPrice && (!Number.isFinite(symbolicPrice) || symbolicPrice <= 0)) {
+        setError('Please enter a valid symbolic amount greater than 0.');
+        setLoading(false);
+        return;
+      }
+      if (showPrice && symbolicPrice > 10) {
+        setError('The symbolic amount cannot exceed 10 €.');
+        setLoading(false);
+        return;
+      }
+
       const payload = {
         title: formData.title,
         description: formData.description,
         type: formData.type, // 'OFFER' o 'DEMAND'
-        transactionMode: formData.category === 'DONATION' ? 'DONATE' : formData.category === 'RENTAL' ? 'RENT' : null,
+        transactionMode,
         category: 'General', // Default category for now, we can enhance this later to allow users to select from predefined categories
         imageBase64: imageBase64,
-        price: 0.0 // ArticleServie will ignore this field for DEMAND articles, but we need to send it anyway to match the expected payload structure
+        price: showPrice ? symbolicPrice : 0.0,
+        rentalTimeUnit: showTimeUnit ? formData.rentalTimeUnit : null
       };
 
       await api.post('/catalog/articles', payload);
@@ -146,10 +170,54 @@ function CreateArticle() {
             onChange={handleChange}
           >
             <option value="DONATION">Offer: Donation (Free)</option>
+            <option value="SELL">Offer: Symbolic Sale</option>
             <option value="RENTAL">Offer: Symbolic Rental</option>
             <option value="DEMAND">Demand: I am looking for something</option>
           </select>
         </div>
+
+        {/* SYMBOLIC PRICE (Sale / Rental) */}
+        {showPrice && (
+          <div>
+            <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-1">
+              Symbolic amount (€) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              id="price"
+              name="price"
+              required
+              min="0.01"
+              max="10"
+              step="0.01"
+              placeholder={showTimeUnit ? 'e.g., 2.00 per period (max 10 €)' : 'e.g., 3.00 (max 10 €)'}
+              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              value={formData.price}
+              onChange={handleChange}
+            />
+          </div>
+        )}
+
+        {/* RENTAL TIME UNIT */}
+        {showTimeUnit && (
+          <div>
+            <label htmlFor="rentalTimeUnit" className="block text-sm font-semibold text-gray-700 mb-1">
+              Rental period <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="rentalTimeUnit"
+              name="rentalTimeUnit"
+              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+              value={formData.rentalTimeUnit}
+              onChange={handleChange}
+            >
+              <option value="HOUR">Per hour</option>
+              <option value="DAY">Per day</option>
+              <option value="WEEK">Per week</option>
+              <option value="MONTH">Per month</option>
+            </select>
+          </div>
+        )}
 
         {/* IMAGE UPLOAD */}
         <div>

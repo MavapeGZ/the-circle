@@ -15,6 +15,7 @@ function Login() {
   const [step, setStep] = useState(STEP_CREDENTIALS);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [accountNotFound, setAccountNotFound] = useState(false);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,6 +27,7 @@ function Login() {
   const submitCredentials = async (e) => {
     e.preventDefault();
     setError('');
+    setAccountNotFound(false);
     setSubmitting(true);
     try {
       const data = await login(email, password);
@@ -46,7 +48,15 @@ function Login() {
         setError('Unexpected server response. Please try again.');
       }
     } catch (err) {
-      setError('Incorrect credentials or server error');
+      const status = err?.response?.status;
+      if (status === 404) {
+        setAccountNotFound(true);
+        setError('No account is registered with this email.');
+      } else if (status === 401) {
+        setError('Incorrect password.');
+      } else {
+        setError('Could not sign in. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -78,6 +88,16 @@ function Login() {
         </h2>
 
         {error && <p className="bg-red-100 text-red-600 p-3 rounded mb-4 text-center">{error}</p>}
+
+        {accountNotFound && (
+          <div className="bg-blue-50 text-blue-800 p-3 rounded mb-4 text-center border border-blue-200">
+            <p className="mb-2">Don't have an account yet?</p>
+            <Link to="/register"
+                  className="inline-block bg-blue-600 text-white font-bold px-4 py-2 rounded hover:bg-blue-700 transition">
+              Create an account
+            </Link>
+          </div>
+        )}
 
         {step === STEP_CREDENTIALS && (
           <form onSubmit={submitCredentials} className="flex flex-col gap-4">

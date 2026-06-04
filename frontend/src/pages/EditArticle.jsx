@@ -9,9 +9,14 @@ function EditArticle() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: '',
-    type: ''
+    category: '', // DONATION | SELL | RENTAL | DEMAND
+    type: '',
+    price: '',
+    rentalTimeUnit: 'DAY'
   });
+
+  const showPrice = formData.category === 'SELL' || formData.category === 'RENTAL';
+  const showTimeUnit = formData.category === 'RENTAL';
   
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState('');
@@ -26,12 +31,20 @@ function EditArticle() {
       try {
         const response = await api.get(`/catalog/articles/${id}`);
         const article = response.data;
-        
+
+        const category =
+          article.type === 'DEMAND' ? 'DEMAND'
+          : article.transactionMode === 'SELL' ? 'SELL'
+          : article.transactionMode === 'RENT' ? 'RENTAL'
+          : 'DONATION'; // DONATE / GIFT / unset
+
         setFormData({
           title: article.title || '',
           description: article.description || '',
-          category: article.category || 'General',
-          type: article.type || 'OFFER'
+          category,
+          type: article.type || 'OFFER',
+          price: article.price != null && article.price > 0 ? String(article.price) : '',
+          rentalTimeUnit: article.rentalTimeUnit || 'DAY'
         });
         
         if (article.imageBase64) {
@@ -51,7 +64,12 @@ function EditArticle() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'category') {
+      const isDemand = value === 'DEMAND';
+      setFormData(prev => ({ ...prev, category: value, type: isDemand ? 'DEMAND' : 'OFFER' }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   // Convert the new image to Base64 if it is changed
@@ -79,13 +97,33 @@ function EditArticle() {
     setError('');
 
     try {
+      const transactionMode =
+        formData.category === 'DONATION' ? 'DONATE'
+        : formData.category === 'SELL' ? 'SELL'
+        : formData.category === 'RENTAL' ? 'RENT'
+        : null; // DEMAND
+
+      const symbolicPrice = showPrice ? parseFloat(formData.price) : 0.0;
+      if (showPrice && (!Number.isFinite(symbolicPrice) || symbolicPrice <= 0)) {
+        setError('Please enter a valid symbolic amount greater than 0.');
+        setSaving(false);
+        return;
+      }
+      if (showPrice && symbolicPrice > 10) {
+        setError('The symbolic amount cannot exceed 10 €.');
+        setSaving(false);
+        return;
+      }
+
       const payload = {
         title: formData.title,
         description: formData.description,
         type: formData.type,
-        category: formData.category,
+        transactionMode,
+        category: 'General',
         imageBase64: imageBase64,
-        price: 0.0 // Keep the price at 0 for solidarity offers/requests
+        price: showPrice ? symbolicPrice : 0.0,
+        rentalTimeUnit: showTimeUnit ? formData.rentalTimeUnit : null
       };
 
       await api.put(`/catalog/articles/${id}`, payload);
@@ -141,6 +179,62 @@ function EditArticle() {
             onChange={handleChange}
           />
         </div>
+
+        <div>
+          <label htmlFor="category" className="block text-sm font-semibold text-gray-700 mb-1">Product type</label>
+          <select
+            id="category"
+            name="category"
+            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+            value={formData.category}
+            onChange={handleChange}
+          >
+            <option value="DONATION">Offer: Donation (Free)</option>
+            <option value="SELL">Offer: Symbolic Sale</option>
+            <option value="RENTAL">Offer: Symbolic Rental</option>
+            <option value="DEMAND">Demand: I am looking for something</option>
+          </select>
+        </div>
+
+        {showPrice && (
+          <div>
+            <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-1">
+              Symbolic amount (€) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              id="price"
+              name="price"
+              required
+              min="0.01"
+              max="10"
+              step="0.01"
+              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              value={formData.price}
+              onChange={handleChange}
+            />
+          </div>
+        )}
+
+        {showTimeUnit && (
+          <div>
+            <label htmlFor="rentalTimeUnit" className="block text-sm font-semibold text-gray-700 mb-1">
+              Rental period <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="rentalTimeUnit"
+              name="rentalTimeUnit"
+              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+              value={formData.rentalTimeUnit}
+              onChange={handleChange}
+            >
+              <option value="HOUR">Per hour</option>
+              <option value="DAY">Per day</option>
+              <option value="WEEK">Per week</option>
+              <option value="MONTH">Per month</option>
+            </select>
+          </div>
+        )}
 
         <div>
           <label htmlFor="image" className="block text-sm font-semibold text-gray-700 mb-1">Change Image (Optional)</label>

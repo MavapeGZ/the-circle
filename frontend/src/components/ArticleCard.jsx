@@ -9,7 +9,10 @@ export default function ArticleCard({ article }) {
     ? 'bg-green-100 text-green-800 border-green-300' 
     : 'bg-blue-100 text-blue-800 border-blue-300';
     
-  const priceDisplay = article.price === 0 ? 'Free' : `${article.price} €`;
+  const timeUnitLabel = {
+    HOUR: '/hour', DAY: '/day', WEEK: '/week', MONTH: '/month'
+  }[article.rentalTimeUnit] || '';
+  const priceDisplay = !article.price ? 'Free' : `${article.price} €${timeUnitLabel}`;
 
   // Format the date (comes in ISO format from OpenSearch)
   const formattedDate = new Date(article.createdAt).toLocaleDateString('en-US', {

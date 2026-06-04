@@ -89,10 +89,13 @@ public class AuthService {
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request, String deviceCookie) {
+        // Check existence first so we can tell "no account" apart from "wrong password".
+        User user = repository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AccountNotFoundException("No account is registered with this email."));
+
+        // Throws BadCredentialsException when the password does not match.
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-
-        User user = repository.findByEmail(request.getEmail()).orElseThrow();
 
         if (!user.isEmailVerified()) {
             AuthOtpService.Issued issued = otpService.issue(user.getId(), user.getEmail(),

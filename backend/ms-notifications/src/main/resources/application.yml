@@ -24,6 +24,9 @@ spring:
           auth: ${MAIL_AUTH:true}
           starttls:
             enable: ${MAIL_STARTTLS:true}
+          connectiontimeout: ${MAIL_CONNECT_TIMEOUT:10000}
+          timeout: ${MAIL_READ_TIMEOUT:10000}
+          writetimeout: ${MAIL_WRITE_TIMEOUT:10000}
   thymeleaf:
     prefix: classpath:/templates/
     suffix: .html

@@ -10,9 +10,11 @@ import com.thecircle.users.service.NotificationsClient;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import com.thecircle.users.service.AccountNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -72,6 +74,12 @@ public class AuthController {
         String deviceCookie = readDeviceCookie(httpRequest);
         try {
             return ResponseEntity.ok(service.authenticate(request, deviceCookie));
+        } catch (AccountNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(AuthenticationResponse.builder().message(e.getMessage()).build());
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(AuthenticationResponse.builder().message("Incorrect password.").build());
         } catch (NotificationsClient.DeliveryException e) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .body(AuthenticationResponse.builder()

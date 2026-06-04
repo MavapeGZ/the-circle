@@ -10,8 +10,7 @@ const STEP_DONE = 'done';
 function describeError(err, fallback) {
   const serverMessage = err?.response?.data?.message;
   if (serverMessage) return serverMessage;
-  if (err?.response?.status) return `${fallback} (HTTP ${err.response.status})`;
-  if (err?.code === 'ERR_NETWORK') return 'Cannot reach the server. Is the API gateway running?';
+  if (err?.code === 'ERR_NETWORK') return 'We could not connect to the server. Please try again in a moment.';
   return fallback;
 }
 

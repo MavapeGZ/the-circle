@@ -20,6 +20,9 @@ public class ArticleService {
 
     private final ArticleRepository repository;
 
+    // Symbolic price cap (euros). Keeps SELL/RENT prices symbolic.
+    private static final double SYMBOLIC_MAX_PRICE = 10.0;
+
     public Article createArticle(Article article) {
         article.setId(null);
         article.setCreatedAt(java.time.Instant.now());
@@ -39,10 +42,15 @@ public class ArticleService {
         return repository.findById(id).map(existing -> {
             existing.setTitle(updatedData.getTitle());
             existing.setDescription(updatedData.getDescription());
+            existing.setType(updatedData.getType());
+            existing.setTransactionMode(updatedData.getTransactionMode());
             existing.setPrice(updatedData.getPrice());
+            existing.setRentalTimeUnit(updatedData.getRentalTimeUnit());
             existing.setCategory(updatedData.getCategory());
+            existing.setImageBase64(updatedData.getImageBase64());
             // Do not update creation date or author ID as they should remain unchanged to
             // preserve data integrity
+            validateAndAdjustPrice(existing);
             return repository.save(existing);
         }).orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Article not found with ID: " + id));
@@ -53,13 +61,38 @@ public class ArticleService {
     }
 
     private void validateAndAdjustPrice(Article article) {
-        if (article.getTransactionMode() == TransactionMode.DONATE
-                || article.getTransactionMode() == TransactionMode.GIFT) {
+        TransactionMode mode = article.getTransactionMode();
+        if (mode == TransactionMode.DONATE || mode == TransactionMode.GIFT) {
+            // Free: no price, no rental time unit.
             article.setPrice(0.0);
-        } else {
+            article.setRentalTimeUnit(null);
+        } else if (mode == TransactionMode.RENT) {
+            // Symbolic rental: keep symbolic price + time unit.
             if (article.getPrice() == null) {
                 article.setPrice(0.0);
             }
+            enforceSymbolicCap(article.getPrice());
+        } else if (mode == TransactionMode.SELL) {
+            // Symbolic sale: keep symbolic price, no time unit.
+            if (article.getPrice() == null) {
+                article.setPrice(0.0);
+            }
+            article.setRentalTimeUnit(null);
+            enforceSymbolicCap(article.getPrice());
+        } else {
+            // Unspecified (e.g. demands): no price, no time unit.
+            if (article.getPrice() == null) {
+                article.setPrice(0.0);
+            }
+            article.setRentalTimeUnit(null);
+        }
+    }
+
+    private void enforceSymbolicCap(Double price) {
+        if (price != null && price > SYMBOLIC_MAX_PRICE) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Symbolic price cannot exceed " + SYMBOLIC_MAX_PRICE + " €");
         }
     }
 

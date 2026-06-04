@@ -34,7 +34,10 @@ public class Article {
     private String category;
 
     @Field(type = FieldType.Double, name = "price")
-    private Double price; // Could be 0.0 for free offers or demands
+    private Double price; // Symbolic amount for SELL/RENT; 0.0 for donations/demands
+
+    @Field(type = FieldType.Keyword, name = "rental_time_unit")
+    private RentalTimeUnit rentalTimeUnit; // Only set when transactionMode == RENT
 
     // User ID of the author of the article. This is not a reference to a User
     // document, just a simple field to store the ID.
