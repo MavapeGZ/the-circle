@@ -80,9 +80,7 @@ export const AuthProvider = ({ children }) => {
     const fd = new FormData();
     fd.append('front', frontFile);
     fd.append('back', backFile);
-    const { data } = await api.post(`/users/${userId}/kyc`, fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const { data } = await api.post(`/users/${userId}/kyc`, fd);
     if (data.jwt) await storeToken(data.jwt);
     return data;
   };

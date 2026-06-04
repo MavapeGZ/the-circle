@@ -96,7 +96,7 @@ function Register() {
             <Field label="First Name" name="firstName" value={formData.firstName} onChange={onAccountChange} />
             <Field label="Last Name" name="lastName" value={formData.lastName} onChange={onAccountChange} />
             <Field label="Email" name="email" type="email" value={formData.email} onChange={onAccountChange} />
-            <Field label="Password" name="password" type="password" value={formData.password} onChange={onAccountChange} />
+            <Field label="Password" name="password" type="password" value={formData.password} onChange={onAccountChange} minLength={8} />
             <SubmitButton disabled={submitting}>{submitting ? 'Sending code…' : 'Continue'}</SubmitButton>
             <p className="text-center text-gray-600 text-sm">
               Already have an account? <Link to="/login" className="text-green-500 hover:underline">Sign In</Link>
@@ -178,12 +178,12 @@ function StepIndicator({ step }) {
   );
 }
 
-function Field({ label, name, value, onChange, type = 'text' }) {
+function Field({ label, name, value, onChange, type = 'text', minLength }) {
   return (
     <div>
       <label className="block text-gray-700 font-semibold mb-2">{label}</label>
       <input
-        type={type} name={name} value={value} onChange={onChange} required
+        type={type} name={name} value={value} onChange={onChange} required minLength={minLength}
         className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-green-500"
       />
     </div>

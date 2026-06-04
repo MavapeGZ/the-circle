@@ -24,7 +24,7 @@ foreach ($p in $psProcesses) {
 Write-Host "Cleaning up lingering Java and Node processes..." -ForegroundColor Yellow
 
 # Escapamos la ruta del repo para usarla en un Regex y evitar falsos positivos con otros proyectos
-$repoRootEscaped = [Regex]::Escape($RepoRoot).Replace('\', '\\')
+$repoRootEscaped = [Regex]::Escape($RepoRoot)
 
 $lingeringProcesses = Get-CimInstance Win32_Process |
     Where-Object {

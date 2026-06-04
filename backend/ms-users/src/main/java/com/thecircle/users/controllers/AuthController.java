@@ -11,6 +11,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Slf4j
 public class AuthController {
 
     private final AuthService service;
@@ -45,9 +47,10 @@ public class AuthController {
                             .message("Could not send the verification email. Please try again in a moment.")
                             .build());
         } catch (RuntimeException e) {
+            log.error("Unexpected error during registration", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(AuthenticationResponse.builder()
-                            .message("Unexpected server error: " + e.getMessage())
+                            .message("Unexpected server error. Please try again.")
                             .build());
         }
     }

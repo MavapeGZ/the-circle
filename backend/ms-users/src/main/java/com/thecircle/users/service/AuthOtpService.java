@@ -50,20 +50,22 @@ public class AuthOtpService {
         OtpSession session = sessions.get(sessionId);
         if (session == null) return null;
         if (session.purpose != expectedPurpose) return null;
-        if (Instant.now().isAfter(session.expiry)) {
+        synchronized (session) {
+            if (Instant.now().isAfter(session.expiry)) {
+                sessions.remove(sessionId);
+                return null;
+            }
+            session.attempts++;
+            if (session.attempts > maxAttempts) {
+                sessions.remove(sessionId);
+                return null;
+            }
+            if (!OTP_ENCODER.matches(otp, session.hashedOtp)) {
+                return null;
+            }
             sessions.remove(sessionId);
-            return null;
+            return session;
         }
-        session.attempts++;
-        if (session.attempts > maxAttempts) {
-            sessions.remove(sessionId);
-            return null;
-        }
-        if (!OTP_ENCODER.matches(otp, session.hashedOtp)) {
-            return null;
-        }
-        sessions.remove(sessionId);
-        return session;
     }
 
     public int getTtlSeconds() {

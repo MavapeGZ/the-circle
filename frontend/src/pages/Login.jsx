@@ -5,8 +5,11 @@ import { AuthContext } from '../context/AuthContext';
 const STEP_CREDENTIALS = 'credentials';
 const STEP_OTP = 'otp';
 
+const FLOW_LOGIN_OTP = 'login-otp';
+const FLOW_EMAIL_VERIFICATION = 'email-verification';
+
 function Login() {
-  const { login, verifyLoginOtp } = useContext(AuthContext);
+  const { login, verifyLoginOtp, verifyEmail } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [step, setStep] = useState(STEP_CREDENTIALS);
@@ -18,6 +21,7 @@ function Login() {
   const [sessionId, setSessionId] = useState('');
   const [otp, setOtp] = useState('');
   const [otpMessage, setOtpMessage] = useState('');
+  const [flow, setFlow] = useState(FLOW_LOGIN_OTP);
 
   const submitCredentials = async (e) => {
     e.preventDefault();
@@ -28,11 +32,13 @@ function Login() {
       if (data.token) {
         navigate('/');
       } else if (data.requiresOtp && data.sessionId) {
+        setFlow(FLOW_LOGIN_OTP);
         setSessionId(data.sessionId);
         setOtpMessage(data.message || 'Enter the sign-in code we sent to your email.');
         setStep(STEP_OTP);
       } else if (data.requiresEmailVerification && data.sessionId) {
         // Account never verified; resume signup verification flow.
+        setFlow(FLOW_EMAIL_VERIFICATION);
         setSessionId(data.sessionId);
         setOtpMessage(data.message || 'Your email is not verified yet. Enter the code we just sent.');
         setStep(STEP_OTP);
@@ -51,7 +57,11 @@ function Login() {
     setError('');
     setSubmitting(true);
     try {
-      await verifyLoginOtp(sessionId, otp);
+      if (flow === FLOW_EMAIL_VERIFICATION) {
+        await verifyEmail(sessionId, otp);
+      } else {
+        await verifyLoginOtp(sessionId, otp);
+      }
       navigate('/');
     } catch (err) {
       setError('Invalid or expired code. Try again.');
