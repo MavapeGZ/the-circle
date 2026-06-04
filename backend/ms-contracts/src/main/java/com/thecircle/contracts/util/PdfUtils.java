@@ -26,7 +26,7 @@ public class PdfUtils {
         try {
             imageBytes = Base64.getDecoder().decode(base64);
         } catch (IllegalArgumentException ex) {
-            throw new IOException("Invalid base64 signature image", ex);
+            throw new IOException("The signature image could not be read. Please draw your signature again and resubmit.", ex);
         }
         return PDImageXObject.createFromByteArray(doc, imageBytes, "signature");
     }

@@ -40,6 +40,10 @@ public class User implements UserDetails {
     @Column(name = "kyc_status", nullable = false)
     private KycStatus kycStatus = KycStatus.UNVERIFIED;
 
+    @Builder.Default
+    @Column(name = "email_verified", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean emailVerified = false;
+
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
     @Column(name = "kyc_verified")

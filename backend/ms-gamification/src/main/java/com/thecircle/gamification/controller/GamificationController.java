@@ -67,7 +67,8 @@ public class GamificationController {
             return;
         }
         if (!internalApiKey.equals(request.getHeader(INTERNAL_KEY_HEADER))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid or missing internal API key");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "You are not allowed to perform this action. Please contact our support team if you think this is a mistake.");
         }
     }
 }

@@ -58,7 +58,7 @@ public class GamificationService {
             } catch (OptimisticLockingFailureException | DataIntegrityViolationException ex) {
                 if (++attempt >= MAX_AWARD_RETRIES) {
                     throw new IllegalStateException(
-                            "Could not award event after " + attempt + " attempts", ex);
+                            "Unexpected error. Please contact our support team.", ex);
                 }
             }
         }

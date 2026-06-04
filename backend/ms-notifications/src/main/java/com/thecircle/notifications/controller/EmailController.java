@@ -43,7 +43,8 @@ public class EmailController {
         try {
             return ResponseEntity.ok(emailService.send(dto));
         } catch (EmailDeliveryException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to deliver email", e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "We could not send the email right now. Please try again in a few minutes.", e);
         }
     }
 
@@ -52,7 +53,8 @@ public class EmailController {
             return;
         }
         if (!internalApiKey.equals(request.getHeader(INTERNAL_KEY_HEADER))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid or missing internal API key");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "You are not allowed to perform this action. Please contact our support team if you think this is a mistake.");
         }
     }
 }
