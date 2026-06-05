@@ -64,6 +64,9 @@ public class ArticleController {
             article.setAuthorId(userId);
             return ResponseEntity.status(HttpStatus.CREATED).body(service.createArticle(article));
 
+        } catch (ResponseStatusException e) {
+            // Preserve validation errors (e.g. invalid price -> 400), do not mask as 401
+            throw e;
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
