@@ -44,7 +44,7 @@ public class EmailDispatcher {
             helper.setText(htmlBody, true);
             mailSender.send(message);
             markSent(logId);
-        } catch (MessagingException | MailException e) {
+        } catch (Exception e) {
             log.error("SMTP send failed for {} (emailLogId={})", to, logId, e);
             markFailed(logId, e.getMessage());
         }
