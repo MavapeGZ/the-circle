@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 
+// Product types that have no price (free / priority). DEMAND is priority, so no price selection.
+const PRICELESS_TYPES = ['DONATION', 'DEMAND'];
+
 function EditArticle() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -52,11 +55,11 @@ function EditArticle() {
     const { name, value } = e.target;
     
     if (name === 'productType') {
-      const isDonation = value === 'DONATION';
+      const isPriceless = PRICELESS_TYPES.includes(value);
       setFormData(prev => ({
         ...prev,
         productType: value,
-        price: isDonation ? 0 : prev.price
+        price: isPriceless ? 0 : prev.price
       }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
@@ -92,7 +95,7 @@ function EditArticle() {
         productType: formData.productType,
         category: 'General',
         imageBase64: imageBase64,
-        price: formData.productType === 'DONATION' ? 0.0 : parseFloat(formData.price)
+        price: PRICELESS_TYPES.includes(formData.productType) ? 0.0 : parseFloat(formData.price)
       };
 
       await api.put(`/catalog/articles/${id}`, payload);
@@ -170,7 +173,7 @@ function EditArticle() {
         </div>
 
         {/* PRICE (Renderizado Condicional) */}
-        {formData.productType !== 'DONATION' && (
+        {!PRICELESS_TYPES.includes(formData.productType) && (
           <div>
             <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-1">
               Price (€) <span className="text-red-500">*</span>

@@ -51,11 +51,12 @@ public class ArticleController {
                     .getPayload();
 
             Long userId = Long.valueOf(claims.get("userId").toString());
-            if (article.getProductType() == ProductType.DONATION) {
+            if (article.getProductType() == ProductType.DONATION
+                    || article.getProductType() == ProductType.DEMAND) {
                 if (article.getPrice() != null && article.getPrice() > 0) {
                     throw new ResponseStatusException(
                             HttpStatus.BAD_REQUEST,
-                            "Invalid price: Donations must be completely free (price = 0.0).");
+                            "Invalid price: Donations and demands must be completely free (price = 0.0).");
                 }
                 article.setPrice(0.0); // Force price to 0 for security and data integrity reasons
             }

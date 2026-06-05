@@ -45,6 +45,8 @@ public class ArticleService {
             if (updatedData.getImageBase64() != null) {
                 existing.setImageBase64(updatedData.getImageBase64());
             }
+            // Enforce price rules on update too (e.g. donations/demands must stay free)
+            validateAndAdjustPrice(existing);
             // Do not update creation date or author ID as they should remain unchanged to
             // preserve data integrity
             return repository.save(existing);
@@ -63,7 +65,8 @@ public class ArticleService {
             throw new IllegalArgumentException("Price cannot be negative");
         }
 
-        if (article.getProductType() == ProductType.DONATION) {
+        if (article.getProductType() == ProductType.DONATION
+                || article.getProductType() == ProductType.DEMAND) {
             article.setPrice(0.0);
         } else if (article.getProductType() == ProductType.SYMBOLIC_SALE
                 || article.getProductType() == ProductType.SYMBOLIC_RENTAL) {
