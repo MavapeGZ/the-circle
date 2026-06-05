@@ -33,7 +33,7 @@ export default function ArticleCard({ article }) {
     }
   };
     
-  const priceDisplay = article.price === 0 ? 'Free' : `${article.price} €`;
+  const priceDisplay = !article.price ? 'Free' : `${article.price} €`;
 
   // Format the date (comes in ISO format from OpenSearch)
   const formattedDate = new Date(article.createdAt).toLocaleDateString('en-US', {

@@ -90,11 +90,10 @@ public class AuthService {
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request, String deviceCookie) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-
-        User user = repository.findByEmail(request.getEmail()).orElseThrow();
-
+        // Spring Security will throw BadCredentialsException for unknown email or wrong password.
+        User user = (User) authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()))
+                .getPrincipal();
         if (!user.isEmailVerified()) {
             AuthOtpService.Issued issued = otpService.issue(user.getId(), user.getEmail(),
                     AuthOtpService.Purpose.EMAIL_VERIFICATION);
