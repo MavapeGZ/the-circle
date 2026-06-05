@@ -86,11 +86,7 @@ public class KycService {
                 user.setKycStatus(KycStatus.VERIFIED);
                 userRepository.save(user);
 
-                Map<String, Object> claims = new HashMap<>();
-                claims.put("kyc_verified", true);
-                claims.put("email_verified", user.isEmailVerified());
-                String token = jwtService.generateToken(claims, user);
-                return token;
+                return jwtService.generateToken(user);
             }
 
             deleteUploadedFiles(frontPath, backPath);

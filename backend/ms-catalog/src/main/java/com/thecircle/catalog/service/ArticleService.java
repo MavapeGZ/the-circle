@@ -1,8 +1,7 @@
 package com.thecircle.catalog.service;
 
 import com.thecircle.catalog.model.Article;
-import com.thecircle.catalog.model.ArticleType;
-import com.thecircle.catalog.model.TransactionMode;
+import com.thecircle.catalog.model.ProductType;
 import com.thecircle.catalog.repository.ArticleRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -19,6 +18,7 @@ import java.util.Optional;
 public class ArticleService {
 
     private final ArticleRepository repository;
+    private final double SYMBOLIC_LIMIT_PRICE = 10.0;
 
     public Article createArticle(Article article) {
         article.setId(null);
@@ -41,6 +41,10 @@ public class ArticleService {
             existing.setDescription(updatedData.getDescription());
             existing.setPrice(updatedData.getPrice());
             existing.setCategory(updatedData.getCategory());
+            existing.setProductType(updatedData.getProductType());
+            if (updatedData.getImageBase64() != null) {
+                existing.setImageBase64(updatedData.getImageBase64());
+            }
             // Do not update creation date or author ID as they should remain unchanged to
             // preserve data integrity
             return repository.save(existing);
@@ -53,17 +57,28 @@ public class ArticleService {
     }
 
     private void validateAndAdjustPrice(Article article) {
-        if (article.getTransactionMode() == TransactionMode.DONATE
-                || article.getTransactionMode() == TransactionMode.GIFT) {
+        if (article.getPrice() == null) {
             article.setPrice(0.0);
-        } else {
-            if (article.getPrice() == null) {
-                article.setPrice(0.0);
-            }
+        } else if (article.getPrice() < 0.0) {
+            throw new IllegalArgumentException("Price cannot be negative");
+        }
+
+        if (article.getProductType() == ProductType.DONATION) {
+            article.setPrice(0.0);
+        } else if (article.getProductType() == ProductType.SYMBOLIC_SALE
+                || article.getProductType() == ProductType.SYMBOLIC_RENTAL) {
+            enforceSymbolicCap(article);
         }
     }
 
-    public Page<Article> searchArticles(String query, ArticleType type, Pageable pageable) {
+    private void enforceSymbolicCap(Article article) {
+
+        if (article.getPrice() > SYMBOLIC_LIMIT_PRICE) {
+            article.setPrice(SYMBOLIC_LIMIT_PRICE);
+        }
+    }
+
+    public Page<Article> searchArticles(String query, ProductType type, Pageable pageable) {
 
         // Prove if fronend is sending real query or just empty string with spaces, if
         // so, treat it as no query
@@ -74,7 +89,7 @@ public class ArticleService {
             return repository.findAll(pageable);
         } else if (!hasQuery) {
             // Case 2: Filter by type only
-            return repository.findByType(type, pageable);
+            return repository.findByProductType(type, pageable);
         } else if (type == null) {
             // Case 3: Only text in search, no type filter (normal multi-match search)
             return repository.findByFuzzySearch(query, pageable);

@@ -75,7 +75,8 @@ public class AuthService {
         AuthOtpService.OtpSession session = otpService.consume(
                 request.getSessionId(), request.getOtp(), AuthOtpService.Purpose.EMAIL_VERIFICATION);
         if (session == null) {
-            throw new IllegalArgumentException("The verification code does not match or has expired. Please request a new code and try again.");
+            throw new IllegalArgumentException(
+                    "The verification code does not match or has expired. Please request a new code and try again.");
         }
         User user = repository.findById(session.userId)
                 .orElseThrow(() -> new IllegalStateException("User not found for verification session"));
@@ -119,12 +120,16 @@ public class AuthService {
                 .build();
     }
 
-    /** Returns JWT + the new device-trust token to set as a cookie by the controller. */
+    /**
+     * Returns JWT + the new device-trust token to set as a cookie by the
+     * controller.
+     */
     public LoginOtpResult verifyLoginOtp(VerifyOtpRequest request, String userAgent) {
         AuthOtpService.OtpSession session = otpService.consume(
                 request.getSessionId(), request.getOtp(), AuthOtpService.Purpose.LOGIN);
         if (session == null) {
-            throw new IllegalArgumentException("The sign-in code does not match or has expired. Please request a new code and try again.");
+            throw new IllegalArgumentException(
+                    "The sign-in code does not match or has expired. Please request a new code and try again.");
         }
         User user = repository.findById(session.userId)
                 .orElseThrow(() -> new IllegalStateException("User not found for sign-in session"));
@@ -134,10 +139,7 @@ public class AuthService {
     }
 
     private String buildJwt(User user) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("kyc_verified", user.getKycStatus() == KycStatus.VERIFIED);
-        claims.put("email_verified", user.isEmailVerified());
-        return jwtService.generateToken(claims, user);
+        return jwtService.generateToken(user);
     }
 
     private void sendOtpEmail(User user, AuthOtpService.Issued issued, String subject, String templateName) {

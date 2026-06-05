@@ -9,8 +9,8 @@ function EditArticle() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: '',
-    type: ''
+    productType: 'SYMBOLIC_SALE',
+    price: 0
   });
   
   const [imagePreview, setImagePreview] = useState(null);
@@ -20,7 +20,6 @@ function EditArticle() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Load the current article data to prefill the form
   useEffect(() => {
     const fetchArticle = async () => {
       try {
@@ -30,8 +29,8 @@ function EditArticle() {
         setFormData({
           title: article.title || '',
           description: article.description || '',
-          category: article.category || 'General',
-          type: article.type || 'OFFER'
+          productType: article.productType || 'SYMBOLIC_SALE',
+          price: article.price || 0
         });
         
         if (article.imageBase64) {
@@ -51,10 +50,19 @@ function EditArticle() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'productType') {
+      const isDonation = value === 'DONATION';
+      setFormData(prev => ({
+        ...prev,
+        productType: value,
+        price: isDonation ? 0 : prev.price
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
-  // Convert the new image to Base64 if it is changed
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -72,7 +80,6 @@ function EditArticle() {
     }
   };
 
-  // Send the modified data to the Java PUT endpoint
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -82,15 +89,14 @@ function EditArticle() {
       const payload = {
         title: formData.title,
         description: formData.description,
-        type: formData.type,
-        category: formData.category,
+        productType: formData.productType,
+        category: 'General',
         imageBase64: imageBase64,
-        price: 0.0 // Keep the price at 0 for solidarity offers/requests
+        price: formData.productType === 'DONATION' ? 0.0 : parseFloat(formData.price)
       };
 
       await api.put(`/catalog/articles/${id}`, payload);
       
-      // If everything goes well, return to the detail view to see the changes
       navigate(`/catalog/${id}`);
     } catch (err) {
       console.error('Error updating article:', err);
@@ -116,6 +122,7 @@ function EditArticle() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* TITLE */}
         <div>
           <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-1">Title</label>
           <input
@@ -129,6 +136,7 @@ function EditArticle() {
           />
         </div>
 
+        {/* DESCRIPTION */}
         <div>
           <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
           <textarea
@@ -142,6 +150,46 @@ function EditArticle() {
           />
         </div>
 
+        {/* PRODUCT TYPE */}
+        <div>
+          <label htmlFor="productType" className="block text-sm font-semibold text-gray-700 mb-1">
+            Product Type <span className="text-red-500">*</span>
+          </label>
+          <select
+            id="productType"
+            name="productType"
+            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+            value={formData.productType}
+            onChange={handleChange}
+          >
+            <option value="SYMBOLIC_SALE">Symbolic Sale</option>
+            <option value="SYMBOLIC_RENTAL">Symbolic Rental</option>
+            <option value="DONATION">Donation (Free)</option>
+            <option value="DEMAND">Demand</option>
+          </select>
+        </div>
+
+        {/* PRICE (Renderizado Condicional) */}
+        {formData.productType !== 'DONATION' && (
+          <div>
+            <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-1">
+              Price (€) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              id="price"
+              name="price"
+              min="0"
+              step="0.01"
+              required
+              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              value={formData.price}
+              onChange={handleChange}
+            />
+          </div>
+        )}
+
+        {/* IMAGE UPLOAD */}
         <div>
           <label htmlFor="image" className="block text-sm font-semibold text-gray-700 mb-1">Change Image (Optional)</label>
           <input

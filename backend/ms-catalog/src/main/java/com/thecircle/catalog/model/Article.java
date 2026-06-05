@@ -25,10 +25,7 @@ public class Article {
     private String description;
 
     @Field(type = FieldType.Keyword, name = "type")
-    private ArticleType type; // OFFER o DEMAND
-
-    @Field(type = FieldType.Keyword, name = "transaction_mode")
-    private TransactionMode transactionMode; // RENT, SELL, DONATE, GIFT
+    private ProductType productType; // DONATION, SYMBOLIC_RENTAL, SYMBOLIC_SALE, DEMAND
 
     @Field(type = FieldType.Keyword, name = "category")
     private String category;
