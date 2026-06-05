@@ -62,6 +62,7 @@ public class EmailDispatcher {
     private void markFailed(Long logId, String error) {
         emailLogRepository.findById(logId).ifPresent(entry -> {
             entry.setStatus(EmailStatus.FAILED);
+            entry.setSentAt(null);
             entry.setErrorMessage(truncate(error, 1000));
             emailLogRepository.save(entry);
         });
