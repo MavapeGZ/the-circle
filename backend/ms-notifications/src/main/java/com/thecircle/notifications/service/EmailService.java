@@ -40,7 +40,14 @@ public class EmailService {
         }
 
         EmailLog queued = persist(request, EmailStatus.QUEUED, null, null, now);
-        emailDispatcher.dispatch(queued.getId(), request.getTo(), request.getSubject(), htmlBody);
+        try {
+            emailDispatcher.dispatch(queued.getId(), request.getTo(), request.getSubject(), htmlBody);
+        } catch (org.springframework.core.task.TaskRejectedException e) {
+            queued.setStatus(EmailStatus.FAILED);
+            queued.setErrorMessage("Email dispatch rejected (queue full)");
+            emailLogRepository.save(queued);
+            throw new EmailDeliveryException("We could not queue the email right now. Please try again in a few minutes.", e);
+        }
 
         return EmailResponseDto.builder()
                 .id(queued.getId())
