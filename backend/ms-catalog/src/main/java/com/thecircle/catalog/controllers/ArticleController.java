@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -52,7 +53,9 @@ public class ArticleController {
             Long userId = Long.valueOf(claims.get("userId").toString());
             if (article.getProductType() == ProductType.DONATION) {
                 if (article.getPrice() != null && article.getPrice() > 0) {
-                    return ResponseEntity.badRequest().build(); // Refuse to create a donation with a price greater than 0
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Invalid price: Donations must be completely free (price = 0.0).");
                 }
                 article.setPrice(0.0); // Force price to 0 for security and data integrity reasons
             }

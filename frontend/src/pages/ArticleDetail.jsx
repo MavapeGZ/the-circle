@@ -67,12 +67,22 @@ function ArticleDetail() {
 
     setIsRequesting(true);
     try {
+      let derivedMode = article.transactionMode; 
+      
+      if (!derivedMode) {
+        if (article.productType === 'DONATION') derivedMode = 'DONATE';
+        else if (article.productType === 'SYMBOLIC_RENTAL') derivedMode = 'RENT';
+        else if (article.productType === 'SYMBOLIC_SALE') derivedMode = 'SALE';
+        else derivedMode = 'EXCHANGE';
+      }
+
       const payload = {
         articleId: article.id,
         providerId: article.authorId,
         requesterId: currentUser.id,
-        transactionMode: article.transactionMode 
+        transactionMode: derivedMode
       };
+      
       await api.post('/contracts/requests', payload);
       alert('Request sent successfully! The owner will be notified.');
       navigate('/catalog');
@@ -146,7 +156,6 @@ function ArticleDetail() {
           <div className="p-8">
             <div className="flex justify-between items-center mb-4">
               <div className="flex gap-2">
-                {/* Aquí inyectamos el nuevo badge */}
                 {renderBadge()}
                 <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">
                   {article.category}
