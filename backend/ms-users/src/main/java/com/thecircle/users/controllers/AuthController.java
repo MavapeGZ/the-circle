@@ -74,12 +74,9 @@ public class AuthController {
         String deviceCookie = readDeviceCookie(httpRequest);
         try {
             return ResponseEntity.ok(service.authenticate(request, deviceCookie));
-        } catch (AccountNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(AuthenticationResponse.builder().message(e.getMessage()).build());
-        } catch (BadCredentialsException e) {
+        } catch (AccountNotFoundException | BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(AuthenticationResponse.builder().message("Incorrect password.").build());
+                    .body(AuthenticationResponse.builder().message("Incorrect email or password.").build());
         } catch (NotificationsClient.DeliveryException e) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .body(AuthenticationResponse.builder()
