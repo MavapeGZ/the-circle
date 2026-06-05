@@ -1,7 +1,7 @@
 package com.thecircle.catalog.controllers;
 
 import com.thecircle.catalog.model.Article;
-import com.thecircle.catalog.model.ArticleType;
+import com.thecircle.catalog.model.ProductType;
 import com.thecircle.catalog.service.ArticleService;
 import lombok.RequiredArgsConstructor;
 
@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -50,8 +51,16 @@ public class ArticleController {
                     .getPayload();
 
             Long userId = Long.valueOf(claims.get("userId").toString());
-            article.setAuthorId(userId);
+            if (article.getProductType() == ProductType.DONATION) {
+                if (article.getPrice() != null && article.getPrice() > 0) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Invalid price: Donations must be completely free (price = 0.0).");
+                }
+                article.setPrice(0.0); // Force price to 0 for security and data integrity reasons
+            }
 
+            article.setAuthorId(userId);
             return ResponseEntity.status(HttpStatus.CREATED).body(service.createArticle(article));
 
         } catch (Exception e) {
@@ -77,7 +86,7 @@ public class ArticleController {
     @GetMapping("/search")
     public ResponseEntity<Page<Article>> search(
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) ArticleType type,
+            @RequestParam(required = false) ProductType productType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
@@ -87,7 +96,7 @@ public class ArticleController {
             return ResponseEntity.badRequest().build();
         }
         Pageable pageable = PageRequest.of(page, maxSize);
-        return ResponseEntity.ok(service.searchArticles(q, type, pageable));
+        return ResponseEntity.ok(service.searchArticles(q, productType, pageable));
     }
 
     // Update

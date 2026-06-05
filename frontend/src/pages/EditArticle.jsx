@@ -9,14 +9,9 @@ function EditArticle() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: '', // DONATION | SELL | RENTAL | DEMAND
-    type: '',
-    price: '',
-    rentalTimeUnit: 'DAY'
+    productType: 'SYMBOLIC_SALE',
+    price: 0
   });
-
-  const showPrice = formData.category === 'SELL' || formData.category === 'RENTAL';
-  const showTimeUnit = formData.category === 'RENTAL';
   
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState('');
@@ -25,26 +20,17 @@ function EditArticle() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Load the current article data to prefill the form
   useEffect(() => {
     const fetchArticle = async () => {
       try {
         const response = await api.get(`/catalog/articles/${id}`);
         const article = response.data;
-
-        const category =
-          article.type === 'DEMAND' ? 'DEMAND'
-          : article.transactionMode === 'SELL' ? 'SELL'
-          : article.transactionMode === 'RENT' ? 'RENTAL'
-          : 'DONATION'; // DONATE / GIFT / unset
-
+        
         setFormData({
           title: article.title || '',
           description: article.description || '',
-          category,
-          type: article.type || 'OFFER',
-          price: article.price != null && article.price > 0 ? String(article.price) : '',
-          rentalTimeUnit: article.rentalTimeUnit || 'DAY'
+          productType: article.productType || 'SYMBOLIC_SALE',
+          price: article.price || 0
         });
         
         if (article.imageBase64) {
@@ -64,15 +50,19 @@ function EditArticle() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'category') {
-      const isDemand = value === 'DEMAND';
-      setFormData(prev => ({ ...prev, category: value, type: isDemand ? 'DEMAND' : 'OFFER' }));
+    
+    if (name === 'productType') {
+      const isDonation = value === 'DONATION';
+      setFormData(prev => ({
+        ...prev,
+        productType: value,
+        price: isDonation ? 0 : prev.price
+      }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
-  // Convert the new image to Base64 if it is changed
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -90,45 +80,23 @@ function EditArticle() {
     }
   };
 
-  // Send the modified data to the Java PUT endpoint
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     setError('');
 
     try {
-      const transactionMode =
-        formData.category === 'DONATION' ? 'DONATE'
-        : formData.category === 'SELL' ? 'SELL'
-        : formData.category === 'RENTAL' ? 'RENT'
-        : null; // DEMAND
-
-      const symbolicPrice = showPrice ? parseFloat(formData.price) : 0.0;
-      if (showPrice && (!Number.isFinite(symbolicPrice) || symbolicPrice <= 0)) {
-        setError('Please enter a valid symbolic amount greater than 0.');
-        setSaving(false);
-        return;
-      }
-      if (showPrice && symbolicPrice > 10) {
-        setError('The symbolic amount cannot exceed 10 €.');
-        setSaving(false);
-        return;
-      }
-
       const payload = {
         title: formData.title,
         description: formData.description,
-        type: formData.type,
-        transactionMode,
+        productType: formData.productType,
         category: 'General',
         imageBase64: imageBase64,
-        price: showPrice ? symbolicPrice : 0.0,
-        rentalTimeUnit: showTimeUnit ? formData.rentalTimeUnit : null
+        price: formData.productType === 'DONATION' ? 0.0 : parseFloat(formData.price)
       };
 
       await api.put(`/catalog/articles/${id}`, payload);
       
-      // If everything goes well, return to the detail view to see the changes
       navigate(`/catalog/${id}`);
     } catch (err) {
       console.error('Error updating article:', err);
@@ -154,6 +122,7 @@ function EditArticle() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* TITLE */}
         <div>
           <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-1">Title</label>
           <input
@@ -167,6 +136,7 @@ function EditArticle() {
           />
         </div>
 
+        {/* DESCRIPTION */}
         <div>
           <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
           <textarea
@@ -180,35 +150,38 @@ function EditArticle() {
           />
         </div>
 
+        {/* PRODUCT TYPE */}
         <div>
-          <label htmlFor="category" className="block text-sm font-semibold text-gray-700 mb-1">Product type</label>
+          <label htmlFor="productType" className="block text-sm font-semibold text-gray-700 mb-1">
+            Product Type <span className="text-red-500">*</span>
+          </label>
           <select
-            id="category"
-            name="category"
+            id="productType"
+            name="productType"
             className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
-            value={formData.category}
+            value={formData.productType}
             onChange={handleChange}
           >
-            <option value="DONATION">Offer: Donation (Free)</option>
-            <option value="SELL">Offer: Symbolic Sale</option>
-            <option value="RENTAL">Offer: Symbolic Rental</option>
-            <option value="DEMAND">Demand: I am looking for something</option>
+            <option value="SYMBOLIC_SALE">Symbolic Sale</option>
+            <option value="SYMBOLIC_RENTAL">Symbolic Rental</option>
+            <option value="DONATION">Donation (Free)</option>
+            <option value="DEMAND">Demand</option>
           </select>
         </div>
 
-        {showPrice && (
+        {/* PRICE (Renderizado Condicional) */}
+        {formData.productType !== 'DONATION' && (
           <div>
             <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-1">
-              Symbolic amount (€) <span className="text-red-500">*</span>
+              Price (€) <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
               id="price"
               name="price"
-              required
-              min="0.01"
-              max="10"
+              min="0"
               step="0.01"
+              required
               className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
               value={formData.price}
               onChange={handleChange}
@@ -216,26 +189,7 @@ function EditArticle() {
           </div>
         )}
 
-        {showTimeUnit && (
-          <div>
-            <label htmlFor="rentalTimeUnit" className="block text-sm font-semibold text-gray-700 mb-1">
-              Rental period <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="rentalTimeUnit"
-              name="rentalTimeUnit"
-              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
-              value={formData.rentalTimeUnit}
-              onChange={handleChange}
-            >
-              <option value="HOUR">Per hour</option>
-              <option value="DAY">Per day</option>
-              <option value="WEEK">Per week</option>
-              <option value="MONTH">Per month</option>
-            </select>
-          </div>
-        )}
-
+        {/* IMAGE UPLOAD */}
         <div>
           <label htmlFor="image" className="block text-sm font-semibold text-gray-700 mb-1">Change Image (Optional)</label>
           <input
