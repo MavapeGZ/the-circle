@@ -5,6 +5,7 @@ import com.thecircle.users.repository.KnownDeviceRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -13,6 +14,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -66,6 +68,24 @@ public class DeviceCookieService {
                 .build();
         repository.save(device);
         return token;
+    }
+
+    public List<KnownDevice> getUserDevices(Long userId) {
+        return repository.findByUserId(userId);
+    }
+
+    @Transactional
+    public void revokeDevice(Long userId, String deviceId) {
+        Long id = Long.valueOf(deviceId);
+        
+        repository.findById(id).ifPresent(device -> {
+            if (device.getUserId().equals(userId)) {
+                repository.delete(device);
+                log.info("Device {} revoked for user {}", deviceId, userId);
+            } else {
+                log.warn("User {} attempted to revoke device {} belonging to another user", userId, deviceId);
+            }
+        });
     }
 
     private String hmac(String data) {

@@ -53,7 +53,7 @@ function Login() {
         setAccountNotFound(true);
         setError('No account is registered with this email.');
       } else if (status === 401) {
-        setError('Incorrect password.');
+        setError('Could not sign in. Account or password is incorrect.');
       } else {
         setError('Could not sign in. Please try again.');
       }
