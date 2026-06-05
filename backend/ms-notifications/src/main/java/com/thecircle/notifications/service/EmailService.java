@@ -5,19 +5,12 @@ import com.thecircle.notifications.dto.EmailResponseDto;
 import com.thecircle.notifications.model.EmailLog;
 import com.thecircle.notifications.model.EmailStatus;
 import com.thecircle.notifications.repository.EmailLogRepository;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.MailException;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Map;
 
@@ -26,13 +19,15 @@ import java.util.Map;
 @Slf4j
 public class EmailService {
 
-    private final JavaMailSender mailSender;
     private final SpringTemplateEngine templateEngine;
     private final EmailLogRepository emailLogRepository;
+    private final EmailDispatcher emailDispatcher;
 
-    @Value("${notifications.mail.from:no-reply@thecircle.local}")
-    private String fromAddress;
-
+    /**
+     * Renders the template (fail-fast), persists the email as QUEUED and hands the
+     * SMTP send to {@link EmailDispatcher} on a background thread. Returns immediately
+     * so callers are not blocked by slow SMTP; delivery completes asynchronously.
+     */
     public EmailResponseDto send(EmailRequestDto request) {
         Instant now = Instant.now();
         String htmlBody;
@@ -44,26 +39,13 @@ public class EmailService {
             throw new EmailDeliveryException("Unexpected error. Please contact our support team.", e);
         }
 
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
-            helper.setFrom(fromAddress);
-            helper.setTo(request.getTo());
-            helper.setSubject(request.getSubject());
-            helper.setText(htmlBody, true);
-            mailSender.send(message);
-        } catch (MessagingException | MailException e) {
-            EmailLog failed = persist(request, EmailStatus.FAILED, e.getMessage(), null, now);
-            log.error("SMTP send failed for {} (emailLogId={})", request.getTo(), failed.getId(), e);
-            throw new EmailDeliveryException("We could not send the email right now. Please try again in a few minutes.", e);
-        }
+        EmailLog queued = persist(request, EmailStatus.QUEUED, null, null, now);
+        emailDispatcher.dispatch(queued.getId(), request.getTo(), request.getSubject(), htmlBody);
 
-        Instant sentAt = Instant.now();
-        EmailLog saved = persist(request, EmailStatus.SENT, null, sentAt, now);
         return EmailResponseDto.builder()
-                .id(saved.getId())
-                .status(saved.getStatus())
-                .sentAt(saved.getSentAt())
+                .id(queued.getId())
+                .status(queued.getStatus())
+                .sentAt(queued.getSentAt())
                 .build();
     }
 

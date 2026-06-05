@@ -41,7 +41,8 @@ public class EmailController {
             HttpServletRequest request) {
         assertInternalCaller(request);
         try {
-            return ResponseEntity.ok(emailService.send(dto));
+            // 202 Accepted: the email is queued; SMTP delivery happens asynchronously.
+            return ResponseEntity.accepted().body(emailService.send(dto));
         } catch (EmailDeliveryException e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "We could not send the email right now. Please try again in a few minutes.", e);
