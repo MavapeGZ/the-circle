@@ -49,10 +49,8 @@ function Login() {
       }
     } catch (err) {
       const status = err?.response?.status;
-      if (status === 404) {
-        setAccountNotFound(true);
-        setError('No account is registered with this email.');
-      } else if (status === 401) {
+
+      if (status === 404 || status === 401) {
         setError('Could not sign in. Account or password is incorrect.');
       } else {
         setError('Could not sign in. Please try again.');
@@ -93,7 +91,7 @@ function Login() {
           <div className="bg-blue-50 text-blue-800 p-3 rounded mb-4 text-center border border-blue-200">
             <p className="mb-2">Don't have an account yet?</p>
             <Link to="/register"
-                  className="inline-block bg-blue-600 text-white font-bold px-4 py-2 rounded hover:bg-blue-700 transition">
+              className="inline-block bg-blue-600 text-white font-bold px-4 py-2 rounded hover:bg-blue-700 transition">
               Create an account
             </Link>
           </div>
@@ -118,7 +116,7 @@ function Login() {
               />
             </div>
             <button type="submit" disabled={submitting}
-                    className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition disabled:opacity-60">
+              className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition disabled:opacity-60">
               {submitting ? 'Signing in…' : 'Sign In'}
             </button>
             <p className="mt-2 text-center text-gray-600">
@@ -136,12 +134,12 @@ function Login() {
               value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
             />
             <button type="submit" disabled={submitting}
-                    className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition disabled:opacity-60">
+              className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition disabled:opacity-60">
               {submitting ? 'Verifying…' : 'Verify'}
             </button>
             <button type="button"
-                    onClick={() => { setStep(STEP_CREDENTIALS); setOtp(''); setSessionId(''); }}
-                    className="text-sm text-gray-500 hover:underline">
+              onClick={() => { setStep(STEP_CREDENTIALS); setOtp(''); setSessionId(''); }}
+              className="text-sm text-gray-500 hover:underline">
               Back to sign-in
             </button>
           </form>

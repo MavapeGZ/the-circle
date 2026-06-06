@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -81,16 +83,23 @@ public class DeviceCookieService {
 
     @Transactional
     public void revokeDevice(Long userId, String deviceId) {
-        Long id = Long.valueOf(deviceId);
+        Long id;
+        try {
+            id = Long.valueOf(deviceId);
+        } catch (NumberFormatException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid device ID format");
+        }
 
-        repository.findById(id).ifPresent(device -> {
-            if (device.getUserId().equals(userId)) {
-                repository.delete(device);
-                log.info("Device {} revoked for user {}", deviceId, userId);
-            } else {
-                log.warn("User {} attempted to revoke device {} belonging to another user", userId, deviceId);
-            }
-        });
+        KnownDevice device = repository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found"));
+
+        if (!device.getUserId().equals(userId)) {
+            log.warn("User {} attempted to revoke device {} belonging to another user", userId, deviceId);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to revoke this device");
+        }
+
+        repository.delete(device);
+        log.info("Device {} revoked for user {}", deviceId, userId);
     }
 
     @Transactional
