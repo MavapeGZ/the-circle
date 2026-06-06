@@ -77,11 +77,19 @@ public class UserController {
     public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest request, Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
 
+        // New password validation (avoid accepting weak passwords)
+        String newPass = request.newPassword();
+        if (newPass == null || newPass.trim().isEmpty() || newPass.length() < 6) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be at least 6 characters long and cannot be empty.");
+        }
+
+        // Current password verification
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect.");
         }
 
-        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        // Safely update the password
+        user.setPassword(passwordEncoder.encode(newPass));
         userRepository.save(user);
         
         return ResponseEntity.ok().build();
