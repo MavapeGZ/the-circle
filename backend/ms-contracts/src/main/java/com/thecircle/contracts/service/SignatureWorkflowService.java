@@ -46,6 +46,7 @@ public class SignatureWorkflowService {
     private final ContractPdfService pdfService;
     private final SignatureService signatureService;
     private final ContractStorageService storageService;
+    private final ContractService contractService;
     private final JavaMailSender mailSender;
 
     @Value("${signature.otp.length:6}")
@@ -69,10 +70,12 @@ public class SignatureWorkflowService {
     public SignatureWorkflowService(ContractPdfService pdfService,
                                     SignatureService signatureService,
                                     ContractStorageService storageService,
+                                    ContractService contractService,
                                     JavaMailSender mailSender) {
         this.pdfService = pdfService;
         this.signatureService = signatureService;
         this.storageService = storageService;
+        this.contractService = contractService;
         this.mailSender = mailSender;
     }
 
@@ -91,7 +94,7 @@ public class SignatureWorkflowService {
         String sessionId = UUID.randomUUID().toString();
         Instant expiry = Instant.now().plusSeconds(otpTtlSeconds);
 
-        sessions.put(sessionId, new OtpSession(hashedOtp, expiry, req.getSignerEmail(), req.getContract(), req.getVisualOptions()));
+        sessions.put(sessionId, new OtpSession(hashedOtp, expiry, req.getSignerEmail(), req.getSignerRole(), req.getContract(), req.getVisualOptions()));
         log.info("OTP session created for {}. Session: {}", req.getSignerEmail(), sessionId);
 
         if (exposeOtp) {
@@ -150,6 +153,8 @@ public class SignatureWorkflowService {
 
         StoredContract sc;
         try {
+            // Fill signer names from ms-users so the signed PDF is not anonymous.
+            contractService.enrichSigners(session.contract, session.signerEmail);
             byte[] pdf = pdfService.generatePdf(session.contract);
             if (session.visualOptions != null) {
                 pdf = signatureService.applyVisualSignature(pdf, session.visualOptions, buildSignerMap(session.contract));
@@ -161,8 +166,14 @@ public class SignatureWorkflowService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate signed PDF", ex);
         }
 
+        // Record this party's signature and link the stored PDF. The contract turns
+        // ACTIVE only once both receiver and owner have signed.
+        SignerRole role = session.signerRole != null ? session.signerRole : SignerRole.RECEIVER;
+        ContractDto updated = contractService.markSigned(session.contract.getContractId(), sc.getId(), role);
+
         SignConfirmResponseDto resp = new SignConfirmResponseDto();
         resp.setSuccess(true);
+        resp.setFullySigned(updated != null && updated.getStatus() == ContractStatus.ACTIVE);
         resp.setStoredContractId(sc.getId());
         resp.setDownloadUrl(DOWNLOAD_PATH + sc.getId());
         resp.setSignedAt(LocalDateTime.now());
@@ -227,16 +238,18 @@ public class SignatureWorkflowService {
         final String hashedOtp;
         final Instant expiry;
         final String signerEmail;
+        final SignerRole signerRole;
         final ContractDto contract;
         final VisualSignatureDto visualOptions;
         int attempts;
         boolean used;
 
-        OtpSession(String hashedOtp, Instant expiry, String signerEmail,
+        OtpSession(String hashedOtp, Instant expiry, String signerEmail, SignerRole signerRole,
                    ContractDto contract, VisualSignatureDto visualOptions) {
             this.hashedOtp = hashedOtp;
             this.expiry = expiry;
             this.signerEmail = signerEmail;
+            this.signerRole = signerRole;
             this.contract = contract;
             this.visualOptions = visualOptions;
         }

@@ -8,6 +8,8 @@ import CreateArticle from './CreateArticle';
 import ArticleDetail from './ArticleDetail';
 import EditArticle from './EditArticle';
 import Home from './Home'; // <-- Importamos nuestro nuevo componente
+import SignContract from './SignContract';
+import MyContracts from './MyContracts';
 
 function App() {
   const { user, logout } = useContext(AuthContext);
@@ -23,6 +25,9 @@ function App() {
           <Link to="/catalog" className="font-bold hover:text-blue-200 transition-colors">Catalog</Link>
           {user && (
             <Link to="/create" className="font-bold hover:text-blue-200 transition-colors">Publish</Link>
+          )}
+          {user && (
+            <Link to="/contracts" className="font-bold hover:text-blue-200 transition-colors">Contracts</Link>
           )}
         </div>
 
@@ -54,6 +59,8 @@ function App() {
           <Route path="/create" element={<CreateArticle />} />
           <Route path="/catalog/:id" element={<ArticleDetail />} />
           <Route path="/catalog/edit/:id" element={<EditArticle />} />
+          <Route path="/contracts" element={<MyContracts />} />
+          <Route path="/contracts/:contractId/sign" element={<SignContract />} />
         </Routes>
       </main>
     </BrowserRouter>
