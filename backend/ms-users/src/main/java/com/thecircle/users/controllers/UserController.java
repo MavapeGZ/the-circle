@@ -88,9 +88,22 @@ public class UserController {
     }
 
     @GetMapping("/me/devices")
-    public ResponseEntity<?> getTrustedDevices(Authentication authentication) {
+    public ResponseEntity<List<DeviceDto>> getTrustedDevices(Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
-        return ResponseEntity.ok(deviceCookieService.getUserDevices(user.getId()));
+        
+        // Retrieve all devices associated with the user and map them to a safe DTO
+        List<DeviceDto> safeDevices = deviceCookieService.getUserDevices(user.getId())
+                .stream()
+                .map(device -> new DeviceDto(
+                        device.getId(),
+                        device.getUserAgent(),
+                        device.getCreatedAt(),
+                        device.getLastSeenAt()
+                ))
+                .toList();
+
+        // Return the list of safe device DTOs to the client
+        return ResponseEntity.ok(safeDevices);
     }
 
     @DeleteMapping("/me/devices/{deviceId}")
@@ -253,4 +266,5 @@ public class UserController {
     public record SettingsResponse(String firstName, String lastName, String email, boolean marketingEmailsOptIn, boolean systemEmailsOptIn) {}
     public record UpdateProfileRequest(String firstName, String lastName, Boolean marketingEmailsOptIn, Boolean systemEmailsOptIn) {}
     public record ChangePasswordRequest(String currentPassword, String newPassword) {}
+    public record DeviceDto(Long id, String userAgent, LocalDateTime createdAt, LocalDateTime lastSeenAt) {}
 }
