@@ -43,6 +43,17 @@ public class User implements UserDetails {
     @Builder.Default
     @Column(name = "email_verified", nullable = false, columnDefinition = "boolean not null default false")
     private boolean emailVerified = false;
+    
+    @Builder.Default
+    @Column(name = "marketing_emails_opt_in", nullable = false, columnDefinition = "boolean not null default true")
+    private boolean marketingEmailsOptIn = true;
+
+    @Builder.Default
+    @Column(name = "system_emails_opt_in", nullable = false, columnDefinition = "boolean not null default true")
+    private boolean systemEmailsOptIn = true;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
@@ -114,6 +125,6 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return deletedAt == null;
     }
 }
