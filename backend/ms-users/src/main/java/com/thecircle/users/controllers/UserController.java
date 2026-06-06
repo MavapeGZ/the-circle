@@ -49,18 +49,22 @@ public class UserController {
                 user.getLastName(),
                 user.getEmail(),
                 user.isMarketingEmailsOptIn(),
-                user.isSystemEmailsOptIn()
-        ));
+                user.isSystemEmailsOptIn()));
     }
 
     @PatchMapping("/me")
-    public ResponseEntity<SettingsResponse> updateProfile(@RequestBody UpdateProfileRequest request, Authentication authentication) {
+    public ResponseEntity<SettingsResponse> updateProfile(@RequestBody UpdateProfileRequest request,
+            Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
 
-        if (request.firstName() != null) user.setFirstName(request.firstName());
-        if (request.lastName() != null) user.setLastName(request.lastName());
-        if (request.marketingEmailsOptIn() != null) user.setMarketingEmailsOptIn(request.marketingEmailsOptIn());
-        if (request.systemEmailsOptIn() != null) user.setSystemEmailsOptIn(request.systemEmailsOptIn());
+        if (request.firstName() != null)
+            user.setFirstName(request.firstName());
+        if (request.lastName() != null)
+            user.setLastName(request.lastName());
+        if (request.marketingEmailsOptIn() != null)
+            user.setMarketingEmailsOptIn(request.marketingEmailsOptIn());
+        if (request.systemEmailsOptIn() != null)
+            user.setSystemEmailsOptIn(request.systemEmailsOptIn());
 
         userRepository.save(user);
 
@@ -69,18 +73,19 @@ public class UserController {
                 user.getLastName(),
                 user.getEmail(),
                 user.isMarketingEmailsOptIn(),
-                user.isSystemEmailsOptIn()
-        ));
+                user.isSystemEmailsOptIn()));
     }
 
     @PostMapping("/me/change-password")
-    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest request, Authentication authentication) {
+    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest request,
+            Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
 
         // New password validation (avoid accepting weak passwords)
         String newPass = request.newPassword();
         if (newPass == null || newPass.trim().isEmpty() || newPass.length() < 6) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be at least 6 characters long and cannot be empty.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "New password must be at least 6 characters long and cannot be empty.");
         }
 
         // Current password verification
@@ -91,14 +96,17 @@ public class UserController {
         // Safely update the password
         user.setPassword(passwordEncoder.encode(newPass));
         userRepository.save(user);
-        
+
+        // Revoke all existing device sessions to force re-login with the new password
+        deviceCookieService.revokeAllDevices(user.getId());
+
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/me/devices")
     public ResponseEntity<List<DeviceDto>> getTrustedDevices(Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
-        
+
         // Retrieve all devices associated with the user and map them to a safe DTO
         List<DeviceDto> safeDevices = deviceCookieService.getUserDevices(user.getId())
                 .stream()
@@ -106,8 +114,7 @@ public class UserController {
                         device.getId(),
                         device.getUserAgent(),
                         device.getCreatedAt(),
-                        device.getLastSeenAt()
-                ))
+                        device.getLastSeenAt()))
                 .toList();
 
         // Return the list of safe device DTOs to the client
@@ -125,16 +132,27 @@ public class UserController {
     public ResponseEntity<Void> deleteAccount(Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
 
-        // Soft Delete
+        // Soft delete flag
         user.setDeletedAt(LocalDateTime.now());
-        
-        String anonymizedEmail = "deleted_" + user.getId() + "_" + System.currentTimeMillis() + "@anonymized.local";
-        user.setEmail(anonymizedEmail);
 
+        // GPDR compliance
+        user.setEmail("deleted_" + user.getId() + "_" + System.currentTimeMillis() + "@anonymized.local");
+        user.setFirstName("Deleted");
+        user.setLastName("User");
+        user.setKycStatus(KycStatus.UNVERIFIED);
+
+        // Destroy password to prevent any future access (even if the user tries to
+        // recover the account, they won't be able to log in)
+        user.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
+
+        // Opt-out from all communications
         user.setMarketingEmailsOptIn(false);
         user.setSystemEmailsOptIn(false);
 
         userRepository.save(user);
+
+        // Revoke all existing device sessions to log out from all devices immediately
+        deviceCookieService.revokeAllDevices(user.getId());
 
         return ResponseEntity.ok().build();
     }
@@ -271,8 +289,17 @@ public class UserController {
         }
     }
 
-    public record SettingsResponse(String firstName, String lastName, String email, boolean marketingEmailsOptIn, boolean systemEmailsOptIn) {}
-    public record UpdateProfileRequest(String firstName, String lastName, Boolean marketingEmailsOptIn, Boolean systemEmailsOptIn) {}
-    public record ChangePasswordRequest(String currentPassword, String newPassword) {}
-    public record DeviceDto(Long id, String userAgent, LocalDateTime createdAt, LocalDateTime lastSeenAt) {}
+    public record SettingsResponse(String firstName, String lastName, String email, boolean marketingEmailsOptIn,
+            boolean systemEmailsOptIn) {
+    }
+
+    public record UpdateProfileRequest(String firstName, String lastName, Boolean marketingEmailsOptIn,
+            Boolean systemEmailsOptIn) {
+    }
+
+    public record ChangePasswordRequest(String currentPassword, String newPassword) {
+    }
+
+    public record DeviceDto(Long id, String userAgent, LocalDateTime createdAt, LocalDateTime lastSeenAt) {
+    }
 }

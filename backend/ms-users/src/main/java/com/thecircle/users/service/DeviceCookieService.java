@@ -19,7 +19,8 @@ import java.util.Optional;
 
 /**
  * Issues and validates device-trust cookies for login OTP gating.
- * Token format: {randomId}.{hmacSha256(randomId|userId)}. Persisted in known_devices.
+ * Token format: {randomId}.{hmacSha256(randomId|userId)}. Persisted in
+ * known_devices.
  */
 @Service
 @Slf4j
@@ -39,15 +40,19 @@ public class DeviceCookieService {
     }
 
     public boolean isKnownDevice(Long userId, String rawCookie) {
-        if (rawCookie == null || rawCookie.isBlank() || userId == null) return false;
+        if (rawCookie == null || rawCookie.isBlank() || userId == null)
+            return false;
         int sep = rawCookie.indexOf('.');
-        if (sep <= 0 || sep >= rawCookie.length() - 1) return false;
+        if (sep <= 0 || sep >= rawCookie.length() - 1)
+            return false;
         String randomId = rawCookie.substring(0, sep);
         String sig = rawCookie.substring(sep + 1);
-        if (!constantTimeEquals(sig, hmac(randomId + "|" + userId))) return false;
+        if (!constantTimeEquals(sig, hmac(randomId + "|" + userId)))
+            return false;
 
         Optional<KnownDevice> match = repository.findByUserIdAndDeviceToken(userId, rawCookie);
-        if (match.isEmpty()) return false;
+        if (match.isEmpty())
+            return false;
         KnownDevice device = match.get();
         device.setLastSeenAt(LocalDateTime.now());
         repository.save(device);
@@ -77,7 +82,7 @@ public class DeviceCookieService {
     @Transactional
     public void revokeDevice(Long userId, String deviceId) {
         Long id = Long.valueOf(deviceId);
-        
+
         repository.findById(id).ifPresent(device -> {
             if (device.getUserId().equals(userId)) {
                 repository.delete(device);
@@ -86,6 +91,15 @@ public class DeviceCookieService {
                 log.warn("User {} attempted to revoke device {} belonging to another user", userId, deviceId);
             }
         });
+    }
+
+    @Transactional
+    public void revokeAllDevices(Long userId) {
+        List<KnownDevice> userDevices = repository.findByUserId(userId);
+        if (!userDevices.isEmpty()) {
+            repository.deleteAll(userDevices);
+            log.info("Revoked all {} devices for user {}", userDevices.size(), userId);
+        }
     }
 
     private String hmac(String data) {
@@ -99,7 +113,8 @@ public class DeviceCookieService {
     }
 
     private boolean constantTimeEquals(String a, String b) {
-        if (a == null || b == null || a.length() != b.length()) return false;
+        if (a == null || b == null || a.length() != b.length())
+            return false;
         int diff = 0;
         for (int i = 0; i < a.length(); i++) {
             diff |= a.charAt(i) ^ b.charAt(i);
@@ -108,7 +123,8 @@ public class DeviceCookieService {
     }
 
     private String truncate(String value, int max) {
-        if (value == null) return null;
+        if (value == null)
+            return null;
         return value.length() <= max ? value : value.substring(0, max);
     }
 }
