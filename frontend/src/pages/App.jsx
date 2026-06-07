@@ -7,9 +7,10 @@ import Catalog from './Catalog';
 import CreateArticle from './CreateArticle';
 import ArticleDetail from './ArticleDetail';
 import EditArticle from './EditArticle';
-import Home from './Home'; // <-- Importamos nuestro nuevo componente
+import Home from './Home';
 import SignContract from './SignContract';
 import MyContracts from './MyContracts';
+import Settings from './Settings';
 
 function App() {
   const { user, logout } = useContext(AuthContext);
@@ -34,12 +35,18 @@ function App() {
         {/* Right side: Authentication links */}
         <div className="flex gap-4 items-center">
           {user ? (
-            <button
-              onClick={logout}
-              className="font-bold bg-red-500 px-4 py-2 rounded hover:bg-red-600 transition-colors shadow-sm"
-            >
-              Logout
-            </button>
+            <>
+              {/* Setting for logged-in users */}
+              <Link to="/settings" className="font-bold hover:text-blue-200 transition-colors mr-2">
+                Settings
+              </Link>
+              <button
+                onClick={logout}
+                className="font-bold bg-red-500 px-4 py-2 rounded hover:bg-red-600 transition-colors shadow-sm"
+              >
+                Logout
+              </button>
+            </>
           ) : (
             <>
               <Link to="/login" className="font-bold hover:text-blue-200 transition-colors">Login</Link>
@@ -49,7 +56,7 @@ function App() {
         </div>
       </nav>
 
-      {/* Application routes (Quitado el p-8 para que el Hero ocupe el ancho completo) */}
+      {/* Application routes */}
       <main className="flex-grow bg-gray-50">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -61,6 +68,7 @@ function App() {
           <Route path="/catalog/edit/:id" element={<EditArticle />} />
           <Route path="/contracts" element={<MyContracts />} />
           <Route path="/contracts/:contractId/sign" element={<SignContract />} />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
       </main>
     </BrowserRouter>

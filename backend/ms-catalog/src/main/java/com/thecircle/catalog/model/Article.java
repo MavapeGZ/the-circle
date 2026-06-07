@@ -25,16 +25,13 @@ public class Article {
     private String description;
 
     @Field(type = FieldType.Keyword, name = "type")
-    private ArticleType type; // OFFER o DEMAND
-
-    @Field(type = FieldType.Keyword, name = "transaction_mode")
-    private TransactionMode transactionMode; // RENT, SELL, DONATE, GIFT
+    private ProductType productType; // DONATION, SYMBOLIC_RENTAL, SYMBOLIC_SALE, DEMAND
 
     @Field(type = FieldType.Keyword, name = "category")
     private String category;
 
     @Field(type = FieldType.Double, name = "price")
-    private Double price; // Could be 0.0 for free offers or demands
+    private Double price; // Symbolic amount for SELL/RENT; 0.0 for donations/demands
 
     // User ID of the author of the article. This is not a reference to a User
     // document, just a simple field to store the ID.

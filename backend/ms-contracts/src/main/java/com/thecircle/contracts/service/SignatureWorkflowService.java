@@ -6,9 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -47,7 +44,7 @@ public class SignatureWorkflowService {
     private final SignatureService signatureService;
     private final ContractStorageService storageService;
     private final ContractService contractService;
-    private final JavaMailSender mailSender;
+    private final OtpDeliveryChannel otpDelivery;
 
     @Value("${signature.otp.length:6}")
     private int otpLength;
@@ -61,32 +58,35 @@ public class SignatureWorkflowService {
     @Value("${signature.otp.expose-in-response:false}")
     private boolean exposeOtp;
 
-    @Value("${signature.mail.from:no-reply@thecircle.local}")
-    private String mailFrom;
-
-    @Value("${signature.mail.subject:The Circle - Codigo de firma electronica}")
-    private String mailSubject;
-
     public SignatureWorkflowService(ContractPdfService pdfService,
                                     SignatureService signatureService,
                                     ContractStorageService storageService,
                                     ContractService contractService,
-                                    JavaMailSender mailSender) {
+                                    OtpDeliveryChannel otpDelivery) {
         this.pdfService = pdfService;
         this.signatureService = signatureService;
         this.storageService = storageService;
         this.contractService = contractService;
-        this.mailSender = mailSender;
+        this.otpDelivery = otpDelivery;
     }
 
     public SignRequestResponseDto requestOtp(SignRequestDto req) {
-        if (req == null || req.getSignerEmail() == null || req.getContract() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "signerEmail and contract are required");
+        if (req == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "The request body is empty. Please include 'signerEmail' and 'contract' and try again.");
+        }
+        if (req.getSignerEmail() == null || req.getSignerEmail().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "The signer email is missing. Please provide the email address where the verification code should be sent.");
+        }
+        if (req.getContract() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "The contract data is missing. Please fill in the contract form and try again.");
         }
         String mode = req.getSignatureMode();
         if (mode != null && !SIGNATURE_MODE_ADVANCED.equalsIgnoreCase(mode)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Unsupported signatureMode for OTP flow: " + mode);
+                    "The signature mode '" + mode + "' cannot be used with email OTP. Please use signature mode 'ADVANCED' for this flow.");
         }
 
         String rawOtp = generateOtp();
@@ -101,54 +101,68 @@ public class SignatureWorkflowService {
             log.warn("OTP_EXPOSE_DEV enabled — OTP for {}: {}", req.getSignerEmail(), rawOtp);
         } else {
             try {
-                sendOtpEmail(req.getSignerEmail(), rawOtp);
-            } catch (MailException ex) {
+                otpDelivery.send(req.getSignerEmail(), rawOtp, resolveSignerName(req.getContract(), req.getSignerEmail()));
+            } catch (RuntimeException ex) {
                 sessions.remove(sessionId);
                 log.error("Failed to send OTP email to {}", req.getSignerEmail(), ex);
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to send OTP email", ex);
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                        "We could not send the verification code by email right now. Please try again in a few minutes.", ex);
             }
         }
 
         SignRequestResponseDto resp = new SignRequestResponseDto();
         resp.setSessionId(sessionId);
-        resp.setMessage("OTP sent to " + req.getSignerEmail());
         if (exposeOtp) {
+            resp.setMessage("OTP generated (dev mode, not sent) for " + req.getSignerEmail());
             resp.setOtp(rawOtp);
+        } else {
+            resp.setMessage("OTP sent to " + req.getSignerEmail());
         }
         return resp;
     }
 
     public SignConfirmResponseDto confirm(String sessionId, String otp, String ip, String ua) {
-        if (sessionId == null || otp == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sessionId and otp are required");
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "The session id is missing. Please start the signing flow again from the beginning.");
+        }
+        if (otp == null || otp.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "The verification code is missing. Please enter the 6-digit code we sent to your email.");
         }
 
         OtpSession session = sessions.get(sessionId);
         if (session == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found or expired");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Your signing session was not found or has already expired. Please start the signing flow again.");
         }
         if (session.used) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Session already used");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This signing session has already been used. Please start a new signing flow if you need to sign again.");
         }
         if (Instant.now().isAfter(session.expiry)) {
             sessions.remove(sessionId);
-            throw new ResponseStatusException(HttpStatus.GONE, "OTP expired");
+            throw new ResponseStatusException(HttpStatus.GONE,
+                    "Your verification code has expired. Please request a new code and try again.");
         }
 
         session.attempts++;
         if (session.attempts > maxAttempts) {
             sessions.remove(sessionId);
-            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Max OTP attempts exceeded");
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Too many incorrect attempts. For your security, please request a new verification code.");
         }
 
         if (!OTP_ENCODER.matches(otp, session.hashedOtp)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid OTP");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "The verification code is incorrect. Please check the code in your email and try again.");
         }
 
         // Claim the session before any side effect so two concurrent confirms
         // with the same valid OTP cannot both produce a signed contract.
         if (!session.claim()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Session already used");
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This signing session has already been used. Please start a new signing flow if you need to sign again.");
         }
 
         StoredContract sc;
@@ -163,7 +177,8 @@ public class SignatureWorkflowService {
         } catch (IOException | RuntimeException ex) {
             // Release the claim so the signer can retry with the same OTP while it is still valid.
             session.release();
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate signed PDF", ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unexpected error. Please contact our support team.", ex);
         }
 
         // Record this party's signature and link the stored PDF. The contract turns
@@ -184,7 +199,8 @@ public class SignatureWorkflowService {
     public SignatureVerificationDto verify(String storedContractId) {
         StoredContract sc = storageService.get(storedContractId);
         if (sc == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Stored contract not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "We could not find the signed contract you requested. Please check the link or contact our support team.");
         }
 
         SignatureVerificationDto dto = new SignatureVerificationDto();
@@ -208,15 +224,17 @@ public class SignatureWorkflowService {
         }
     }
 
-    private void sendOtpEmail(String to, String otp) {
-        SimpleMailMessage msg = new SimpleMailMessage();
-        msg.setFrom(mailFrom);
-        msg.setTo(to);
-        msg.setSubject(mailSubject);
-        msg.setText("Your one-time signature code is: " + otp
-                + "\nIt is valid for " + (otpTtlSeconds / 60) + " minutes."
-                + "\nIf you did not request this, ignore this email.");
-        mailSender.send(msg);
+    private String resolveSignerName(ContractDto contract, String signerEmail) {
+        if (contract == null || signerEmail == null) return null;
+        SignerDto primary = contract.getPrimarySigner();
+        if (primary != null && signerEmail.equalsIgnoreCase(primary.getEmail())) {
+            return primary.getFullName();
+        }
+        SignerDto secondary = contract.getSecondarySigner();
+        if (secondary != null && signerEmail.equalsIgnoreCase(secondary.getEmail())) {
+            return secondary.getFullName();
+        }
+        return null;
     }
 
     private String generateOtp() {

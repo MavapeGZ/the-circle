@@ -6,3 +6,5 @@ spring:
     name: ms-catalog
   opensearch:
     uris: http://127.0.0.1:9200
+jwt:
+  secret: ${JWT_SECRET}

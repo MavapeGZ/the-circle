@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: ms-gamification
+  datasource:
+    url: jdbc:postgresql://localhost:5432/${DB_GAMIFICATION_NAME:gamification_db}
+    username: ${DB_USER:}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 8084
+
+# Shared secret guarding the internal-only POST /api/gamification/events endpoint.
+# Blank => guard disabled (local dev). Set GAMIFICATION_INTERNAL_KEY in staging/prod;
+# calling services must send it as the X-Internal-Api-Key header.
+gamification:
+  internal:
+    api-key: ${GAMIFICATION_INTERNAL_KEY:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized

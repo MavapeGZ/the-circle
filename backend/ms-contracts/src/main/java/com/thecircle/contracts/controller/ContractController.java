@@ -57,16 +57,22 @@ public class ContractController {
 
     @PostMapping(value = "/generate-and-sign", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<byte[]> generateAndSign(@RequestBody ContractSignRequestDto req) {
-        if (req == null || req.getContract() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing contract payload");
+        if (req == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "The request body is empty. Please include the contract data and try again.");
+        }
+        if (req.getContract() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "The 'contract' field is missing from the request. Please include the full contract data and try again.");
         }
         String mode = req.getSignatureMode();
         if (mode == null || !SIGNATURE_MODE_VISUAL.equalsIgnoreCase(mode)) {
             if (SIGNATURE_MODE_ADVANCED.equalsIgnoreCase(mode) || SIGNATURE_MODE_CRYPTO.equalsIgnoreCase(mode)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Advanced signatures require /sign/request + /sign/confirm flow (eIDAS OTP)");
+                        "Advanced and cryptographic signatures need an OTP. Please start the signing flow with /sign/request and then /sign/confirm.");
             }
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported signatureMode: " + mode);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "The signature mode '" + mode + "' is not supported. Please use 'VISUAL', 'ADVANCED' or 'CRYPTO'.");
         }
 
         byte[] pdf = renderPdf(req.getContract());
@@ -74,7 +80,8 @@ public class ContractController {
         try {
             signed = signatureService.applyVisualSignature(pdf, req.getVisualOptions(), buildSignerMap(req.getContract()));
         } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to apply signature", ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unexpected error. Please contact our support team.", ex);
         }
 
         StoredContract sc = persist(signed, req.getContract().getContractId());
@@ -90,7 +97,8 @@ public class ContractController {
     public ResponseEntity<SignConfirmResponseDto> signConfirm(@RequestBody SignConfirmDto req,
                                                               HttpServletRequest http) {
         if (req == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing payload");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "The request body is empty. Please include 'sessionId' and 'otp' and try again.");
         }
         String ip = resolveClientIp(http);
         String ua = http.getHeader("User-Agent");
@@ -111,12 +119,14 @@ public class ContractController {
 
     private byte[] renderPdf(ContractDto dto) {
         if (dto == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing contract payload");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "The contract data is missing from the request. Please fill in the contract form and try again.");
         }
         try {
             return pdfService.generatePdf(dto);
         } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate PDF", ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unexpected error. Please contact our support team.", ex);
         }
     }
 
@@ -124,7 +134,8 @@ public class ContractController {
         try {
             return storageService.save(pdf, originalContractId);
         } catch (RuntimeException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store contract", ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unexpected error. Please contact our support team.", ex);
         }
     }
 

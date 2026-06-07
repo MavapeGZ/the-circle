@@ -2,14 +2,38 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 export default function ArticleCard({ article }) {
-  // Check if it's an offer or demand to change colors
-  const isOffer = article.type === 'OFFER';
-  
-  const badgeColors = isOffer 
-    ? 'bg-green-100 text-green-800 border-green-300' 
-    : 'bg-blue-100 text-blue-800 border-blue-300';
+  const renderBadge = () => {
+    switch (article.productType) {
+      case 'DONATION':
+        return (
+          <span className="bg-purple-100 text-purple-800 text-xs font-extrabold px-3 py-1 rounded-full border border-purple-300 shadow-sm">
+            🎁 Donation — Free
+          </span>
+        );
+      case 'DEMAND':
+        return (
+          <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full border border-blue-300">
+            DEMAND
+          </span>
+        );
+      case 'SYMBOLIC_SALE':
+        return (
+          <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full border border-green-300">
+            SALE
+          </span>
+        );
+      case 'SYMBOLIC_RENTAL':
+        return (
+          <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full border border-green-300">
+            RENTAL
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
     
-  const priceDisplay = article.price === 0 ? 'Free' : `${article.price} €`;
+  const priceDisplay = !article.price ? 'Free' : `${article.price} €`;
 
   // Format the date (comes in ISO format from OpenSearch)
   const formattedDate = new Date(article.createdAt).toLocaleDateString('en-US', {
@@ -36,9 +60,7 @@ export default function ArticleCard({ article }) {
 
         <div className="p-5 flex-grow">
           <div className="flex justify-between items-start mb-3">
-            <span className={`text-xs font-bold px-3 py-1 rounded-full border ${badgeColors}`}>
-              {isOffer ? 'OFFER' : 'DEMAND'}
-            </span>
+            {renderBadge()}
             <span className="text-gray-400 text-xs">{formattedDate}</span>
           </div>
           

@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: ms-notifications
+  datasource:
+    url: jdbc:postgresql://localhost:5432/${DB_NOTIFICATIONS_NAME:notifications_db}
+    username: ${DB_USER:}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USER:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_AUTH:true}
+          starttls:
+            enable: ${MAIL_STARTTLS:true}
+          connectiontimeout: ${MAIL_CONNECT_TIMEOUT:10000}
+          timeout: ${MAIL_READ_TIMEOUT:10000}
+          writetimeout: ${MAIL_WRITE_TIMEOUT:10000}
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+    cache: ${THYMELEAF_CACHE:true}
+
+server:
+  port: 8085
+
+# Shared secret guarding internal-only endpoints. Blank => guard disabled (local dev).
+# Set NOTIFICATIONS_INTERNAL_KEY in staging/prod; callers send it as X-Internal-Api-Key.
+notifications:
+  internal:
+    api-key: ${NOTIFICATIONS_INTERNAL_KEY:}
+  mail:
+    from: ${MAIL_FROM:no-reply@thecircle.local}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
