@@ -1,5 +1,6 @@
 package com.thecircle.contracts.service;
 
+import com.thecircle.contracts.client.CatalogClient;
 import com.thecircle.contracts.client.UsersClient;
 import com.thecircle.contracts.dto.ContractCreateRequest;
 import com.thecircle.contracts.dto.ContractDto;
@@ -38,6 +39,9 @@ class ContractServiceTest {
     @Mock
     private UsersClient usersClient;
 
+    @Mock
+    private CatalogClient catalogClient;
+
     @InjectMocks
     private ContractService service;
 
@@ -45,7 +49,7 @@ class ContractServiceTest {
 
     private ContractCreateRequest buildRequest() {
         return new ContractCreateRequest("item-1", "10", "20", ContractType.RENT,
-                new BigDecimal("50"), "Rent: Bike", LocalDateTime.now().plusDays(7));
+                new BigDecimal("5"), new BigDecimal("50"), "Rent: Bike", LocalDateTime.now().plusDays(7));
     }
 
     private Contract storedContract(String id) {
@@ -225,15 +229,18 @@ class ContractServiceTest {
         ContractDto dto = new ContractDto();
         dto.setOwnerId("10");
         dto.setReceiverId("20");
-        when(usersClient.getProfile("20")).thenReturn(new UsersClient.UserProfile(20L, null, "Ana", "Buyer", "VERIFIED"));
-        when(usersClient.getProfile("10")).thenReturn(new UsersClient.UserProfile(10L, "owner@x.com", "Leo", "Owner", "VERIFIED"));
+        when(usersClient.getProfile("20")).thenReturn(new UsersClient.UserProfile(20L, null, "Ana", "Buyer", "1 Main St", "X123"));
+        when(usersClient.getProfile("10")).thenReturn(new UsersClient.UserProfile(10L, "owner@x.com", "Leo", "Owner", "2 Oak Ave", "Y456"));
 
         service.enrichSigners(dto, "buyer@x.com");
 
         assertEquals("Ana Buyer", dto.getPrimarySigner().getFullName());
         assertEquals("buyer@x.com", dto.getPrimarySigner().getEmail()); // profile email null → fallback
+        assertEquals("1 Main St", dto.getPrimarySigner().getAddress());
+        assertEquals("X123", dto.getPrimarySigner().getIdNumber());
         assertEquals("Leo Owner", dto.getSecondarySigner().getFullName());
         assertEquals("owner@x.com", dto.getSecondarySigner().getEmail());
+        assertEquals("Y456", dto.getSecondarySigner().getIdNumber());
     }
 
     @Test

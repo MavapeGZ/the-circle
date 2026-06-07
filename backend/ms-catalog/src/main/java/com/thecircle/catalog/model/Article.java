@@ -27,6 +27,11 @@ public class Article {
     @Field(type = FieldType.Keyword, name = "type")
     private ProductType productType; // DONATION, SYMBOLIC_RENTAL, SYMBOLIC_SALE, DEMAND
 
+    // Availability lifecycle. Driven by ms-contracts: RESERVED when a contract is
+    // created, SOLD once both parties sign. SOLD articles are hidden from searches.
+    @Field(type = FieldType.Keyword, name = "status")
+    private ArticleStatus status;
+
     @Field(type = FieldType.Keyword, name = "category")
     private String category;
 

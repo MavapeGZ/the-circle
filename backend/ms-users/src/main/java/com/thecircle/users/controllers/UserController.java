@@ -48,6 +48,8 @@ public class UserController {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getEmail(),
+                user.getAddress(),
+                user.getIdNumber(),
                 user.isMarketingEmailsOptIn(),
                 user.isSystemEmailsOptIn()));
     }
@@ -61,6 +63,10 @@ public class UserController {
             user.setFirstName(request.firstName());
         if (request.lastName() != null)
             user.setLastName(request.lastName());
+        if (request.address() != null)
+            user.setAddress(request.address());
+        if (request.idNumber() != null)
+            user.setIdNumber(request.idNumber());
         if (request.marketingEmailsOptIn() != null)
             user.setMarketingEmailsOptIn(request.marketingEmailsOptIn());
         if (request.systemEmailsOptIn() != null)
@@ -72,6 +78,8 @@ public class UserController {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getEmail(),
+                user.getAddress(),
+                user.getIdNumber(),
                 user.isMarketingEmailsOptIn(),
                 user.isSystemEmailsOptIn()));
     }
@@ -289,12 +297,12 @@ public class UserController {
         }
     }
 
-    public record SettingsResponse(String firstName, String lastName, String email, boolean marketingEmailsOptIn,
-            boolean systemEmailsOptIn) {
+    public record SettingsResponse(String firstName, String lastName, String email, String address, String idNumber,
+            boolean marketingEmailsOptIn, boolean systemEmailsOptIn) {
     }
 
-    public record UpdateProfileRequest(String firstName, String lastName, Boolean marketingEmailsOptIn,
-            Boolean systemEmailsOptIn) {
+    public record UpdateProfileRequest(String firstName, String lastName, String address, String idNumber,
+            Boolean marketingEmailsOptIn, Boolean systemEmailsOptIn) {
     }
 
     public record ChangePasswordRequest(String currentPassword, String newPassword) {

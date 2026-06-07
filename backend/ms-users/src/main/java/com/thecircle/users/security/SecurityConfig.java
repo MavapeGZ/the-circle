@@ -29,6 +29,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
+                // Not gateway-routed; guarded by a shared internal API key in the controller.
+                .requestMatchers("/internal/**").permitAll()
                 .requestMatchers("/api/users/health").permitAll()
                 .requestMatchers("/api/users/me").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()

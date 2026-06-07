@@ -1,5 +1,6 @@
 package com.thecircle.contracts.service;
 
+import com.thecircle.contracts.client.CatalogClient;
 import com.thecircle.contracts.client.UsersClient;
 import com.thecircle.contracts.dto.ContractCreateRequest;
 import com.thecircle.contracts.dto.ContractDto;
@@ -27,10 +28,12 @@ public class ContractService {
 
     private final ContractRepository repository;
     private final UsersClient usersClient;
+    private final CatalogClient catalogClient;
 
-    public ContractService(ContractRepository repository, UsersClient usersClient) {
+    public ContractService(ContractRepository repository, UsersClient usersClient, CatalogClient catalogClient) {
         this.repository = repository;
         this.usersClient = usersClient;
+        this.catalogClient = catalogClient;
     }
 
     @Transactional
@@ -42,11 +45,15 @@ public class ContractService {
         contract.setReceiverId(request.receiverId());
         contract.setType(request.type());
         contract.setStatus(ContractStatus.PENDING_SIGNATURES);
+        contract.setPrice(request.price());
         contract.setGuaranteeAmount(request.guaranteeAmount());
         contract.setGuaranteeStatus(GuaranteeStatus.NONE);
         contract.setConditions(request.conditions());
         contract.setReturnDate(request.returnDate());
         contract.setCreatedAt(LocalDateTime.now());
+        // NOTE: do NOT reserve the item here. A contract is created when the buyer
+        // opens the signing screen; backing out without signing must leave the item
+        // available. Reservation happens on the first signature (see markSigned).
         return toDto(repository.save(contract));
     }
 
@@ -81,13 +88,18 @@ public class ContractService {
         }
         contract.setStoredContractId(storedContractId); // latest signed artifact
 
+        boolean nowActive = false;
         if (contract.getReceiverSignedAt() != null && contract.getOwnerSignedAt() != null) {
             contract.setStatus(ContractStatus.ACTIVE);
             contract.setSignedAt(now);
+            nowActive = true;
         } else {
             contract.setStatus(ContractStatus.PENDING_SIGNATURES);
         }
-        return toDto(repository.save(contract));
+        ContractDto result = toDto(repository.save(contract));
+        // First signature → reserve the item; both signatures → sold (hidden from catalog).
+        catalogClient.setStatus(contract.getItemId(), nowActive ? "SOLD" : "RESERVED");
+        return result;
     }
 
     // --- Security deposit (guarantee) lifecycle ---
@@ -153,6 +165,8 @@ public class ContractService {
         if (profile != null) {
             signer.setFullName(profile.fullName());
             signer.setEmail(profile.email() != null ? profile.email() : fallbackEmail);
+            signer.setAddress(profile.address());
+            signer.setIdNumber(profile.idNumber());
         } else {
             signer.setEmail(fallbackEmail);
         }
@@ -173,9 +187,11 @@ public class ContractService {
                 c.getCreatedAt(),
                 c.getSignedAt()
         );
+        dto.setPrice(c.getPrice());
         dto.setGuaranteeStatus(c.getGuaranteeStatus());
         dto.setReceiverSignedAt(c.getReceiverSignedAt());
         dto.setOwnerSignedAt(c.getOwnerSignedAt());
+        dto.setStoredContractId(c.getStoredContractId());
         return dto;
     }
 }

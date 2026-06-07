@@ -32,6 +32,12 @@ jwt:
 kyc:
   upload-dir: ${KYC_UPLOAD_DIR:${user.home}/the-circle/uploads/users}
 
+# Shared key guarding service-to-service endpoints under /internal/**.
+# Blank disables the guard (local dev). Set USERS_INTERNAL_KEY in shared envs.
+users:
+  internal:
+    api-key: ${USERS_INTERNAL_KEY:}
+
 notifications:
   base-url: ${NOTIFICATIONS_BASE_URL:http://localhost:8085}
   internal:

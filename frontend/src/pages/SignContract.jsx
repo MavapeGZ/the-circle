@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
+import { contractTypeLabel } from '../utils/contractType';
+import { contractStatusLabel } from '../utils/contractStatus';
 
 const STEP = { REQUEST: 'request', CONFIRM: 'confirm', SUCCESS: 'success' };
 
@@ -14,6 +16,8 @@ function SignContract() {
   const passedContract = location.state?.contract ?? null;
   const passedEmail = location.state?.signerEmail ?? '';
   const role = location.state?.role ?? 'RECEIVER'; // RECEIVER (buyer) or OWNER (seller)
+  // Where the back button returns to (the screen the user came from).
+  const backTo = location.state?.from ?? `/contracts/${contractId}`;
 
   const [step, setStep] = useState(STEP.REQUEST);
   const [contract, setContract] = useState(passedContract);
@@ -39,7 +43,7 @@ function SignContract() {
           const res = await api.get(`/contracts/${contractId}`);
           setContract(res.data);
         } catch {
-          setBanner({ type: 'error', text: 'No se pudo cargar el contrato.' });
+          setBanner({ type: 'error', text: 'Could not load the contract.' });
         } finally {
           setLoadingContract(false);
         }
@@ -73,7 +77,7 @@ function SignContract() {
   const requestOtp = async (e) => {
     if (e) e.preventDefault();
     if (!signerEmail) {
-      setBanner({ type: 'error', text: 'Introduce un email de firmante.' });
+      setBanner({ type: 'error', text: 'Enter a signer email.' });
       return;
     }
     setSubmitting(true);
@@ -90,16 +94,16 @@ function SignContract() {
       setStep(STEP.CONFIRM);
       setBanner({
         type: 'info',
-        text: `Hemos enviado un código a ${signerEmail}. Puede tardar hasta un minuto.`,
+        text: `We've sent a code to ${signerEmail}. It may take up to a minute.`,
       });
     } catch (err) {
       const status = err.response?.status;
       if (status === 502) {
-        setBanner({ type: 'error', text: 'No hemos podido enviar el código, vuelve a intentarlo' });
+        setBanner({ type: 'error', text: 'We could not send the code, please try again.' });
       } else if (status === 400) {
-        setBanner({ type: 'error', text: err.response?.data?.message || 'Datos de firma no válidos.' });
+        setBanner({ type: 'error', text: err.response?.data?.message || 'Invalid signature data.' });
       } else {
-        setBanner({ type: 'error', text: 'Error al solicitar el código. Inténtalo de nuevo.' });
+        setBanner({ type: 'error', text: 'Error requesting the code. Please try again.' });
       }
     } finally {
       setSubmitting(false);
@@ -127,22 +131,22 @@ function SignContract() {
       const status = err.response?.status;
       if (status === 401) {
         // Keep the code populated so the signer can correct it.
-        setBanner({ type: 'error', text: 'Código incorrecto. Revísalo e inténtalo de nuevo.' });
+        setBanner({ type: 'error', text: 'Incorrect code. Check it and try again.' });
       } else if (status === 410 || status === 404) {
         // 404 = session evicted/expired on the server; treat like an expired OTP.
-        setBanner({ type: 'error', text: 'El código ha expirado. Solicita uno nuevo.' });
+        setBanner({ type: 'error', text: 'The code has expired. Request a new one.' });
         setSessionId(null);
         setStep(STEP.REQUEST);
       } else if (status === 429) {
-        setBanner({ type: 'error', text: 'Demasiados intentos. Solicita un código nuevo.' });
+        setBanner({ type: 'error', text: 'Too many attempts. Request a new code.' });
         setSessionId(null);
         setStep(STEP.REQUEST);
       } else if (status === 409) {
-        setBanner({ type: 'error', text: 'Esta sesión de firma ya se ha utilizado.' });
+        setBanner({ type: 'error', text: 'This signing session has already been used.' });
         setSessionId(null);
         setStep(STEP.REQUEST);
       } else {
-        setBanner({ type: 'error', text: 'No se pudo confirmar la firma. Inténtalo de nuevo.' });
+        setBanner({ type: 'error', text: 'Could not confirm the signature. Please try again.' });
       }
     } finally {
       setSubmitting(false);
@@ -163,7 +167,7 @@ function SignContract() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      setBanner({ type: 'error', text: 'No se pudo descargar el contrato firmado.' });
+      setBanner({ type: 'error', text: 'Could not download the signed contract.' });
     }
   };
 
@@ -173,8 +177,15 @@ function SignContract() {
 
   return (
     <div className="max-w-5xl mx-auto mt-8 p-4">
-      <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Firma del contrato</h1>
-      <p className="text-gray-500 mb-8">Firma electrónica avanzada (eIDAS) mediante código OTP.</p>
+      <button
+        type="button"
+        onClick={() => navigate(backTo)}
+        className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6 font-semibold"
+      >
+        &larr; Back
+      </button>
+      <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Sign contract</h1>
+      <p className="text-gray-500 mb-8">eIDAS advanced electronic signature via OTP code.</p>
 
       {banner && (
         <div className={`p-4 mb-6 rounded-lg text-sm font-bold ${bannerClasses}`}>
@@ -185,16 +196,16 @@ function SignContract() {
       <div className="flex flex-col lg:flex-row gap-8">
         {/* PDF PREVIEW */}
         <div className="lg:w-1/2">
-          <h2 className="text-xl font-bold text-gray-800 mb-3">Vista previa</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-3">Preview</h2>
           {pdfUrl ? (
             <iframe
-              title="Vista previa del contrato"
+              title="Contract preview"
               src={pdfUrl}
               className="w-full h-[480px] border border-gray-200 rounded-xl bg-gray-50"
             />
           ) : (
             <div className="w-full h-[480px] border border-gray-200 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
-              {loadingContract ? 'Cargando…' : 'Vista previa no disponible'}
+              {loadingContract ? 'Loading…' : 'Preview not available'}
             </div>
           )}
         </div>
@@ -203,19 +214,19 @@ function SignContract() {
         <div className="lg:w-1/2 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
           {contract && (
             <div className="mb-6 text-sm text-gray-600 space-y-1 border-b pb-4">
-              <p><span className="font-bold text-gray-800">Contrato:</span> {contract.id || contractId}</p>
-              {contract.type && <p><span className="font-bold text-gray-800">Tipo:</span> {contract.type}</p>}
-              {contract.status && <p><span className="font-bold text-gray-800">Estado:</span> {contract.status}</p>}
-              {contract.conditions && <p><span className="font-bold text-gray-800">Condiciones:</span> {contract.conditions}</p>}
+              <p><span className="font-bold text-gray-800">Contract:</span> {contract.id || contractId}</p>
+              {contract.type && <p><span className="font-bold text-gray-800">Type:</span> {contractTypeLabel(contract.type)}</p>}
+              {contract.status && <p><span className="font-bold text-gray-800">Status:</span> {contractStatusLabel(contract.status)}</p>}
+              {contract.conditions && <p><span className="font-bold text-gray-800">Conditions:</span> {contract.conditions}</p>}
             </div>
           )}
 
           {/* STEP 1 — REQUEST */}
           {step === STEP.REQUEST && (
             <form onSubmit={requestOtp} className="space-y-5">
-              <h2 className="text-2xl font-bold text-gray-800">1. Solicitar código</h2>
+              <h2 className="text-2xl font-bold text-gray-800">1. Request code</h2>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Email del firmante</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Signer email</label>
                 <input
                   type="email"
                   value={signerEmail}
@@ -229,7 +240,7 @@ function SignContract() {
                 disabled={submitting || loadingContract || !contract}
                 className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? 'Enviando…' : 'Enviar código'}
+                {submitting ? 'Sending…' : 'Send code'}
               </button>
             </form>
           )}
@@ -237,9 +248,9 @@ function SignContract() {
           {/* STEP 2 — CONFIRM */}
           {step === STEP.CONFIRM && (
             <form onSubmit={confirmOtp} className="space-y-5">
-              <h2 className="text-2xl font-bold text-gray-800">2. Introducir código</h2>
+              <h2 className="text-2xl font-bold text-gray-800">2. Enter code</h2>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Código de 6 dígitos</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">6-digit code</label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -256,7 +267,7 @@ function SignContract() {
                 disabled={submitting || otp.length !== 6}
                 className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? 'Verificando…' : 'Firmar contrato'}
+                {submitting ? 'Verifying…' : 'Sign contract'}
               </button>
               <button
                 type="button"
@@ -264,7 +275,7 @@ function SignContract() {
                 disabled={submitting}
                 className="block text-sm text-blue-600 font-bold hover:underline disabled:opacity-50"
               >
-                Reenviar código
+                Resend code
               </button>
             </form>
           )}
@@ -273,34 +284,34 @@ function SignContract() {
           {step === STEP.SUCCESS && result && (
             <div className="space-y-5">
               {result.fullySigned ? (
-                <h2 className="text-2xl font-bold text-green-600">¡Contrato firmado por ambas partes!</h2>
+                <h2 className="text-2xl font-bold text-green-600">Contract signed by both parties!</h2>
               ) : (
-                <h2 className="text-2xl font-bold text-green-600">Firma registrada</h2>
+                <h2 className="text-2xl font-bold text-green-600">Signature recorded</h2>
               )}
 
               {!result.fullySigned && (
                 <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm text-blue-700 font-bold">
-                  Tu firma se ha registrado. El contrato quedará activo cuando la otra parte lo firme.
+                  Your signature has been recorded. The contract will become active once the other party signs.
                 </div>
               )}
 
               <div className="bg-green-50 p-4 rounded-xl border border-green-100 text-sm text-gray-700 space-y-1">
-                <p><span className="font-bold">Documento:</span> {result.storedContractId}</p>
+                <p><span className="font-bold">Document:</span> {result.storedContractId}</p>
                 {result.signedAt && (
-                  <p><span className="font-bold">Firmado:</span> {new Date(result.signedAt).toLocaleString()}</p>
+                  <p><span className="font-bold">Signed:</span> {new Date(result.signedAt).toLocaleString()}</p>
                 )}
               </div>
               <button
                 onClick={downloadSigned}
                 className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition"
               >
-                Descargar PDF firmado
+                Download signed PDF
               </button>
               <button
                 onClick={() => navigate('/contracts')}
                 className="block text-sm text-gray-500 font-bold hover:underline"
               >
-                Ver mis contratos
+                View my contracts
               </button>
             </div>
           )}

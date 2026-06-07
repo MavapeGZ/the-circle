@@ -10,6 +10,7 @@ import EditArticle from './EditArticle';
 import Home from './Home';
 import SignContract from './SignContract';
 import MyContracts from './MyContracts';
+import ContractDetail from './ContractDetail';
 import Settings from './Settings';
 
 function App() {
@@ -68,6 +69,7 @@ function App() {
           <Route path="/catalog/edit/:id" element={<EditArticle />} />
           <Route path="/contracts" element={<MyContracts />} />
           <Route path="/contracts/:contractId/sign" element={<SignContract />} />
+          <Route path="/contracts/:contractId" element={<ContractDetail />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </main>

@@ -39,7 +39,7 @@ public class HttpOtpDelivery implements OtpDeliveryChannel {
     public HttpOtpDelivery(RestTemplate notificationsRestTemplate,
                            @Value("${notifications.url:http://localhost:8085}") String notificationsBaseUrl,
                            @Value("${notifications.api-key:}") String internalApiKey,
-                           @Value("${signature.mail.subject:The Circle - Codigo de firma electronica}") String subject,
+                           @Value("${signature.mail.subject:The Circle - Electronic signature code}") String subject,
                            @Value("${signature.otp.ttl-seconds:600}") int ttlSeconds) {
         this.restTemplate = notificationsRestTemplate;
         this.notificationsBaseUrl = stripTrailingSlash(notificationsBaseUrl);

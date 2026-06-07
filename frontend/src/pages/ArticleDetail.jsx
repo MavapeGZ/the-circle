@@ -10,12 +10,10 @@ function ArticleDetail() {
   const { user: currentUser } = useContext(AuthContext);
 
   const [article, setArticle] = useState(null);
-  const [me, setMe] = useState(null);
   const [owner, setOwner] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isRequesting, setIsRequesting] = useState(false);
   const [rentDays, setRentDays] = useState(7);
   const [deposit, setDeposit] = useState('');
   const [acquiring, setAcquiring] = useState(false);
@@ -47,14 +45,6 @@ function ArticleDetail() {
     fetchArticleAndOwner();
   }, [id]);
 
-  // Load the current user so we can tell owner from visitor and fill in the
-  // signer email for the OTP signing flow.
-  useEffect(() => {
-    api.get('/users/me')
-      .then((res) => setMe(res.data))
-      .catch(() => setMe(null)); // not logged in: acquire/owner actions stay hidden
-  }, []);
-
   const handleDelete = async () => {
     const confirmed = window.confirm('Are you sure you want to delete this article? This action cannot be undone.');
     if (confirmed) {
@@ -70,13 +60,12 @@ function ArticleDetail() {
     }
   };
 
-  // Maps a catalog transaction mode to its action label and the contract type
-  // the backend expects when the deal is created.
+  // Maps a catalog product type to its action label and the contract type the
+  // backend expects when the deal is created. DEMAND listings are not acquirable.
   const ACQUIRE = {
-    SELL: { label: 'Buy', contractType: 'SALE' },
-    RENT: { label: 'Rent', contractType: 'RENT' },
-    DONATE: { label: 'Request', contractType: 'CESSION_PERMANENT' },
-    GIFT: { label: 'Request', contractType: 'CESSION_PERMANENT' },
+    SYMBOLIC_SALE: { label: 'Buy', contractType: 'SALE' },
+    SYMBOLIC_RENTAL: { label: 'Rent', contractType: 'RENT' },
+    DONATION: { label: 'Request', contractType: 'CESSION_PERMANENT' },
   };
 
   const RENT_OPTIONS = [
@@ -89,11 +78,17 @@ function ArticleDetail() {
   // Creates the contract, then sends the buyer to the OTP signing screen with the
   // freshly created contract so it does not have to be re-fetched.
   const handleAcquire = async () => {
-    const cfg = ACQUIRE[article.transactionMode];
-    if (!cfg || !me) return;
+    if (!currentUser?.id) {
+      alert('You must be logged in to acquire this article.');
+      navigate('/login');
+      return;
+    }
+
+    const cfg = ACQUIRE[article.productType];
+    if (!cfg) return;
 
     setAcquiring(true);
-    const isRent = article.transactionMode === 'RENT';
+    const isRent = article.productType === 'SYMBOLIC_RENTAL';
     const returnDate = isRent
       ? new Date(Date.now() + rentDays * 86400000).toISOString().slice(0, 19)
       : null;
@@ -104,8 +99,9 @@ function ArticleDetail() {
       const res = await api.post('/contracts', {
         itemId: article.id,
         ownerId: String(article.authorId),
-        receiverId: String(me.id),
+        receiverId: String(currentUser.id),
         type: cfg.contractType,
+        price: article.price ?? 0,
         guaranteeAmount,
         conditions: `${cfg.label}: ${article.title}`
           + (isRent ? ` (${rentDays} days, deposit ${guaranteeAmount} €)` : '')
@@ -113,7 +109,7 @@ function ArticleDetail() {
         returnDate,
       });
       navigate(`/contracts/${res.data.id}/sign`, {
-        state: { contract: res.data, signerEmail: me.email, role: 'RECEIVER' },
+        state: { contract: res.data, signerEmail: currentUser.email, role: 'RECEIVER', from: `/catalog/${article.id}` },
       });
     } catch (err) {
       console.error('Error creating contract:', err);
@@ -122,39 +118,34 @@ function ArticleDetail() {
     }
   };
 
-  const handleRequestExchange = async () => {
+  // Fulfilling a DEMAND flips the roles: the current user provides (owns) the item
+  // and the demand's author receives it. We sign first as the OWNER party.
+  const handleFulfillDemand = async () => {
     if (!currentUser?.id) {
-      alert('You must be logged in to request this article.');
+      alert('You must be logged in to offer this item.');
       navigate('/login');
       return;
     }
 
-    setIsRequesting(true);
+    setAcquiring(true);
     try {
-      let derivedMode = article.transactionMode;
-
-      if (!derivedMode) {
-        if (article.productType === 'DONATION') derivedMode = 'DONATE';
-        else if (article.productType === 'SYMBOLIC_RENTAL') derivedMode = 'RENT';
-        else if (article.productType === 'SYMBOLIC_SALE') derivedMode = 'SALE';
-        else derivedMode = 'EXCHANGE';
-      }
-
-      const payload = {
-        articleId: article.id,
-        providerId: article.authorId,
-        requesterId: currentUser.id,
-        transactionMode: derivedMode
-      };
-
-      await api.post('/contracts/requests', payload);
-      alert('Request sent successfully! The owner will be notified.');
-      navigate('/catalog');
+      const res = await api.post('/contracts', {
+        itemId: article.id,
+        ownerId: String(currentUser.id),
+        receiverId: String(article.authorId),
+        type: 'CESSION_PERMANENT',
+        price: article.price ?? 0,
+        guaranteeAmount: null,
+        conditions: `Fulfill demand: ${article.title}`,
+        returnDate: null,
+      });
+      navigate(`/contracts/${res.data.id}/sign`, {
+        state: { contract: res.data, signerEmail: currentUser.email, role: 'OWNER', from: `/catalog/${article.id}` },
+      });
     } catch (err) {
-      console.error('Error requesting exchange:', err);
-      alert('Error processing the request. Please try again.');
-    } finally {
-      setIsRequesting(false);
+      console.error('Error creating contract:', err);
+      alert('Could not start the deal. Please try again.');
+      setAcquiring(false);
     }
   };
 
@@ -198,10 +189,13 @@ function ArticleDetail() {
   });
 
   const isOwner = currentUser && String(currentUser.id) === String(article.authorId);
-  const isOffer = article.type === 'OFFER';
-  const acquireCfg = ACQUIRE[article.transactionMode];
-  // Only a logged-in visitor (not the owner) can acquire an OFFER via OTP signing.
-  const canAcquire = isOffer && !isOwner && me != null && acquireCfg;
+  // Legacy articles have no status; treat them as available.
+  const isAvailable = !article.status || article.status === 'AVAILABLE';
+  const acquireCfg = ACQUIRE[article.productType];
+  // A visitor (not the owner) can acquire any non-DEMAND listing via OTP signing.
+  const canAcquire = isAvailable && !isOwner && acquireCfg;
+  // For a DEMAND, a visitor can instead offer to provide the item being requested.
+  const canFulfill = isAvailable && !isOwner && article.productType === 'DEMAND';
 
   return (
     <div className="max-w-5xl mx-auto mt-8 p-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -228,6 +222,16 @@ function ArticleDetail() {
                 <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">
                   {article.category}
                 </span>
+                {article.status === 'RESERVED' && (
+                  <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full border border-yellow-300">
+                    Reserved
+                  </span>
+                )}
+                {article.status === 'SOLD' && (
+                  <span className="bg-gray-800 text-white text-xs font-bold px-3 py-1 rounded-full">
+                    Sold
+                  </span>
+                )}
               </div>
               <span className="text-gray-500 text-sm">Published on {formattedDate}</span>
             </div>
@@ -291,10 +295,10 @@ function ArticleDetail() {
                 {isDeleting ? 'Deleting...' : 'Delete Article'}
               </button>
             </div>
-          ) : (
+          ) : canAcquire ? (
             <div className="flex flex-col gap-3">
-              {/* OTP signing flow: rentals expose duration + deposit before the deal */}
-              {canAcquire && article.transactionMode === 'RENT' && (
+              {/* Rentals expose duration + deposit before the deal is created */}
+              {article.productType === 'SYMBOLIC_RENTAL' && (
                 <>
                   <select
                     value={rentDays}
@@ -318,30 +322,37 @@ function ArticleDetail() {
                   />
                 </>
               )}
-              {canAcquire && (
-                <button
-                  onClick={handleAcquire}
-                  disabled={acquiring}
-                  className={`w-full py-4 font-extrabold rounded-lg shadow-md transition text-white text-lg ${acquiring ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-[1.02]'}`}
-                >
-                  {acquiring ? 'Processing...' : `${acquireCfg.label} & Sign`}
-                </button>
-              )}
               <button
-                onClick={handleRequestExchange}
-                disabled={isRequesting}
-                className={`w-full py-4 font-extrabold rounded-lg shadow-md transition text-white text-lg ${isRequesting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-[1.02]'}`}
+                onClick={handleAcquire}
+                disabled={acquiring}
+                className={`w-full py-4 font-extrabold rounded-lg shadow-md transition text-white text-lg ${acquiring ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-[1.02]'}`}
               >
-                {isRequesting ? 'Processing...' : 'Request Exchange'}
+                {acquiring ? 'Processing...' : `${acquireCfg.label} & Sign`}
               </button>
             </div>
+          ) : canFulfill ? (
+            <button
+              onClick={handleFulfillDemand}
+              disabled={acquiring}
+              className={`w-full py-4 font-extrabold rounded-lg shadow-md transition text-white text-lg ${acquiring ? 'bg-blue-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 hover:scale-[1.02]'}`}
+            >
+              {acquiring ? 'Processing...' : 'Offer this item & Sign'}
+            </button>
+          ) : !isAvailable ? (
+            <p className="text-gray-500 text-sm font-semibold">
+              {article.status === 'SOLD'
+                ? 'This article has already been sold.'
+                : 'This article is currently reserved.'}
+            </p>
+          ) : (
+            <p className="text-gray-500 text-sm">This article is not available for acquisition.</p>
           )}
         </div>
 
-        {!isOwner && (
+        {!isOwner && (canAcquire || canFulfill) && (
           <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm text-blue-800">
             <p className="font-bold mb-1">Safe Transaction</p>
-            <p>Your request will initiate a digital agreement governed by the platform's trust framework.</p>
+            <p>Your request will initiate a digital agreement secured by an OTP electronic signature.</p>
           </div>
         )}
       </div>

@@ -53,6 +53,8 @@ public class AuthService {
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .email(request.getEmail())
+                .address(request.getAddress())
+                .idNumber(request.getIdNumber())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role("ROLE_USER")
                 .kycStatus(KycStatus.UNVERIFIED)

@@ -33,41 +33,41 @@ public class SignatureAuditService {
         float marginX = 50f;
         float y = box.getHeight() - 60f;
 
-        PdfUtils.drawTextCentered(cs, box, "Registro de firma electronica avanzada", y);
+        PdfUtils.drawTextCentered(cs, box, "Advanced electronic signature record", y);
         y -= 18f;
-        drawLine(cs, marginX, y, "Reglamento (UE) 910/2014 - eIDAS", PDType1Font.HELVETICA_OBLIQUE, 9);
+        drawLine(cs, marginX, y, "Regulation (EU) 910/2014 - eIDAS", PDType1Font.HELVETICA_OBLIQUE, 9);
         y -= 24f;
 
-        drawLine(cs, marginX, y, "Documento firmado mediante codigos OTP unicos enviados al firmante.", PDType1Font.HELVETICA, 10);
+        drawLine(cs, marginX, y, "Document signed using unique OTP codes sent to the signer.", PDType1Font.HELVETICA, 10);
         y -= 14f;
-        drawLine(cs, marginX, y, "Integridad garantizada con hash criptografico SHA-256.", PDType1Font.HELVETICA, 10);
+        drawLine(cs, marginX, y, "Integrity guaranteed with SHA-256 cryptographic hash.", PDType1Font.HELVETICA, 10);
         y -= 24f;
 
         if (records == null || records.isEmpty()) {
-            drawLine(cs, marginX, y, "Sin firmas registradas.", PDType1Font.HELVETICA_OBLIQUE, 10);
+            drawLine(cs, marginX, y, "No signatures recorded.", PDType1Font.HELVETICA_OBLIQUE, 10);
             return;
         }
 
         int idx = 1;
         for (SignatureRecord r : records) {
-            drawLine(cs, marginX, y, "Firma " + idx + " - " + safe(r.getSignerKey()), PDType1Font.HELVETICA_BOLD, 11);
+            drawLine(cs, marginX, y, "Signature " + idx + " - " + safe(r.getSignerKey()), PDType1Font.HELVETICA_BOLD, 11);
             y -= 14f;
-            y = drawField(cs, marginX, y, "Nombre", safe(r.getSignerFullName()));
-            y = drawField(cs, marginX, y, "Documento", safe(r.getSignerIdNumber()));
+            y = drawField(cs, marginX, y, "Name", safe(r.getSignerFullName()));
+            y = drawField(cs, marginX, y, "ID number", safe(r.getSignerIdNumber()));
             y = drawField(cs, marginX, y, "Email", safe(r.getSignerEmail()));
-            y = drawField(cs, marginX, y, "Fecha (UTC)", r.getSignedAtUtc() != null ? r.getSignedAtUtc().format(TS) : "-");
+            y = drawField(cs, marginX, y, "Date (UTC)", r.getSignedAtUtc() != null ? r.getSignedAtUtc().format(TS) : "-");
             y = drawField(cs, marginX, y, "IP", safe(r.getIp()));
             y = drawField(cs, marginX, y, "User-Agent", truncate(safe(r.getUserAgent()), 80));
-            y = drawField(cs, marginX, y, "ID sesion OTP", safe(r.getOtpSessionId()));
-            y = drawField(cs, marginX, y, "Algoritmo", safe(r.getAlgorithm()));
-            y = drawField(cs, marginX, y, "Hash previo", truncate(safe(r.getPreHash()), 64));
-            y = drawField(cs, marginX, y, "Hash firmado", truncate(safe(r.getPostHash()), 64));
+            y = drawField(cs, marginX, y, "OTP session ID", safe(r.getOtpSessionId()));
+            y = drawField(cs, marginX, y, "Algorithm", safe(r.getAlgorithm()));
+            y = drawField(cs, marginX, y, "Previous hash", truncate(safe(r.getPreHash()), 64));
+            y = drawField(cs, marginX, y, "Signed hash", truncate(safe(r.getPostHash()), 64));
             y -= 10f;
             idx++;
         }
 
         y -= 6f;
-        drawLine(cs, marginX, y, "Hash actual del documento: " + safe(currentDocumentHash), PDType1Font.HELVETICA_OBLIQUE, 8);
+        drawLine(cs, marginX, y, "Current document hash: " + safe(currentDocumentHash), PDType1Font.HELVETICA_OBLIQUE, 8);
     }
 
     private float drawField(PDPageContentStream cs, float x, float y, String label, String value) throws IOException {

@@ -15,6 +15,8 @@ function Settings() {
     firstName: '',
     lastName: '',
     email: '',
+    address: '',
+    idNumber: '',
     marketingEmailsOptIn: true,
     systemEmailsOptIn: true
   });
@@ -59,7 +61,9 @@ function Settings() {
     try {
       await api.patch('/users/me', {
         firstName: settings.firstName,
-        lastName: settings.lastName
+        lastName: settings.lastName,
+        address: settings.address,
+        idNumber: settings.idNumber
       });
       showMessage('Profile updated successfully!');
     } catch (err) {
@@ -186,6 +190,28 @@ function Settings() {
                   className="w-full border border-gray-200 bg-gray-50 text-gray-500 rounded-lg p-2.5 cursor-not-allowed"
                 />
                 <p className="text-xs text-gray-500 mt-1">Email changing is out of scope for the current version.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">ID Number</label>
+                <input
+                  type="text"
+                  value={settings.idNumber || ''}
+                  onChange={(e) => setSettings({ ...settings, idNumber: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+                  placeholder="National ID / passport number"
+                />
+                <p className="text-xs text-gray-500 mt-1">Required on signed contracts.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Address</label>
+                <input
+                  type="text"
+                  value={settings.address || ''}
+                  onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+                  placeholder="Street, number, city, postal code"
+                />
+                <p className="text-xs text-gray-500 mt-1">Required on signed contracts.</p>
               </div>
               <button type="submit" className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition">
                 Save Profile

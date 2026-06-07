@@ -15,6 +15,6 @@ public class LogOtpDelivery implements OtpDeliveryChannel {
 
     @Override
     public void send(String destination, String otp, String signerFullName) {
-        log.warn("[DEV OTP DELIVERY] destino={} firmante={} otp={}", destination, signerFullName, otp);
+        log.warn("[DEV OTP DELIVERY] destination={} signer={} otp={}", destination, signerFullName, otp);
     }
 }

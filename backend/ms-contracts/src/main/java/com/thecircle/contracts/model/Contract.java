@@ -31,6 +31,9 @@ public class Contract {
     @Enumerated(EnumType.STRING)
     private ContractStatus status;
 
+    // Agreed price of the deal (the item's price at signing time). 0 for donations.
+    private BigDecimal price;
+
     private BigDecimal guaranteeAmount;
 
     @Enumerated(EnumType.STRING)
@@ -63,6 +66,8 @@ public class Contract {
     public void setType(ContractType type) { this.type = type; }
     public ContractStatus getStatus() { return status; }
     public void setStatus(ContractStatus status) { this.status = status; }
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
     public BigDecimal getGuaranteeAmount() { return guaranteeAmount; }
     public void setGuaranteeAmount(BigDecimal guaranteeAmount) { this.guaranteeAmount = guaranteeAmount; }
     public GuaranteeStatus getGuaranteeStatus() { return guaranteeStatus; }

@@ -8,6 +8,7 @@ public record ContractCreateRequest(
         String ownerId,
         String receiverId,
         ContractType type,
+        BigDecimal price,
         BigDecimal guaranteeAmount,
         String conditions,
         LocalDateTime returnDate
