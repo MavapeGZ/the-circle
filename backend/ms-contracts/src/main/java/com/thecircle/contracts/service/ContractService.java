@@ -96,10 +96,18 @@ public class ContractService {
             return null;
         }
         CatalogClient.ArticleSnapshot article = catalogClient.getArticle(request.itemId());
-        if (article == null || article.guaranteeAmount() == null) {
-            // Fall back to the request value only if the catalog is unreachable; the
-            // catalog's own publish guard already enforces the cap so this is a safety net.
-            return request.guaranteeAmount();
+        // Fail closed: the deposit is owner-set at listing time and must come from the
+        // catalog so the receiver cannot manipulate it via the contract payload. Any
+        // ambiguity (catalog down, article gone, deposit missing on a RENT article) is
+        // surfaced as 503 so the buyer retries rather than locking in an attacker-chosen
+        // amount.
+        if (article == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Could not verify the rental deposit right now. Please try again in a moment.");
+        }
+        if (article.guaranteeAmount() == null) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "This rental item has no security deposit configured. Ask the owner to update the listing.");
         }
         return BigDecimal.valueOf(article.guaranteeAmount());
     }
