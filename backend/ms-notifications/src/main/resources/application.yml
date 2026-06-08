@@ -36,6 +36,9 @@ spring:
 
 server:
   port: 8085
+  error:
+    include-message: always
+    include-stacktrace: always
 
 # Shared secret guarding internal-only endpoints. Blank => guard disabled (local dev).
 # Set NOTIFICATIONS_INTERNAL_KEY in staging/prod; callers send it as X-Internal-Api-Key.

@@ -14,6 +14,7 @@ function ContractDetail() {
   const [receiverName, setReceiverName] = useState('');
   const [itemTitle, setItemTitle] = useState('');
   const [pdfUrl, setPdfUrl] = useState(null);
+  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -47,6 +48,9 @@ function ContractDetail() {
         data.itemId && api.get(`/catalog/articles/${data.itemId}`)
           .then((r) => setItemTitle(r.data?.title || data.itemId))
           .catch(() => setItemTitle(data.itemId)),
+        api.get(`/contracts/${contractId}/payments`)
+          .then((r) => setPayments(r.data || []))
+          .catch(() => setPayments([])),
       ]);
 
       // Prefer the signed artifact; fall back to a freshly rendered preview.
@@ -84,7 +88,9 @@ function ContractDetail() {
 
   const statusLabel = (c) => {
     if (c.status === 'ACTIVE') return { text: 'Active (signed by both)', cls: 'bg-green-100 text-green-800' };
+    if (c.status === 'AWAITING_COUNTERPARTY') return { text: 'Awaiting counterparty', cls: 'bg-yellow-100 text-yellow-800' };
     if (c.status === 'COMPLETED') return { text: `Completed (deposit ${c.guaranteeStatus?.toLowerCase()})`, cls: 'bg-gray-200 text-gray-700' };
+    if (c.status === 'CANCELLED') return { text: 'Cancelled', cls: 'bg-red-100 text-red-700' };
     return { text: 'Pending signatures', cls: 'bg-blue-100 text-blue-800' };
   };
 
@@ -100,7 +106,7 @@ function ContractDetail() {
   const isReceiver = currentUser && String(currentUser.id) === String(contract.receiverId);
   const myRole = isOwner ? 'OWNER' : isReceiver ? 'RECEIVER' : null;
   const iNeedToSign = myRole
-    && contract.status !== 'ACTIVE' && contract.status !== 'COMPLETED'
+    && contract.status !== 'ACTIVE' && contract.status !== 'COMPLETED' && contract.status !== 'CANCELLED'
     && (isOwner ? !contract.ownerSignedAt : !contract.receiverSignedAt);
 
   const goSign = () => {
@@ -108,6 +114,15 @@ function ContractDetail() {
       state: { contract, signerEmail: currentUser?.email, role: myRole, from: `/contracts/${contract.id}` },
     });
   };
+
+  const escrowed = payments.find((p) => p.status === 'ESCROWED') || null;
+  const released = payments.find((p) => p.status === 'RELEASED') || null;
+  const refunded = payments.find((p) => p.status === 'REFUNDED') || null;
+  const lastFailed = payments.find((p) => p.status === 'FAILED') || null;
+  const isPayable = (contract.type === 'SALE' && Number(contract.price) > 0)
+    || (contract.type === 'RENT' && Number(contract.guaranteeAmount) > 0);
+  const buyerStillNeedsToPay = isReceiver && isPayable && !escrowed && !released && contract.receiverSignedAt
+    && contract.status !== 'CANCELLED';
 
   return (
     <div className="max-w-5xl mx-auto mt-8 p-4">
@@ -138,6 +153,39 @@ function ContractDetail() {
             {contract.conditions && <Row term="Conditions" value={contract.conditions} />}
           </dl>
 
+          {escrowed && (
+            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-900">
+              <p className="font-bold">
+                Payment held in escrow — {escrowed.amount} {escrowed.currency}
+              </p>
+              <p className="mt-1">
+                {isOwner
+                  ? 'Sign the contract before '
+                  : 'The seller has until '}
+                <span className="font-bold">{new Date(escrowed.escrowExpiresAt).toLocaleString()}</span>
+                {isOwner ? ' to release the funds.' : ' to sign; otherwise the payment will be refunded automatically.'}
+              </p>
+              <Link
+                to={`/contracts/${contract.id}/payments/${escrowed.id}/receipt`}
+                className="inline-block mt-2 text-sm font-bold underline hover:no-underline"
+              >
+                View receipt
+              </Link>
+            </div>
+          )}
+
+          {released && (
+            <div className="mt-6 p-4 bg-green-50 border border-green-100 rounded-lg text-sm text-green-800">
+              Payment released to the seller on {new Date(released.releasedAt).toLocaleString()}.
+            </div>
+          )}
+
+          {refunded && (
+            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+              Payment refunded to the buyer. Contract cancelled.
+            </div>
+          )}
+
           {iNeedToSign && (
             <button
               onClick={goSign}
@@ -145,6 +193,21 @@ function ContractDetail() {
             >
               Sign contract
             </button>
+          )}
+
+          {buyerStillNeedsToPay && (
+            <button
+              onClick={() => navigate(`/contracts/${contract.id}/checkout`)}
+              className="mt-3 w-full bg-yellow-500 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-yellow-600 transition"
+            >
+              {contract.type === 'RENT' ? 'Lock security deposit' : 'Complete payment'}
+            </button>
+          )}
+
+          {lastFailed && !escrowed && !released && (
+            <p className="mt-3 text-sm text-red-700">
+              Last payment attempt failed: {lastFailed.failureReason || 'card declined.'}
+            </p>
           )}
 
           {contract.storedContractId && (

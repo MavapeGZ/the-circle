@@ -11,6 +11,8 @@ import Home from './Home';
 import SignContract from './SignContract';
 import MyContracts from './MyContracts';
 import ContractDetail from './ContractDetail';
+import Checkout from './Checkout';
+import PaymentReceipt from './PaymentReceipt';
 import Settings from './Settings';
 
 function App() {
@@ -69,6 +71,9 @@ function App() {
           <Route path="/catalog/edit/:id" element={<EditArticle />} />
           <Route path="/contracts" element={<MyContracts />} />
           <Route path="/contracts/:contractId/sign" element={<SignContract />} />
+          <Route path="/contracts/:contractId/checkout" element={<Checkout />} />
+          <Route path="/contracts/:contractId/payments/:paymentId/receipt" element={<PaymentReceipt />} />
+          <Route path="/contracts/:contractId/payments/:paymentId/failure" element={<PaymentReceipt />} />
           <Route path="/contracts/:contractId" element={<ContractDetail />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>

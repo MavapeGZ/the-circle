@@ -2,6 +2,7 @@
 const CONTRACT_STATUS_LABELS = {
   DRAFT: 'Draft',
   PENDING_SIGNATURES: 'Pending signature',
+  AWAITING_COUNTERPARTY: 'Awaiting counterparty',
   ACTIVE: 'Signed',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',

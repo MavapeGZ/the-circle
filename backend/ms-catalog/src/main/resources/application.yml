@@ -1,5 +1,8 @@
 server:
   port: 8082
+  error:
+    include-message: always
+    include-stacktrace: always
 
 spring:
   application:
@@ -14,3 +17,11 @@ jwt:
 catalog:
   internal:
     api-key: ${CATALOG_INTERNAL_KEY:}
+
+# Outbound call into ms-users to verify sellers have a payout IBAN before
+# they can publish a paid (SALE/RENT) article.
+services:
+  users:
+    base-url: ${USERS_BASE_URL:http://localhost:8081}
+    internal:
+      api-key: ${USERS_INTERNAL_KEY:}

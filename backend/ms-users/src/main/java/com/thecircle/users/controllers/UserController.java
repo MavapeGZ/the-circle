@@ -2,6 +2,8 @@ package com.thecircle.users.controllers;
 
 import com.thecircle.users.dto.KycResponse;
 import com.thecircle.users.dto.ReviewDto;
+import com.thecircle.users.service.IbanCipher;
+import com.thecircle.users.service.IbanValidator;
 import com.thecircle.users.service.KycService;
 import com.thecircle.users.repository.UserRepository;
 import com.thecircle.users.model.User;
@@ -35,6 +37,7 @@ public class UserController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final DeviceCookieService deviceCookieService;
+    private final IbanCipher ibanCipher;
 
     @GetMapping("/health")
     public String health() {
@@ -50,8 +53,36 @@ public class UserController {
                 user.getEmail(),
                 user.getAddress(),
                 user.getIdNumber(),
+                user.getIbanLast4(),
                 user.isMarketingEmailsOptIn(),
                 user.isSystemEmailsOptIn()));
+    }
+
+    /**
+     * Sets or replaces the user's payout IBAN. The plaintext IBAN is encrypted
+     * at rest and never returned; only the last 4 digits are exposed for the
+     * UI. Sending an empty/blank value clears the IBAN.
+     */
+    @PatchMapping("/me/iban")
+    public ResponseEntity<IbanResponse> updateIban(@RequestBody UpdateIbanRequest request,
+                                                   Authentication authentication) {
+        User user = getAuthenticatedUser(authentication);
+        String raw = request.iban();
+        if (raw == null || raw.trim().isEmpty()) {
+            user.setIbanEncrypted(null);
+            user.setIbanLast4(null);
+            userRepository.save(user);
+            return ResponseEntity.ok(new IbanResponse(null));
+        }
+        String normalized = IbanValidator.normalize(raw);
+        if (!IbanValidator.isValid(normalized)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Invalid IBAN format.");
+        }
+        user.setIbanEncrypted(ibanCipher.encrypt(normalized));
+        user.setIbanLast4(IbanValidator.last4(normalized));
+        userRepository.save(user);
+        return ResponseEntity.ok(new IbanResponse(user.getIbanLast4()));
     }
 
     @PatchMapping("/me")
@@ -80,6 +111,7 @@ public class UserController {
                 user.getEmail(),
                 user.getAddress(),
                 user.getIdNumber(),
+                user.getIbanLast4(),
                 user.isMarketingEmailsOptIn(),
                 user.isSystemEmailsOptIn()));
     }
@@ -298,11 +330,17 @@ public class UserController {
     }
 
     public record SettingsResponse(String firstName, String lastName, String email, String address, String idNumber,
-            boolean marketingEmailsOptIn, boolean systemEmailsOptIn) {
+            String ibanLast4, boolean marketingEmailsOptIn, boolean systemEmailsOptIn) {
     }
 
     public record UpdateProfileRequest(String firstName, String lastName, String address, String idNumber,
             Boolean marketingEmailsOptIn, Boolean systemEmailsOptIn) {
+    }
+
+    public record UpdateIbanRequest(String iban) {
+    }
+
+    public record IbanResponse(String ibanLast4) {
     }
 
     public record ChangePasswordRequest(String currentPassword, String newPassword) {

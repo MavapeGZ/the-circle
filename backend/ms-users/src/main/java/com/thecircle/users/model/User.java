@@ -43,6 +43,16 @@ public class User implements UserDetails {
     @Column(name = "id_number", length = 50)
     private String idNumber;
 
+    // Encrypted IBAN of the user's payout account (AES-GCM, key derived from
+    // JWT_SECRET via HKDF). Only sellers need it; receivers paying for symbolic
+    // transactions never touch a stored IBAN. The plaintext IBAN is never
+    // exposed via any API — only iban_last4 is returned for display.
+    @Column(name = "iban_encrypted", columnDefinition = "text")
+    private String ibanEncrypted;
+
+    @Column(name = "iban_last4", length = 4)
+    private String ibanLast4;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "kyc_status", nullable = false)
