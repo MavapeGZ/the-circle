@@ -3,6 +3,7 @@ import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import Login from './Login';
 import Register from './Register';
+import ForgotPassword from './ForgotPassword';
 import Catalog from './Catalog';
 import CreateArticle from './CreateArticle';
 import ArticleDetail from './ArticleDetail';
@@ -66,6 +67,7 @@ function App() {
           <Route path="/catalog" element={<Catalog />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/create" element={<CreateArticle />} />
           <Route path="/catalog/:id" element={<ArticleDetail />} />
           <Route path="/catalog/edit/:id" element={<EditArticle />} />

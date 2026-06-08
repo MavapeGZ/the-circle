@@ -36,12 +36,16 @@ public class AuthService {
     private final AuthOtpService otpService;
     private final NotificationsClient notificationsClient;
     private final DeviceCookieService deviceCookieService;
+    private final PasswordResetTokenStore passwordResetTokenStore;
 
     @Value("${signature.mail.verify-subject:The Circle - Verify your account}")
     private String verifySubject;
 
     @Value("${signature.mail.login-subject:The Circle - Sign-in code}")
     private String loginSubject;
+
+    @Value("${signature.mail.password-reset-subject:The Circle - Password reset code}")
+    private String passwordResetSubject;
 
     @Transactional
     public AuthenticationResponse register(RegisterRequest request) {
@@ -164,6 +168,94 @@ public class AuthService {
         public LoginOtpResult(String token, String deviceToken) {
             this.token = token;
             this.deviceToken = deviceToken;
+        }
+    }
+
+    /**
+     * Starts a password-reset flow. To avoid leaking which addresses are
+     * registered, the response shape is the same whether the email exists or
+     * not: a {@code sessionId} is always returned. Unknown emails get a random
+     * UUID that has no backing OTP, so any later verify call against it fails
+     * exactly like a wrong code.
+     */
+    public ForgotPasswordResult requestPasswordReset(String email) {
+        if (email == null || email.isBlank()) {
+            return new ForgotPasswordResult(java.util.UUID.randomUUID().toString());
+        }
+        return repository.findByEmail(email.trim())
+                .map(user -> {
+                    AuthOtpService.Issued issued = otpService.issue(user.getId(), user.getEmail(),
+                            AuthOtpService.Purpose.PASSWORD_RESET);
+                    try {
+                        sendOtpEmail(user, issued, passwordResetSubject, "password-reset");
+                    } catch (NotificationsClient.DeliveryException e) {
+                        // Don't surface the delivery failure — it would let a caller distinguish
+                        // a real email (mail bounce → error) from an unknown one (silent 200).
+                        // We logged it inside sendOtpEmail already.
+                        log.warn("Password reset email could not be sent to {}", user.getEmail());
+                    }
+                    return new ForgotPasswordResult(issued.sessionId);
+                })
+                // Unknown email: fake session so the response timing/shape is identical.
+                .orElseGet(() -> new ForgotPasswordResult(java.util.UUID.randomUUID().toString()));
+    }
+
+    /**
+     * Validates the OTP and returns a short-lived single-use reset token. The
+     * UI shows the new-password form only after this succeeds, so the user
+     * never sees the password fields until they have proved ownership of the
+     * email. The OTP itself is consumed here and cannot be replayed.
+     */
+    public VerifyResetOtpResult verifyResetOtp(String sessionId, String otp) {
+        AuthOtpService.OtpSession session = otpService.consume(sessionId, otp,
+                AuthOtpService.Purpose.PASSWORD_RESET);
+        if (session == null) {
+            throw new IllegalArgumentException(
+                    "The reset code does not match or has expired. Please request a new one and try again.");
+        }
+        String resetToken = passwordResetTokenStore.issue(session.userId);
+        return new VerifyResetOtpResult(resetToken);
+    }
+
+    /**
+     * Completes the password-reset flow. Consumes the short-lived reset token
+     * (issued by {@link #verifyResetOtp}), BCrypt-hashes the new password, and
+     * revokes all trusted-device cookies so the change kicks any cached
+     * session off the user's other devices.
+     */
+    @Transactional
+    public void resetPassword(String resetToken, String newPassword) {
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new IllegalArgumentException(
+                    "New password must be at least 6 characters long.");
+        }
+        Long userId = passwordResetTokenStore.consume(resetToken);
+        if (userId == null) {
+            throw new IllegalArgumentException(
+                    "Your reset session has expired. Please start the password reset again.");
+        }
+        User user = repository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("User not found for password reset token"));
+        user.setPassword(passwordEncoder.encode(newPassword));
+        repository.save(user);
+        deviceCookieService.revokeAllDevices(user.getId());
+        log.info("Password reset completed for user {} ({}); all trusted devices revoked",
+                user.getId(), user.getEmail());
+    }
+
+    public static final class ForgotPasswordResult {
+        public final String sessionId;
+
+        public ForgotPasswordResult(String sessionId) {
+            this.sessionId = sessionId;
+        }
+    }
+
+    public static final class VerifyResetOtpResult {
+        public final String resetToken;
+
+        public VerifyResetOtpResult(String resetToken) {
+            this.resetToken = resetToken;
         }
     }
 }
