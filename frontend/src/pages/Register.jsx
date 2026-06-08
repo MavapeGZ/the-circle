@@ -22,7 +22,7 @@ function Register() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', password: '', address: '', idNumber: '' });
   const [sessionId, setSessionId] = useState('');
   const [otp, setOtp] = useState('');
   const [userId, setUserId] = useState(null);
@@ -95,6 +95,8 @@ function Register() {
             <Field label="First Name" name="firstName" value={formData.firstName} onChange={onAccountChange} />
             <Field label="Last Name" name="lastName" value={formData.lastName} onChange={onAccountChange} />
             <Field label="Email" name="email" type="email" value={formData.email} onChange={onAccountChange} />
+            <Field label="ID Number" name="idNumber" value={formData.idNumber} onChange={onAccountChange} />
+            <Field label="Address" name="address" value={formData.address} onChange={onAccountChange} />
             <Field label="Password" name="password" type="password" value={formData.password} onChange={onAccountChange} minLength={8} />
             <SubmitButton disabled={submitting}>{submitting ? 'Sending code…' : 'Continue'}</SubmitButton>
             <p className="text-center text-gray-600 text-sm">

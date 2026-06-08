@@ -7,7 +7,10 @@ import Catalog from './Catalog';
 import CreateArticle from './CreateArticle';
 import ArticleDetail from './ArticleDetail';
 import EditArticle from './EditArticle';
-import Home from './Home'; 
+import Home from './Home';
+import SignContract from './SignContract';
+import MyContracts from './MyContracts';
+import ContractDetail from './ContractDetail';
 import Settings from './Settings';
 
 function App() {
@@ -24,6 +27,9 @@ function App() {
           <Link to="/catalog" className="font-bold hover:text-blue-200 transition-colors">Catalog</Link>
           {user && (
             <Link to="/create" className="font-bold hover:text-blue-200 transition-colors">Publish</Link>
+          )}
+          {user && (
+            <Link to="/contracts" className="font-bold hover:text-blue-200 transition-colors">Contracts</Link>
           )}
         </div>
 
@@ -61,6 +67,9 @@ function App() {
           <Route path="/create" element={<CreateArticle />} />
           <Route path="/catalog/:id" element={<ArticleDetail />} />
           <Route path="/catalog/edit/:id" element={<EditArticle />} />
+          <Route path="/contracts" element={<MyContracts />} />
+          <Route path="/contracts/:contractId/sign" element={<SignContract />} />
+          <Route path="/contracts/:contractId" element={<ContractDetail />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </main>

@@ -35,6 +35,14 @@ public class User implements UserDetails {
     @Column(nullable = false, length = 100)
     private String lastName;
 
+    // Postal address and government ID number. Collected at registration and
+    // editable from settings; required on signed contract PDFs (eIDAS identity).
+    @Column(length = 255)
+    private String address;
+
+    @Column(name = "id_number", length = 50)
+    private String idNumber;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "kyc_status", nullable = false)

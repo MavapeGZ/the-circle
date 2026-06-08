@@ -36,6 +36,9 @@ class SignatureWorkflowServiceTest {
     private ContractStorageService storageService;
 
     @Mock
+    private ContractService contractService;
+
+    @Mock
     private OtpDeliveryChannel otpDelivery;
 
     @InjectMocks

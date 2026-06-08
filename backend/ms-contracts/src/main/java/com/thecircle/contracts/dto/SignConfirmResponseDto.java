@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 public class SignConfirmResponseDto {
 
     private boolean success;
+    private boolean fullySigned;
     private String storedContractId;
     private String downloadUrl;
     private LocalDateTime signedAt;
@@ -12,6 +13,8 @@ public class SignConfirmResponseDto {
 
     public boolean isSuccess() { return success; }
     public void setSuccess(boolean success) { this.success = success; }
+    public boolean isFullySigned() { return fullySigned; }
+    public void setFullySigned(boolean fullySigned) { this.fullySigned = fullySigned; }
     public String getStoredContractId() { return storedContractId; }
     public void setStoredContractId(String storedContractId) { this.storedContractId = storedContractId; }
     public String getDownloadUrl() { return downloadUrl; }

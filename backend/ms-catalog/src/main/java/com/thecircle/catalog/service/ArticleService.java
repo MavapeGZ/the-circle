@@ -1,16 +1,20 @@
 package com.thecircle.catalog.service;
 
 import com.thecircle.catalog.model.Article;
+import com.thecircle.catalog.model.ArticleStatus;
 import com.thecircle.catalog.model.ProductType;
 import com.thecircle.catalog.repository.ArticleRepository;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -23,12 +27,36 @@ public class ArticleService {
     public Article createArticle(Article article) {
         article.setId(null);
         article.setCreatedAt(java.time.Instant.now());
+        article.setStatus(ArticleStatus.AVAILABLE);
         validateAndAdjustPrice(article);
         return repository.save(article);
     }
 
+    // Page size used to drain findAllNotSold below. Bounds per-request memory and
+    // stays under OpenSearch's default 10k result window per page.
+    private static final int SCAN_PAGE_SIZE = 500;
+
     public Iterable<Article> getAllArticles() {
-        return repository.findAll();
+        // Hide SOLD articles from browsing; keep everything else (incl. legacy nulls).
+        // SOLD is excluded server-side (term query) instead of pulling the whole index
+        // into memory and filtering here. Pages are drained so the result stays complete.
+        List<Article> visible = new ArrayList<>();
+        int page = 0;
+        Page<Article> current;
+        do {
+            current = repository.findAllNotSold(PageRequest.of(page++, SCAN_PAGE_SIZE));
+            visible.addAll(current.getContent());
+        } while (current.hasNext());
+        return visible;
+    }
+
+    /** Sets the availability status. Used by ms-contracts as contracts progress. */
+    public Article updateStatus(String id, ArticleStatus status) {
+        return repository.findById(id).map(a -> {
+            a.setStatus(status);
+            return repository.save(a);
+        }).orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Article not found with ID: " + id));
     }
 
     public Optional<Article> getArticleById(String id) {
@@ -88,11 +116,11 @@ public class ArticleService {
         boolean hasQuery = query != null && !query.trim().isEmpty();
 
         if (!hasQuery && type == null) {
-            // Case 1: Initial empty search, return all articles with pagination
-            return repository.findAll(pageable);
+            // Case 1: Initial empty search, return all non-sold articles
+            return repository.findAllNotSold(pageable);
         } else if (!hasQuery) {
             // Case 2: Filter by type only
-            return repository.findByProductType(type, pageable);
+            return repository.findByProductTypeNotSold(type, pageable);
         } else if (type == null) {
             // Case 3: Only text in search, no type filter (normal multi-match search)
             return repository.findByFuzzySearch(query, pageable);

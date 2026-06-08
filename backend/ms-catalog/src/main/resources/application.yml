@@ -8,3 +8,9 @@ spring:
     uris: http://127.0.0.1:9200
 jwt:
   secret: ${JWT_SECRET}
+
+# Shared key guarding service-to-service endpoints under /internal/**.
+# Blank disables the guard (local dev). Set CATALOG_INTERNAL_KEY in shared envs.
+catalog:
+  internal:
+    api-key: ${CATALOG_INTERNAL_KEY:}
