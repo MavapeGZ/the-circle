@@ -1,5 +1,6 @@
 package com.thecircle.catalog.controllers;
 
+import com.thecircle.catalog.client.UsersClient;
 import com.thecircle.catalog.model.Article;
 import com.thecircle.catalog.model.ProductType;
 import com.thecircle.catalog.service.ArticleService;
@@ -26,6 +27,7 @@ import javax.crypto.SecretKey;
 public class ArticleController {
 
     private final ArticleService service;
+    private final UsersClient usersClient;
 
     @Value("${jwt.secret}")
     private String secretKey;
@@ -59,6 +61,24 @@ public class ArticleController {
                             "Invalid price: Donations and demands must be completely free (price = 0.0).");
                 }
                 article.setPrice(0.0); // Force price to 0 for security and data integrity reasons
+            }
+
+            // Paid product types (SALE / RENT) cannot be published until the seller has
+            // a payout IBAN on file: the symbolic payment flow needs somewhere to
+            // release funds to, and we want the user to fix this before they spend time
+            // filling out the listing. 422 + actionable message tells the frontend
+            // exactly what is missing so it can redirect to settings.
+            if (article.getProductType() == ProductType.SYMBOLIC_SALE
+                    || article.getProductType() == ProductType.SYMBOLIC_RENTAL) {
+                UsersClient.PayoutAccount payout = usersClient.getPayoutAccount(userId);
+                if (payout == null) {
+                    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                            "Could not verify your payout account right now. Please try again in a moment.");
+                }
+                if (!payout.hasIban()) {
+                    throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                            "A payout IBAN is required to publish paid items. Please add one in Settings → Payments before publishing.");
+                }
             }
 
             article.setAuthorId(userId);

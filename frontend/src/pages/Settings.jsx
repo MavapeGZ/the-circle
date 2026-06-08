@@ -1,13 +1,17 @@
 import { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 
 function Settings() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useContext(AuthContext);
 
-  const [activeTab, setActiveTab] = useState('profile');
+  const initialTab = location.state?.tab && ['profile', 'security', 'payments', 'notifications', 'account'].includes(location.state.tab)
+    ? location.state.tab
+    : 'profile';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ text: '', type: '' });
 
@@ -17,12 +21,23 @@ function Settings() {
     email: '',
     address: '',
     idNumber: '',
+    ibanLast4: null,
     marketingEmailsOptIn: true,
     systemEmailsOptIn: true
   });
 
   const [passwords, setPasswords] = useState({ current: '', new: '' });
   const [devices, setDevices] = useState([]);
+  const [ibanInput, setIbanInput] = useState('');
+
+  // Mirror the card-number UX: strip non-alphanumerics, uppercase, regroup in 4s.
+  // IBANs are at most 34 chars so the cap leaves room for the spaces.
+  const formatIban = (raw) => (raw || '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toUpperCase()
+    .slice(0, 34)
+    .replace(/(.{4})/g, '$1 ')
+    .trim();
 
   useEffect(() => {
     fetchSettings();
@@ -98,6 +113,18 @@ function Settings() {
     }
   };
 
+  const handleIbanUpdate = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await api.patch('/users/me/iban', { iban: ibanInput });
+      setSettings({ ...settings, ibanLast4: res.data.ibanLast4 });
+      setIbanInput('');
+      showMessage(res.data.ibanLast4 ? 'Payout IBAN saved.' : 'Payout IBAN cleared.');
+    } catch (err) {
+      showMessage(err.response?.data?.message || 'Invalid IBAN. Please double-check the digits.', 'error');
+    }
+  };
+
   const handleRevokeDevice = async (deviceId) => {
     try {
       await api.delete(`/users/me/devices/${deviceId}`);
@@ -139,7 +166,7 @@ function Settings() {
         
         {/* TABS SIDEBAR */}
         <div className="w-full md:w-64 flex flex-col gap-2">
-          {['profile', 'security', 'notifications', 'account'].map((tab) => (
+          {['profile', 'security', 'payments', 'notifications', 'account'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -273,6 +300,48 @@ function Settings() {
                 )}
               </div>
             </div>
+          )}
+
+          {/* PAYMENTS TAB */}
+          {activeTab === 'payments' && (
+            <form onSubmit={handleIbanUpdate} className="space-y-6">
+              <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">Payout Account</h2>
+              <p className="text-sm text-gray-600">
+                When someone pays for one of your listings, funds are released to this IBAN once both
+                parties have signed. Only the last 4 digits are shown after saving; the full IBAN is
+                stored encrypted.
+              </p>
+              {settings.ibanLast4 ? (
+                <div className="p-4 bg-green-50 border border-green-100 rounded-lg flex justify-between items-center">
+                  <div>
+                    <p className="text-sm text-gray-500">Current payout IBAN</p>
+                    <p className="font-mono text-lg text-gray-800">•••• {settings.ibanLast4}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                  No payout IBAN on file. You need one before publishing paid items (sales or rentals).
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">
+                  {settings.ibanLast4 ? 'Replace IBAN' : 'Add IBAN'}
+                </label>
+                <input
+                  type="text"
+                  value={ibanInput}
+                  onChange={(e) => setIbanInput(formatIban(e.target.value))}
+                  placeholder="ES00 0000 0000 0000 0000 0000"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 font-mono tracking-wider"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Spaces are ignored. Leave empty and submit to remove the saved IBAN.
+                </p>
+              </div>
+              <button type="submit" className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition">
+                {settings.ibanLast4 ? 'Update IBAN' : 'Save IBAN'}
+              </button>
+            </form>
           )}
 
           {/* NOTIFICATIONS TAB */}

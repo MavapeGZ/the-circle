@@ -295,6 +295,27 @@ function SignContract() {
                 </div>
               )}
 
+              {/* Buyer + paid contract → prompt for checkout next. */}
+              {role === 'RECEIVER' && contract && (
+                ((contract.type === 'SALE' && Number(contract.price) > 0) ||
+                 (contract.type === 'RENT' && Number(contract.guaranteeAmount) > 0))
+              ) && (
+                <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 text-sm text-yellow-900 space-y-3">
+                  <p className="font-bold">
+                    {contract.type === 'RENT'
+                      ? 'Next step: lock the security deposit.'
+                      : 'Next step: complete the payment.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/contracts/${contractId}/checkout`)}
+                    className="bg-blue-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Go to checkout
+                  </button>
+                </div>
+              )}
+
               <div className="bg-green-50 p-4 rounded-xl border border-green-100 text-sm text-gray-700 space-y-1">
                 <p><span className="font-bold">Document:</span> {result.storedContractId}</p>
                 {result.signedAt && (

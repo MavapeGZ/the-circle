@@ -34,6 +34,30 @@ public class CatalogClient {
         this.internalApiKey = internalApiKey;
     }
 
+    /** Projection of the catalog article fields ms-contracts actually needs. */
+    public record ArticleSnapshot(String id, Long authorId, String productType,
+                                  Double price, Double guaranteeAmount) {}
+
+    /**
+     * Reads an article from the catalog. Returns {@code null} when the id is
+     * blank or the lookup fails, so callers can decide whether absence is fatal
+     * (contract creation) or recoverable.
+     */
+    public ArticleSnapshot getArticle(String itemId) {
+        if (itemId == null || itemId.isBlank()) return null;
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            if (internalApiKey != null && !internalApiKey.isBlank()) {
+                headers.set(INTERNAL_KEY_HEADER, internalApiKey);
+            }
+            return restTemplate.exchange(baseUrl + "/internal/catalog/articles/{id}", HttpMethod.GET,
+                    new HttpEntity<>(headers), ArticleSnapshot.class, itemId).getBody();
+        } catch (RuntimeException ex) {
+            log.warn("Could not fetch article {} from ms-catalog: {}", itemId, ex.getMessage());
+            return null;
+        }
+    }
+
     /**
      * Sets an article's availability. Best-effort: logs and swallows failures.
      * Returns {@code true} on success so callers can escalate logging for critical

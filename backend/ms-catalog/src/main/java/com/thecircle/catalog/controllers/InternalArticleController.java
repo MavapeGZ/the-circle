@@ -69,6 +69,20 @@ public class InternalArticleController {
         return ResponseEntity.ok(service.updateStatus(id, status));
     }
 
+    /**
+     * Service-to-service read of the full article (incl. guaranteeAmount and
+     * authorId). Used by ms-contracts at contract creation and payment time so
+     * the canonical owner-set rental deposit is the source of truth instead of
+     * trusting receiver-provided input.
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<Article> getById(@PathVariable String id, HttpServletRequest request) {
+        assertInternalCaller(request);
+        return service.getArticleById(id)
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Article not found"));
+    }
+
     private void assertInternalCaller(HttpServletRequest request) {
         if (internalApiKey == null || internalApiKey.isBlank()) {
             return;

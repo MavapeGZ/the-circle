@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 // Product types that have no price (free / priority). DEMAND is priority, so no price selection.
 const PRICELESS_TYPES = ['DONATION', 'DEMAND'];
+const GUARANTEE_MAX = 20.0;
 
 function CreateArticle() {
   const navigate = useNavigate();
@@ -12,7 +13,8 @@ function CreateArticle() {
     title: '',
     description: '',
     productType: 'SYMBOLIC_SALE', // Default to SYMBOLIC_SALE, but can be changed to DONATION, SYMBOLIC_RENTAL, or DEMAND
-    price: 0
+    price: 0,
+    guaranteeAmount: ''
   });
 
   const [imagePreview, setImagePreview] = useState(null);
@@ -20,6 +22,7 @@ function CreateArticle() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [missingIban, setMissingIban] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -29,7 +32,8 @@ function CreateArticle() {
       setFormData(prev => ({
         ...prev,
         productType: value,
-        price: isPriceless ? 0 : prev.price
+        price: isPriceless ? 0 : prev.price,
+        guaranteeAmount: value === 'SYMBOLIC_RENTAL' ? prev.guaranteeAmount : ''
       }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
@@ -59,20 +63,40 @@ function CreateArticle() {
     setError('');
 
     try {
+      const isRental = formData.productType === 'SYMBOLIC_RENTAL';
+      let guaranteeAmount = null;
+      if (isRental) {
+        guaranteeAmount = parseFloat(formData.guaranteeAmount);
+        if (Number.isNaN(guaranteeAmount) || guaranteeAmount <= 0 || guaranteeAmount > GUARANTEE_MAX) {
+          setError(`Security deposit must be between 0.01€ and ${GUARANTEE_MAX}€.`);
+          setLoading(false);
+          return;
+        }
+      }
       const payload = {
         title: formData.title,
         description: formData.description,
         productType: formData.productType,
         category: 'General',
         imageBase64: imageBase64,
-        price: PRICELESS_TYPES.includes(formData.productType) ? 0.0 : parseFloat(formData.price)
+        price: PRICELESS_TYPES.includes(formData.productType) ? 0.0 : parseFloat(formData.price),
+        guaranteeAmount
       };
 
       await api.post('/catalog/articles', payload);
       navigate('/catalog');
     } catch (err) {
       console.error('Error uploading article:', err);
-      setError('Failed to publish the article. Please check your connection and try again.');
+      const status = err?.response?.status;
+      const backendMsg = err?.response?.data?.message || err?.response?.data?.error;
+      if (status === 422) {
+        setMissingIban(true);
+        setError(backendMsg || 'Missing payout information. Please add an IBAN in Settings before publishing paid items.');
+      } else if (status === 400 && backendMsg) {
+        setError(backendMsg);
+      } else {
+        setError('Failed to publish the article. Please check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -86,7 +110,16 @@ function CreateArticle() {
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200" role="alert">
-          {error}
+          <p>{error}</p>
+          {missingIban && (
+            <Link
+              to="/settings"
+              state={{ tab: 'payments' }}
+              className="inline-block mt-3 text-sm font-bold underline hover:no-underline"
+            >
+              Go to Settings → Payments
+            </Link>
+          )}
         </div>
       )}
 
@@ -163,6 +196,31 @@ function CreateArticle() {
               value={formData.price}
               onChange={handleChange}
             />
+          </div>
+        )}
+
+        {/* SECURITY DEPOSIT (rentals only) */}
+        {formData.productType === 'SYMBOLIC_RENTAL' && (
+          <div>
+            <label htmlFor="guaranteeAmount" className="block text-sm font-semibold text-gray-700 mb-1">
+              Security deposit (€) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              id="guaranteeAmount"
+              name="guaranteeAmount"
+              min="0.01"
+              max={GUARANTEE_MAX}
+              step="0.01"
+              required
+              placeholder="e.g. 10.00"
+              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              value={formData.guaranteeAmount}
+              onChange={handleChange}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Refundable deposit held during the rental. Capped at {GUARANTEE_MAX}€.
+            </p>
           </div>
         )}
 

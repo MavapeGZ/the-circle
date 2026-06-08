@@ -73,6 +73,23 @@ public class InternalUserController {
                 u.getId(), u.getEmail(), u.getFirstName(), u.getLastName(), u.getAddress(), u.getIdNumber()));
     }
 
+    /**
+     * Service-to-service IBAN presence check. Returns whether the user has a
+     * payout IBAN on file plus the masked last 4 digits for receipts. Used by
+     * ms-catalog at publish time and ms-contracts at payout release time. The
+     * plaintext IBAN never leaves this service.
+     */
+    @GetMapping("/{userId}/payout-account")
+    public ResponseEntity<PayoutAccountResponse> payoutAccount(@PathVariable Long userId, HttpServletRequest request) {
+        assertInternalCaller(request);
+        User u = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        boolean hasIban = u.getIbanEncrypted() != null && !u.getIbanEncrypted().isBlank();
+        return ResponseEntity.ok(new PayoutAccountResponse(hasIban, u.getIbanLast4()));
+    }
+
+    public record PayoutAccountResponse(boolean hasIban, String ibanLast4) {}
+
     private void assertInternalCaller(HttpServletRequest request) {
         // Blank key disables the guard (local dev), mirroring ms-notifications.
         if (internalApiKey == null || internalApiKey.isBlank()) {

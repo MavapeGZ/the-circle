@@ -23,12 +23,14 @@ public class ArticleService {
 
     private final ArticleRepository repository;
     private final double SYMBOLIC_LIMIT_PRICE = 10.0;
+    private static final double GUARANTEE_LIMIT = 20.0;
 
     public Article createArticle(Article article) {
         article.setId(null);
         article.setCreatedAt(java.time.Instant.now());
         article.setStatus(ArticleStatus.AVAILABLE);
         validateAndAdjustPrice(article);
+        validateGuaranteeAmount(article);
         return repository.save(article);
     }
 
@@ -70,11 +72,13 @@ public class ArticleService {
             existing.setPrice(updatedData.getPrice());
             existing.setCategory(updatedData.getCategory());
             existing.setProductType(updatedData.getProductType());
+            existing.setGuaranteeAmount(updatedData.getGuaranteeAmount());
             if (updatedData.getImageBase64() != null) {
                 existing.setImageBase64(updatedData.getImageBase64());
             }
             // Enforce price rules on update too (e.g. donations/demands must stay free)
             validateAndAdjustPrice(existing);
+            validateGuaranteeAmount(existing);
             // Do not update creation date or author ID as they should remain unchanged to
             // preserve data integrity
             return repository.save(existing);
@@ -106,6 +110,29 @@ public class ArticleService {
 
         if (article.getPrice() > SYMBOLIC_LIMIT_PRICE) {
             article.setPrice(SYMBOLIC_LIMIT_PRICE);
+        }
+    }
+
+    /**
+     * Enforces the security deposit contract: required and 0 < amount ≤ 20€ for
+     * rentals; forbidden for any other product type. The cap is hardcoded (not
+     * configurable) so it matches the legal/UX promise made to users at listing
+     * time and cannot drift via property changes after items are published.
+     */
+    private void validateGuaranteeAmount(Article article) {
+        Double amount = article.getGuaranteeAmount();
+        if (article.getProductType() == ProductType.SYMBOLIC_RENTAL) {
+            if (amount == null || amount <= 0.0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "guaranteeAmount is required for rentals and must be greater than 0.");
+            }
+            if (amount > GUARANTEE_LIMIT) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "guaranteeAmount cannot exceed " + GUARANTEE_LIMIT + "€.");
+            }
+        } else if (amount != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "guaranteeAmount is only allowed for SYMBOLIC_RENTAL articles.");
         }
     }
 

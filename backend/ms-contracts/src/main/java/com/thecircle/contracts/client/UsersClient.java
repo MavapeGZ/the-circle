@@ -46,6 +46,24 @@ public class UsersClient {
         }
     }
 
+    public record PayoutAccount(boolean hasIban, String ibanLast4) {}
+
+    /** Returns the payout IBAN status of the seller, or {@code null} on lookup failure. */
+    public PayoutAccount getPayoutAccount(String userId) {
+        if (userId == null || userId.isBlank()) return null;
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            if (internalApiKey != null && !internalApiKey.isBlank()) {
+                headers.set(INTERNAL_KEY_HEADER, internalApiKey);
+            }
+            return restTemplate.exchange(baseUrl + "/internal/users/{id}/payout-account", HttpMethod.GET,
+                    new HttpEntity<>(headers), PayoutAccount.class, userId).getBody();
+        } catch (RuntimeException ex) {
+            log.warn("Could not fetch payout account for user {}: {}", userId, ex.getMessage());
+            return null;
+        }
+    }
+
     /** Returns the user identity, or {@code null} if the id is blank or the lookup fails. */
     public UserProfile getProfile(String userId) {
         if (userId == null || userId.isBlank()) return null;

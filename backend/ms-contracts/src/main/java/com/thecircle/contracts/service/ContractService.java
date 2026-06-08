@@ -21,6 +21,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -37,15 +38,18 @@ public class ContractService {
     private final ContractRepository repository;
     private final UsersClient usersClient;
     private final CatalogClient catalogClient;
+    private final PaymentService paymentService;
 
     /** TTL (hours) after which an unsigned PENDING contract is purged. */
     @Value("${contracts.pending-ttl-hours:72}")
     private long pendingTtlHours;
 
-    public ContractService(ContractRepository repository, UsersClient usersClient, CatalogClient catalogClient) {
+    public ContractService(ContractRepository repository, UsersClient usersClient,
+                           CatalogClient catalogClient, PaymentService paymentService) {
         this.repository = repository;
         this.usersClient = usersClient;
         this.catalogClient = catalogClient;
+        this.paymentService = paymentService;
     }
 
     @Transactional
@@ -58,7 +62,10 @@ public class ContractService {
         contract.setType(request.type());
         contract.setStatus(ContractStatus.PENDING_SIGNATURES);
         contract.setPrice(request.price());
-        contract.setGuaranteeAmount(request.guaranteeAmount());
+        // The rental deposit is owner-set at listing time (ms-catalog enforces the
+        // ≤20€ cap). The receiver-provided value in the request is ignored so the
+        // buyer cannot manipulate the deposit by tweaking the contract payload.
+        contract.setGuaranteeAmount(resolveGuaranteeAmount(request));
         contract.setGuaranteeStatus(GuaranteeStatus.NONE);
         contract.setConditions(request.conditions());
         contract.setReturnDate(request.returnDate());
@@ -67,6 +74,42 @@ public class ContractService {
         // opens the signing screen; backing out without signing must leave the item
         // available. Reservation happens on the first signature (see markSigned).
         return toDto(repository.save(contract));
+    }
+
+    /**
+     * SALE with a positive price, or any RENT (which always locks a deposit),
+     * needs the escrow to settle before the contract becomes ACTIVE. Donations,
+     * cessions and zero-priced sales do not.
+     */
+    private boolean requiresPayment(Contract contract) {
+        if (contract.getType() == com.thecircle.contracts.dto.ContractType.SALE) {
+            return contract.getPrice() != null && contract.getPrice().signum() > 0;
+        }
+        if (contract.getType() == com.thecircle.contracts.dto.ContractType.RENT) {
+            return contract.getGuaranteeAmount() != null && contract.getGuaranteeAmount().signum() > 0;
+        }
+        return false;
+    }
+
+    private BigDecimal resolveGuaranteeAmount(ContractCreateRequest request) {
+        if (request.type() != com.thecircle.contracts.dto.ContractType.RENT) {
+            return null;
+        }
+        CatalogClient.ArticleSnapshot article = catalogClient.getArticle(request.itemId());
+        // Fail closed: the deposit is owner-set at listing time and must come from the
+        // catalog so the receiver cannot manipulate it via the contract payload. Any
+        // ambiguity (catalog down, article gone, deposit missing on a RENT article) is
+        // surfaced as 503 so the buyer retries rather than locking in an attacker-chosen
+        // amount.
+        if (article == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Could not verify the rental deposit right now. Please try again in a moment.");
+        }
+        if (article.guaranteeAmount() == null) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "This rental item has no security deposit configured. Ask the owner to update the listing.");
+        }
+        return BigDecimal.valueOf(article.guaranteeAmount());
     }
 
     /**
@@ -127,10 +170,24 @@ public class ContractService {
         contract.setStoredContractId(storedContractId); // latest signed artifact
 
         boolean nowActive = false;
-        if (contract.getReceiverSignedAt() != null && contract.getOwnerSignedAt() != null) {
-            contract.setStatus(ContractStatus.ACTIVE);
-            contract.setSignedAt(now);
-            nowActive = true;
+        boolean bothSigned = contract.getReceiverSignedAt() != null && contract.getOwnerSignedAt() != null;
+        if (bothSigned) {
+            // For SALE/RENT with a real amount due, the escrow must clear before the
+            // contract goes ACTIVE. If the buyer hasn't paid yet, hold at
+            // AWAITING_COUNTERPARTY so the UI can prompt them to complete checkout.
+            if (requiresPayment(contract)) {
+                if (paymentService.releaseEscrowOnDualSign(contract.getId()) != null) {
+                    contract.setStatus(ContractStatus.ACTIVE);
+                    contract.setSignedAt(now);
+                    nowActive = true;
+                } else {
+                    contract.setStatus(ContractStatus.AWAITING_COUNTERPARTY);
+                }
+            } else {
+                contract.setStatus(ContractStatus.ACTIVE);
+                contract.setSignedAt(now);
+                nowActive = true;
+            }
         } else {
             contract.setStatus(ContractStatus.PENDING_SIGNATURES);
         }

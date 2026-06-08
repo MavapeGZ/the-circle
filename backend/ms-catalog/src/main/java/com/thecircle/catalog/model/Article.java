@@ -45,6 +45,13 @@ public class Article {
     @Field(type = FieldType.Double, name = "price")
     private Double price; // Symbolic amount for SELL/RENT; 0.0 for donations/demands
 
+    // Refundable security deposit set by the owner when listing a SYMBOLIC_RENTAL.
+    // Capped at 20€ (see ArticleService). Null for other product types. Held in
+    // escrow by ms-contracts during the rental and released back to the receiver
+    // on return (or claimed by the owner on damage).
+    @Field(type = FieldType.Double, name = "guarantee_amount")
+    private Double guaranteeAmount;
+
     // User ID of the author of the article. This is not a reference to a User
     // document, just a simple field to store the ID.
     @Field(type = FieldType.Long, name = "author_id")
