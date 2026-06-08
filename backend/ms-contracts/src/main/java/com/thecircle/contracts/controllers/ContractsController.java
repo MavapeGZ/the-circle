@@ -2,8 +2,10 @@ package com.thecircle.contracts.controllers;
 
 import com.thecircle.contracts.dto.ContractCreateRequest;
 import com.thecircle.contracts.dto.ContractDto;
+import com.thecircle.contracts.security.JwtAuthService;
 import com.thecircle.contracts.service.ContractPdfService;
 import com.thecircle.contracts.service.ContractService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -19,10 +21,13 @@ public class ContractsController {
 
     private final ContractService contractService;
     private final ContractPdfService pdfService;
+    private final JwtAuthService jwtAuthService;
 
-    public ContractsController(ContractService contractService, ContractPdfService pdfService) {
+    public ContractsController(ContractService contractService, ContractPdfService pdfService,
+                               JwtAuthService jwtAuthService) {
         this.contractService = contractService;
         this.pdfService = pdfService;
+        this.jwtAuthService = jwtAuthService;
     }
 
     @GetMapping("/health")
@@ -53,10 +58,18 @@ public class ContractsController {
     }
 
     @GetMapping("/{contractId}/pdf")
-    public ResponseEntity<byte[]> downloadContractPdf(@PathVariable String contractId) {
+    public ResponseEntity<byte[]> downloadContractPdf(
+            @PathVariable String contractId,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader) {
+        // PII guard: the rendered PDF embeds both parties' address + ID number, so
+        // only the contract's owner or receiver may download it.
+        String callerId = jwtAuthService.requireUserId(authHeader);
         ContractDto dto = contractService.get(contractId);
         if (dto == null) {
             return ResponseEntity.notFound().build();
+        }
+        if (!contractService.isParty(dto, callerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a party to this contract");
         }
         contractService.enrichSigners(dto, null);
         byte[] pdf;

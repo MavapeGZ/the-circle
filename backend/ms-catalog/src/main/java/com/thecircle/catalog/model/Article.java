@@ -29,6 +29,13 @@ public class Article {
 
     // Availability lifecycle. Driven by ms-contracts: RESERVED when a contract is
     // created, SOLD once both parties sign. SOLD articles are hidden from searches.
+    //
+    // MAPPING CAVEAT: the SOLD filters rely on a `term` query, which only matches
+    // when "status" is mapped as `keyword`. As with `created_at` below, createIndex
+    // = true does NOT update the mapping of an already-existing "articles" index, so
+    // on a pre-existing index "status" may be dynamically mapped as `text` and the
+    // `term` filter silently matches nothing (SOLD items keep showing). A reindex or
+    // explicit mapping migration is required on deploy to an existing index.
     @Field(type = FieldType.Keyword, name = "status")
     private ArticleStatus status;
 

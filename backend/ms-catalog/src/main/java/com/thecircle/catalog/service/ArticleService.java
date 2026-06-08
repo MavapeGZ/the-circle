@@ -7,6 +7,7 @@ import com.thecircle.catalog.repository.ArticleRepository;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -31,12 +32,21 @@ public class ArticleService {
         return repository.save(article);
     }
 
+    // Page size used to drain findAllNotSold below. Bounds per-request memory and
+    // stays under OpenSearch's default 10k result window per page.
+    private static final int SCAN_PAGE_SIZE = 500;
+
     public Iterable<Article> getAllArticles() {
         // Hide SOLD articles from browsing; keep everything else (incl. legacy nulls).
+        // SOLD is excluded server-side (term query) instead of pulling the whole index
+        // into memory and filtering here. Pages are drained so the result stays complete.
         List<Article> visible = new ArrayList<>();
-        repository.findAll().forEach(a -> {
-            if (a.getStatus() != ArticleStatus.SOLD) visible.add(a);
-        });
+        int page = 0;
+        Page<Article> current;
+        do {
+            current = repository.findAllNotSold(PageRequest.of(page++, SCAN_PAGE_SIZE));
+            visible.addAll(current.getContent());
+        } while (current.hasNext());
         return visible;
     }
 

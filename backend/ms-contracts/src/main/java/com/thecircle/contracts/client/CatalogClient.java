@@ -34,9 +34,13 @@ public class CatalogClient {
         this.internalApiKey = internalApiKey;
     }
 
-    /** Sets an article's availability. Best-effort: logs and ignores failures. */
-    public void setStatus(String itemId, String status) {
-        if (itemId == null || itemId.isBlank()) return;
+    /**
+     * Sets an article's availability. Best-effort: logs and swallows failures.
+     * Returns {@code true} on success so callers can escalate logging for critical
+     * transitions (e.g. SOLD). A blank itemId is treated as a no-op success.
+     */
+    public boolean setStatus(String itemId, String status) {
+        if (itemId == null || itemId.isBlank()) return true;
         try {
             HttpHeaders headers = new HttpHeaders();
             if (internalApiKey != null && !internalApiKey.isBlank()) {
@@ -48,8 +52,10 @@ public class CatalogClient {
                     .build(itemId)
                     .toString();
             restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(headers), Void.class);
+            return true;
         } catch (RuntimeException ex) {
             log.warn("Could not set article {} status to {} in ms-catalog: {}", itemId, status, ex.getMessage());
+            return false;
         }
     }
 }

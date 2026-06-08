@@ -10,9 +10,15 @@ import com.thecircle.contracts.dto.SignerDto;
 import com.thecircle.contracts.dto.SignerRole;
 import com.thecircle.contracts.model.Contract;
 import com.thecircle.contracts.repository.ContractRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -26,9 +32,15 @@ import java.util.UUID;
 @Service
 public class ContractService {
 
+    private static final Logger log = LoggerFactory.getLogger(ContractService.class);
+
     private final ContractRepository repository;
     private final UsersClient usersClient;
     private final CatalogClient catalogClient;
+
+    /** TTL (hours) after which an unsigned PENDING contract is purged. */
+    @Value("${contracts.pending-ttl-hours:72}")
+    private long pendingTtlHours;
 
     public ContractService(ContractRepository repository, UsersClient usersClient, CatalogClient catalogClient) {
         this.repository = repository;
@@ -57,9 +69,35 @@ public class ContractService {
         return toDto(repository.save(contract));
     }
 
+    /**
+     * Deletes stale, never-signed PENDING_SIGNATURES contracts. {@code create()}
+     * persists a contract as soon as the buyer opens the signing screen, so backing
+     * out without signing leaves an orphan row. This periodic sweep removes those
+     * once they exceed the TTL, keeping {@code getByUser} free of dead PENDING rows.
+     * Only never-signed contracts are removed (see repository note), so no RESERVED
+     * article is left dangling.
+     */
+    @Scheduled(fixedDelayString = "${contracts.pending-cleanup-interval-ms:3600000}")
+    @Transactional
+    public void purgeStalePendingContracts() {
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(pendingTtlHours);
+        List<Contract> stale = repository
+                .findByStatusAndCreatedAtBeforeAndOwnerSignedAtIsNullAndReceiverSignedAtIsNull(
+                        ContractStatus.PENDING_SIGNATURES, cutoff);
+        if (stale.isEmpty()) return;
+        repository.deleteAll(stale);
+        log.info("Purged {} stale unsigned PENDING_SIGNATURES contracts older than {}h", stale.size(), pendingTtlHours);
+    }
+
     @Transactional(readOnly = true)
     public ContractDto get(String id) {
         return repository.findById(id).map(this::toDto).orElse(null);
+    }
+
+    /** True if {@code userId} is this contract's owner or receiver. Used to authorize PDF access. */
+    public boolean isParty(ContractDto dto, String userId) {
+        if (dto == null || userId == null) return false;
+        return userId.equals(dto.getOwnerId()) || userId.equals(dto.getReceiverId());
     }
 
     @Transactional(readOnly = true)
@@ -98,8 +136,37 @@ public class ContractService {
         }
         ContractDto result = toDto(repository.save(contract));
         // First signature → reserve the item; both signatures → sold (hidden from catalog).
-        catalogClient.setStatus(contract.getItemId(), nowActive ? "SOLD" : "RESERVED");
+        // Run the catalog notification AFTER the DB transaction commits: it is a
+        // synchronous cross-service HTTP call and must not be held inside the
+        // transaction (row locks across a network round-trip). If no transaction is
+        // active (e.g. direct call in tests), fall back to calling inline.
+        String itemId = contract.getItemId();
+        String newStatus = nowActive ? "SOLD" : "RESERVED";
+        boolean sold = nowActive;
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    notifyCatalog(itemId, newStatus, sold);
+                }
+            });
+        } else {
+            notifyCatalog(itemId, newStatus, sold);
+        }
         return result;
+    }
+
+    /**
+     * Pushes the article availability to ms-catalog. Best-effort, but a failed SOLD
+     * transition is logged at error level: it leaves a fully-signed item visible and
+     * buyable in the catalog with no automatic retry, so it needs manual reconciliation.
+     */
+    private void notifyCatalog(String itemId, String status, boolean sold) {
+        boolean ok = catalogClient.setStatus(itemId, status);
+        if (!ok && sold) {
+            log.error("Article {} stays visible: failed to flip it to SOLD in ms-catalog after both "
+                    + "parties signed. Needs reconciliation (item is sold but still browsable/buyable).", itemId);
+        }
     }
 
     // --- Security deposit (guarantee) lifecycle ---

@@ -9,7 +9,9 @@ import com.thecircle.contracts.dto.SignRequestResponseDto;
 import com.thecircle.contracts.dto.SignatureVerificationDto;
 import com.thecircle.contracts.dto.SignerDto;
 import com.thecircle.contracts.model.StoredContract;
+import com.thecircle.contracts.security.JwtAuthService;
 import com.thecircle.contracts.service.ContractPdfService;
+import com.thecircle.contracts.service.ContractService;
 import com.thecircle.contracts.service.ContractStorageService;
 import com.thecircle.contracts.service.SignatureService;
 import com.thecircle.contracts.service.SignatureWorkflowService;
@@ -37,15 +39,21 @@ public class ContractController {
     private final SignatureService signatureService;
     private final ContractStorageService storageService;
     private final SignatureWorkflowService workflowService;
+    private final ContractService contractService;
+    private final JwtAuthService jwtAuthService;
 
     public ContractController(ContractPdfService pdfService,
                               SignatureService signatureService,
                               ContractStorageService storageService,
-                              SignatureWorkflowService workflowService) {
+                              SignatureWorkflowService workflowService,
+                              ContractService contractService,
+                              JwtAuthService jwtAuthService) {
         this.pdfService = pdfService;
         this.signatureService = signatureService;
         this.storageService = storageService;
         this.workflowService = workflowService;
+        this.contractService = contractService;
+        this.jwtAuthService = jwtAuthService;
     }
 
     @PostMapping(value = "/generate", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -111,9 +119,19 @@ public class ContractController {
     }
 
     @GetMapping("/download/{id}")
-    public ResponseEntity<byte[]> download(@PathVariable String id) {
+    public ResponseEntity<byte[]> download(
+            @PathVariable String id,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader) {
+        // PII guard: the stored PDF embeds both parties' address + ID number. Verify
+        // the caller and ensure they are a party to the linked contract. Fail closed
+        // if the stored artifact cannot be tied back to a contract we can authorize.
+        String callerId = jwtAuthService.requireUserId(authHeader);
         StoredContract sc = storageService.get(id);
         if (sc == null) return ResponseEntity.notFound().build();
+        ContractDto contract = sc.getContractId() != null ? contractService.get(sc.getContractId()) : null;
+        if (contract == null || !contractService.isParty(contract, callerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to download this contract");
+        }
         return pdfResponse(sc);
     }
 
