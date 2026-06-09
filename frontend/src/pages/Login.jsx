@@ -119,6 +119,9 @@ function Login() {
               className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition disabled:opacity-60">
               {submitting ? 'Signing in…' : 'Sign In'}
             </button>
+            <p className="text-center text-sm text-gray-600">
+              <Link to="/forgot-password" className="text-blue-500 hover:underline">Forgot your password?</Link>
+            </p>
             <p className="mt-2 text-center text-gray-600">
               Don't have an account? <Link to="/register" className="text-blue-500 hover:underline">Sign Up</Link>
             </p>

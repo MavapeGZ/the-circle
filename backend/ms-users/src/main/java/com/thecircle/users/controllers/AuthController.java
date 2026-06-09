@@ -2,14 +2,18 @@ package com.thecircle.users.controllers;
 
 import com.thecircle.users.dto.AuthenticationRequest;
 import com.thecircle.users.dto.AuthenticationResponse;
+import com.thecircle.users.dto.ForgotPasswordRequest;
 import com.thecircle.users.dto.RegisterRequest;
+import com.thecircle.users.dto.ResetPasswordRequest;
 import com.thecircle.users.dto.VerifyOtpRequest;
 import com.thecircle.users.service.AuthService;
 import com.thecircle.users.service.DeviceCookieService;
 import com.thecircle.users.service.NotificationsClient;
+import com.thecircle.users.service.PasswordResetRateLimiter;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import com.thecircle.users.service.AccountNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,9 +33,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService service;
+    private final PasswordResetRateLimiter passwordResetRateLimiter;
 
     @Value("${auth.device.cookie.max-age-days:90}")
     private int deviceCookieMaxAgeDays;
+
+    /**
+     * Whether to trust the {@code X-Forwarded-For} header when resolving the
+     * client IP for rate-limit bookkeeping. Set to {@code true} only when a
+     * trusted reverse proxy / load balancer always rewrites that header — if
+     * ms-users is reachable directly, a client can spoof the header and bypass
+     * the rate limit. Defaults to {@code false} (fail closed).
+     */
+    @Value("${auth.trust-forwarded-for:false}")
+    private boolean trustForwardedFor;
 
     @Value("${auth.device.cookie.secure:false}")
     private boolean deviceCookieSecure;
@@ -98,6 +113,86 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(AuthenticationResponse.builder().message(e.getMessage()).build());
         }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<AuthenticationResponse> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest httpRequest) {
+        // Rate-limit per IP. 429 is the only response code that can leak "the
+        // request was rejected before reaching the lookup", but it is shared
+        // across known and unknown emails (it triggers on the source IP, not
+        // the address), so it does not enable enumeration.
+        if (!passwordResetRateLimiter.tryAcquire(resolveClientIp(httpRequest))) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(AuthenticationResponse.builder()
+                            .message("Too many password reset requests. Please wait a few minutes and try again.")
+                            .build());
+        }
+        AuthService.ForgotPasswordResult result = service.requestPasswordReset(
+                request != null ? request.getEmail() : null);
+        // Always 200 with a neutral message + sessionId. Whether the email is
+        // registered or not is invisible to the caller.
+        return ResponseEntity.ok(AuthenticationResponse.builder()
+                .sessionId(result.sessionId)
+                .message("If that email is registered, a reset code is on its way.")
+                .build());
+    }
+
+    @PostMapping("/verify-reset-otp")
+    public ResponseEntity<AuthenticationResponse> verifyResetOtp(@RequestBody VerifyOtpRequest request,
+                                                                 HttpServletRequest httpRequest) {
+        try {
+            String sourceIp = resolveClientIp(httpRequest);
+            AuthService.VerifyResetOtpResult result = service.verifyResetOtp(
+                    request.getSessionId(), request.getOtp(), sourceIp);
+            // Response shape reuse: the opaque reset token rides in `sessionId`
+            // so the frontend's existing AuthenticationResponse plumbing covers
+            // it with no extra field. Step 3 (new password) sends the value
+            // back as `resetToken`. The token is single-use, IP-bound and has a
+            // short TTL — see PasswordResetTokenStore for the binding rules.
+            return ResponseEntity.ok(AuthenticationResponse.builder()
+                    .sessionId(result.resetToken)
+                    .message("Code verified. You can now choose a new password.")
+                    .build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(AuthenticationResponse.builder().message(e.getMessage()).build());
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<AuthenticationResponse> resetPassword(@RequestBody ResetPasswordRequest request,
+                                                                HttpServletRequest httpRequest) {
+        try {
+            String sourceIp = resolveClientIp(httpRequest);
+            service.resetPassword(request.getResetToken(), request.getNewPassword(), sourceIp);
+            return ResponseEntity.ok(AuthenticationResponse.builder()
+                    .message("Password updated. You can now sign in with the new password.")
+                    .build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(AuthenticationResponse.builder().message(e.getMessage()).build());
+        }
+    }
+
+    /**
+     * Resolves the client IP for rate-limit bookkeeping. {@code X-Forwarded-For}
+     * is client-spoofable when ms-users is reachable directly, so the header is
+     * only consulted when {@code auth.trust-forwarded-for=true}, which a
+     * deployment must opt into after confirming a trusted reverse proxy always
+     * rewrites the header. Otherwise {@code getRemoteAddr()} is used as the
+     * source of truth.
+     */
+    private String resolveClientIp(HttpServletRequest request) {
+        if (trustForwardedFor) {
+            String header = request.getHeader("X-Forwarded-For");
+            if (header != null && !header.isBlank()) {
+                int comma = header.indexOf(',');
+                return comma > 0 ? header.substring(0, comma).trim() : header.trim();
+            }
+        }
+        return request.getRemoteAddr();
     }
 
     private String readDeviceCookie(HttpServletRequest request) {

@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class AuthOtpService {
 
-    public enum Purpose { EMAIL_VERIFICATION, LOGIN }
+    public enum Purpose { EMAIL_VERIFICATION, LOGIN, PASSWORD_RESET }
 
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final PasswordEncoder OTP_ENCODER = new BCryptPasswordEncoder();
