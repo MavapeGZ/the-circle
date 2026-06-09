@@ -34,12 +34,23 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>Migration path: replace the {@link ConcurrentHashMap} with a Redis-backed
  * implementation using atomic {@code INCR} + {@code EXPIRE} (e.g. Bucket4j with
  * the Redisson backend) and the rest of the call sites stay unchanged.
+ *
+ * <h3>Role in the password-reset brute-force defence</h3>
+ * <p>The per-session OTP cap in {@code AuthOtpService} (max 5 attempts on a
+ * single sessionId) does NOT bound the total number of guesses an attacker can
+ * make against a victim's email — they can call {@code /forgot-password}
+ * repeatedly to mint fresh sessionIds, each with its own attempt budget. This
+ * IP-level rate limit is what actually bounds the brute-force surface. Loosening
+ * it (raising {@code max-attempts} or shortening the window) without adding a
+ * per-email throttle re-opens the attack.
  */
 @Service
 @Slf4j
 public class PasswordResetRateLimiter {
 
     private final ConcurrentHashMap<String, Deque<Instant>> hits = new ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicBoolean warnedAboutBlankIp =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
 
     @Value("${auth.password-reset.rate-limit.max-attempts:3}")
     private int maxAttempts;
@@ -53,7 +64,15 @@ public class PasswordResetRateLimiter {
      */
     public boolean tryAcquire(String clientIp) {
         if (clientIp == null || clientIp.isBlank()) {
-            // Unknown source — fail closed to avoid a free bypass.
+            // Unknown source — fail closed to avoid a free bypass. Warn once so a
+            // misconfigured proxy (Servlet container behind something that strips
+            // the source IP) is debuggable from the logs instead of looking like
+            // "rate limiter always rejects" from the user's perspective.
+            if (warnedAboutBlankIp.compareAndSet(false, true)) {
+                log.warn("PasswordResetRateLimiter received a blank client IP — the rate limiter "
+                        + "is rejecting all requests until the upstream proxy supplies a source IP. "
+                        + "Check the reverse proxy / Servlet container configuration.");
+            }
             return false;
         }
         Instant now = Instant.now();

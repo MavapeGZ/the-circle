@@ -177,27 +177,40 @@ public class AuthService {
      * not: a {@code sessionId} is always returned. Unknown emails get a random
      * UUID that has no backing OTP, so any later verify call against it fails
      * exactly like a wrong code.
+     *
+     * <p>Order matters: the lookup completes and the OTP is issued first; the
+     * SMTP send happens after the closure returns. That keeps the lookup +
+     * issue path off the critical timing window so a slow SMTP server cannot
+     * become a side channel (slow response on real emails, fast on unknown
+     * ones). The email is fired-and-forgotten and any delivery error is
+     * swallowed for the same reason.
      */
-    public ForgotPasswordResult requestPasswordReset(String email) {
-        if (email == null || email.isBlank()) {
+    public ForgotPasswordResult requestPasswordReset(String rawEmail) {
+        if (rawEmail == null || rawEmail.isBlank()) {
             return new ForgotPasswordResult(java.util.UUID.randomUUID().toString());
         }
-        return repository.findByEmail(email.trim())
-                .map(user -> {
-                    AuthOtpService.Issued issued = otpService.issue(user.getId(), user.getEmail(),
-                            AuthOtpService.Purpose.PASSWORD_RESET);
-                    try {
-                        sendOtpEmail(user, issued, passwordResetSubject, "password-reset");
-                    } catch (NotificationsClient.DeliveryException e) {
-                        // Don't surface the delivery failure — it would let a caller distinguish
-                        // a real email (mail bounce → error) from an unknown one (silent 200).
-                        // We logged it inside sendOtpEmail already.
-                        log.warn("Password reset email could not be sent to {}", user.getEmail());
-                    }
-                    return new ForgotPasswordResult(issued.sessionId);
-                })
-                // Unknown email: fake session so the response timing/shape is identical.
-                .orElseGet(() -> new ForgotPasswordResult(java.util.UUID.randomUUID().toString()));
+        // Lookups are case-insensitive: a user who registered as `Foo@Example.com`
+        // typing `foo@example.com` must still hit the row. We don't rely on the
+        // database having a LOWER(email) index because the existing column is a
+        // plain UNIQUE — normalising here matches the AuthOtpService login path.
+        String normalised = rawEmail.trim().toLowerCase(java.util.Locale.ROOT);
+        java.util.Optional<User> userOpt = repository.findByEmail(normalised);
+        if (userOpt.isEmpty()) {
+            // Unknown email: fake session so the response timing/shape is identical.
+            return new ForgotPasswordResult(java.util.UUID.randomUUID().toString());
+        }
+        User user = userOpt.get();
+        AuthOtpService.Issued issued = otpService.issue(user.getId(), user.getEmail(),
+                AuthOtpService.Purpose.PASSWORD_RESET);
+        // SMTP happens outside the timing-sensitive path. The delivery failure
+        // is logged but never surfaced — a bouncing mailbox would otherwise let
+        // a caller distinguish a real email from an unknown one.
+        try {
+            sendOtpEmail(user, issued, passwordResetSubject, "password-reset");
+        } catch (NotificationsClient.DeliveryException e) {
+            log.warn("Password reset email could not be sent to {}", user.getEmail());
+        }
+        return new ForgotPasswordResult(issued.sessionId);
     }
 
     /**
@@ -205,15 +218,19 @@ public class AuthService {
      * UI shows the new-password form only after this succeeds, so the user
      * never sees the password fields until they have proved ownership of the
      * email. The OTP itself is consumed here and cannot be replayed.
+     *
+     * <p>The {@code sourceIp} is recorded with the issued token so the final
+     * {@code resetPassword} call has to come from the same client (see
+     * {@link PasswordResetTokenStore}).
      */
-    public VerifyResetOtpResult verifyResetOtp(String sessionId, String otp) {
+    public VerifyResetOtpResult verifyResetOtp(String sessionId, String otp, String sourceIp) {
         AuthOtpService.OtpSession session = otpService.consume(sessionId, otp,
                 AuthOtpService.Purpose.PASSWORD_RESET);
         if (session == null) {
             throw new IllegalArgumentException(
                     "The reset code does not match or has expired. Please request a new one and try again.");
         }
-        String resetToken = passwordResetTokenStore.issue(session.userId);
+        String resetToken = passwordResetTokenStore.issue(session.userId, sourceIp);
         return new VerifyResetOtpResult(resetToken);
     }
 
@@ -221,18 +238,19 @@ public class AuthService {
      * Completes the password-reset flow. Consumes the short-lived reset token
      * (issued by {@link #verifyResetOtp}), BCrypt-hashes the new password, and
      * revokes all trusted-device cookies so the change kicks any cached
-     * session off the user's other devices.
+     * session off the user's other devices. The {@code sourceIp} must match
+     * the one recorded at issue time when token-to-IP binding is enabled.
      */
     @Transactional
-    public void resetPassword(String resetToken, String newPassword) {
+    public void resetPassword(String resetToken, String newPassword, String sourceIp) {
         if (newPassword == null || newPassword.length() < 6) {
             throw new IllegalArgumentException(
                     "New password must be at least 6 characters long.");
         }
-        Long userId = passwordResetTokenStore.consume(resetToken);
+        Long userId = passwordResetTokenStore.consume(resetToken, sourceIp);
         if (userId == null) {
             throw new IllegalArgumentException(
-                    "Your reset session has expired. Please start the password reset again.");
+                    "Your reset session has expired or was opened from a different device. Please start the password reset again.");
         }
         User user = repository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("User not found for password reset token"));

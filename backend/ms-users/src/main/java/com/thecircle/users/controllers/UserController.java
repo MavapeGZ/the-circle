@@ -338,12 +338,22 @@ public class UserController {
     }
 
     public record UpdateIbanRequest(String iban) {
+        // Records auto-generate toString() with every component; that default
+        // would dump the full IBAN if an instance is ever logged. Mask it.
+        @Override
+        public String toString() {
+            return "UpdateIbanRequest{iban=***}";
+        }
     }
 
     public record IbanResponse(String ibanLast4) {
     }
 
     public record ChangePasswordRequest(String currentPassword, String newPassword) {
+        @Override
+        public String toString() {
+            return "ChangePasswordRequest{currentPassword=***, newPassword=***}";
+        }
     }
 
     public record DeviceDto(Long id, String userAgent, LocalDateTime createdAt, LocalDateTime lastSeenAt) {
