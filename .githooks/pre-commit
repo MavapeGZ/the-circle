@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Pre-commit hook: warns when a staged Java file adds @RequestBody without a
+# nearby @Valid annotation. Does NOT block the commit — TFM scope. Flag is a
+# nudge to keep bean-validation enforcement consistent across endpoints.
+#
+# Install once per clone:
+#     git config core.hooksPath .githooks
+#
+# Skip a specific file deliberately by adding a comment with:
+#     // skip-valid-check: <reason>
+# on the same line as the @RequestBody. The hook ignores those.
+
+set -u
+
+# Only inspect staged Java files (added or modified, not deleted).
+mapfile -t files < <(git diff --cached --name-only --diff-filter=AM | grep -E '\.java$' || true)
+
+if [ "${#files[@]}" -eq 0 ]; then
+    exit 0
+fi
+
+violations=()
+for file in "${files[@]}"; do
+    # Each match is a line containing @RequestBody. We inspect the same line
+    # plus the previous one (annotations are commonly stacked on the line
+    # above the parameter), and skip if @Valid is present in either.
+    while IFS=: read -r lineno _; do
+        [ -z "$lineno" ] && continue
+        prev_line=""
+        [ "$lineno" -gt 1 ] && prev_line=$(sed -n "$((lineno - 1))p" "$file")
+        this_line=$(sed -n "${lineno}p" "$file")
+        combined="$prev_line $this_line"
+        # Skip when @Valid is already present on the same parameter, when the
+        # author opted out with the marker comment, or when the request body
+        # is a primitive Map / String (no DTO to validate).
+        if echo "$combined" | grep -q "@Valid"; then continue; fi
+        if echo "$this_line" | grep -q "skip-valid-check"; then continue; fi
+        if echo "$this_line" | grep -qE "@RequestBody\s+(Map|String|byte\[\])"; then continue; fi
+        violations+=("${file}:${lineno}: ${this_line# }")
+    done < <(grep -n "@RequestBody" "$file" || true)
+done
+
+if [ "${#violations[@]}" -gt 0 ]; then
+    echo ""
+    echo "[pre-commit] @RequestBody without @Valid (warning only — not blocking):"
+    for v in "${violations[@]}"; do
+        echo "  - $v"
+    done
+    echo ""
+    echo "Add @Valid in front of the @RequestBody parameter, or annotate the line with"
+    echo "  // skip-valid-check: <reason>"
+    echo "if validation genuinely does not apply."
+    echo ""
+fi
+
+exit 0
