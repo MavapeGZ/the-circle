@@ -38,7 +38,9 @@ public class ContractPdfService {
                 String name2 = p2 != null && p2.getFullName() != null ? p2.getFullName() : NA;
                 String addr1 = p1 != null && p1.getAddress() != null ? p1.getAddress() : NA;
                 String addr2 = p2 != null && p2.getAddress() != null ? p2.getAddress() : NA;
-                String type = dto.getType() != null ? dto.getType().name() : NA;
+                String id1 = p1 != null && p1.getIdNumber() != null ? p1.getIdNumber() : NA;
+                String id2 = p2 != null && p2.getIdNumber() != null ? p2.getIdNumber() : NA;
+                String type = typeLabel(dto.getType());
                 String price = formatPrice(dto.getPrice());
 
                 float x = 60f;
@@ -53,6 +55,7 @@ public class ContractPdfService {
                 y -= lineGap;
 
                 y = drawLabelValue(cs, x, y, lineGap, "Full name:", name1);
+                y = drawLabelValue(cs, x, y, lineGap, "ID number:", id1);
                 y = drawLabelValue(cs, x, y, lineGap, "Address:", addr1);
 
                 y -= lineGap;
@@ -64,6 +67,7 @@ public class ContractPdfService {
                 y -= lineGap;
 
                 y = drawLabelValue(cs, x, y, lineGap, "Full name:", name2);
+                y = drawLabelValue(cs, x, y, lineGap, "ID number:", id2);
                 y = drawLabelValue(cs, x, y, lineGap, "Address:", addr2);
 
                 y -= lineGap;
@@ -116,6 +120,17 @@ public class ContractPdfService {
         cs.endText();
 
         return y - lineGap;
+    }
+
+    /** User-facing label for the contract type (mirrors the frontend mapping). */
+    private String typeLabel(com.thecircle.contracts.dto.ContractType type) {
+        if (type == null) return NA;
+        return switch (type) {
+            case SALE -> "Sale";
+            case RENT -> "Rental";
+            case CESSION_TEMPORARY -> "Loan";
+            case CESSION_PERMANENT -> "Donation";
+        };
     }
 
     private String formatPrice(BigDecimal price) {

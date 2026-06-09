@@ -1,7 +1,8 @@
 package com.thecircle.catalog.controllers;
 
+import com.thecircle.catalog.client.UsersClient;
 import com.thecircle.catalog.model.Article;
-import com.thecircle.catalog.model.ArticleType;
+import com.thecircle.catalog.model.ProductType;
 import com.thecircle.catalog.service.ArticleService;
 import lombok.RequiredArgsConstructor;
 
@@ -11,6 +12,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import javax.crypto.SecretKey;
 
 @RestController
 @RequestMapping("/api/catalog/articles")
@@ -18,11 +27,69 @@ import org.springframework.web.bind.annotation.*;
 public class ArticleController {
 
     private final ArticleService service;
+    private final UsersClient usersClient;
+
+    @Value("${jwt.secret}")
+    private String secretKey;
+
+    private SecretKey getSigningKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
 
     // Create (Register)
     @PostMapping
-    public ResponseEntity<Article> create(@RequestBody Article article) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.createArticle(article));
+    public ResponseEntity<Article> create(
+            @RequestBody Article article,
+            @RequestHeader("Authorization") String authHeader) {
+
+        try {
+            String token = authHeader.substring(7);
+
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            Long userId = Long.valueOf(claims.get("userId").toString());
+            if (article.getProductType() == ProductType.DONATION
+                    || article.getProductType() == ProductType.DEMAND) {
+                if (article.getPrice() != null && article.getPrice() > 0) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Invalid price: Donations and demands must be completely free (price = 0.0).");
+                }
+                article.setPrice(0.0); // Force price to 0 for security and data integrity reasons
+            }
+
+            // Paid product types (SALE / RENT) cannot be published until the seller has
+            // a payout IBAN on file: the symbolic payment flow needs somewhere to
+            // release funds to, and we want the user to fix this before they spend time
+            // filling out the listing. 422 + actionable message tells the frontend
+            // exactly what is missing so it can redirect to settings.
+            if (article.getProductType() == ProductType.SYMBOLIC_SALE
+                    || article.getProductType() == ProductType.SYMBOLIC_RENTAL) {
+                UsersClient.PayoutAccount payout = usersClient.getPayoutAccount(userId);
+                if (payout == null) {
+                    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                            "Could not verify your payout account right now. Please try again in a moment.");
+                }
+                if (!payout.hasIban()) {
+                    throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                            "A payout IBAN is required to publish paid items. Please add one in Settings → Payments before publishing.");
+                }
+            }
+
+            article.setAuthorId(userId);
+            return ResponseEntity.status(HttpStatus.CREATED).body(service.createArticle(article));
+
+        } catch (ResponseStatusException e) {
+            // Preserve validation errors (e.g. invalid price -> 400), do not mask as 401
+            throw e;
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
     // Read all
@@ -43,7 +110,7 @@ public class ArticleController {
     @GetMapping("/search")
     public ResponseEntity<Page<Article>> search(
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) ArticleType type,
+            @RequestParam(required = false) ProductType productType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
@@ -53,7 +120,7 @@ public class ArticleController {
             return ResponseEntity.badRequest().build();
         }
         Pageable pageable = PageRequest.of(page, maxSize);
-        return ResponseEntity.ok(service.searchArticles(q, type, pageable));
+        return ResponseEntity.ok(service.searchArticles(q, productType, pageable));
     }
 
     // Update

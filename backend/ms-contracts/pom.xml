@@ -20,6 +20,18 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- Email delivery for OTP-based advanced electronic signature -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
+        <!-- BCrypt for OTP hashing at rest -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
         <!-- Persistence for storing PDFs as BLOBs -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -59,6 +71,25 @@
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.11.0</version>
+        </dependency>
+
+        <!-- JWT verification to authorize PII-bearing contract PDF downloads -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.12.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.12.5</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.12.5</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- Testing (add explicit if parent doesn't provide) -->

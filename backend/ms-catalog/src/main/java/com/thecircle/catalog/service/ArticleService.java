@@ -1,17 +1,20 @@
 package com.thecircle.catalog.service;
 
 import com.thecircle.catalog.model.Article;
-import com.thecircle.catalog.model.ArticleType;
-import com.thecircle.catalog.model.TransactionMode;
+import com.thecircle.catalog.model.ArticleStatus;
+import com.thecircle.catalog.model.ProductType;
 import com.thecircle.catalog.repository.ArticleRepository;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -19,16 +22,43 @@ import java.util.Optional;
 public class ArticleService {
 
     private final ArticleRepository repository;
+    private final double SYMBOLIC_LIMIT_PRICE = 10.0;
+    private static final double GUARANTEE_LIMIT = 20.0;
 
     public Article createArticle(Article article) {
         article.setId(null);
         article.setCreatedAt(java.time.Instant.now());
+        article.setStatus(ArticleStatus.AVAILABLE);
         validateAndAdjustPrice(article);
+        validateGuaranteeAmount(article);
         return repository.save(article);
     }
 
+    // Page size used to drain findAllNotSold below. Bounds per-request memory and
+    // stays under OpenSearch's default 10k result window per page.
+    private static final int SCAN_PAGE_SIZE = 500;
+
     public Iterable<Article> getAllArticles() {
-        return repository.findAll();
+        // Hide SOLD articles from browsing; keep everything else (incl. legacy nulls).
+        // SOLD is excluded server-side (term query) instead of pulling the whole index
+        // into memory and filtering here. Pages are drained so the result stays complete.
+        List<Article> visible = new ArrayList<>();
+        int page = 0;
+        Page<Article> current;
+        do {
+            current = repository.findAllNotSold(PageRequest.of(page++, SCAN_PAGE_SIZE));
+            visible.addAll(current.getContent());
+        } while (current.hasNext());
+        return visible;
+    }
+
+    /** Sets the availability status. Used by ms-contracts as contracts progress. */
+    public Article updateStatus(String id, ArticleStatus status) {
+        return repository.findById(id).map(a -> {
+            a.setStatus(status);
+            return repository.save(a);
+        }).orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Article not found with ID: " + id));
     }
 
     public Optional<Article> getArticleById(String id) {
@@ -41,6 +71,14 @@ public class ArticleService {
             existing.setDescription(updatedData.getDescription());
             existing.setPrice(updatedData.getPrice());
             existing.setCategory(updatedData.getCategory());
+            existing.setProductType(updatedData.getProductType());
+            existing.setGuaranteeAmount(updatedData.getGuaranteeAmount());
+            if (updatedData.getImageBase64() != null) {
+                existing.setImageBase64(updatedData.getImageBase64());
+            }
+            // Enforce price rules on update too (e.g. donations/demands must stay free)
+            validateAndAdjustPrice(existing);
+            validateGuaranteeAmount(existing);
             // Do not update creation date or author ID as they should remain unchanged to
             // preserve data integrity
             return repository.save(existing);
@@ -53,28 +91,63 @@ public class ArticleService {
     }
 
     private void validateAndAdjustPrice(Article article) {
-        if (article.getTransactionMode() == TransactionMode.DONATE
-                || article.getTransactionMode() == TransactionMode.GIFT) {
+        if (article.getPrice() == null) {
             article.setPrice(0.0);
-        } else {
-            if (article.getPrice() == null) {
-                article.setPrice(0.0);
-            }
+        } else if (article.getPrice() < 0.0) {
+            throw new IllegalArgumentException("Price cannot be negative");
+        }
+
+        if (article.getProductType() == ProductType.DONATION
+                || article.getProductType() == ProductType.DEMAND) {
+            article.setPrice(0.0);
+        } else if (article.getProductType() == ProductType.SYMBOLIC_SALE
+                || article.getProductType() == ProductType.SYMBOLIC_RENTAL) {
+            enforceSymbolicCap(article);
         }
     }
 
-    public Page<Article> searchArticles(String query, ArticleType type, Pageable pageable) {
+    private void enforceSymbolicCap(Article article) {
+
+        if (article.getPrice() > SYMBOLIC_LIMIT_PRICE) {
+            article.setPrice(SYMBOLIC_LIMIT_PRICE);
+        }
+    }
+
+    /**
+     * Enforces the security deposit contract: required and 0 < amount ≤ 20€ for
+     * rentals; forbidden for any other product type. The cap is hardcoded (not
+     * configurable) so it matches the legal/UX promise made to users at listing
+     * time and cannot drift via property changes after items are published.
+     */
+    private void validateGuaranteeAmount(Article article) {
+        Double amount = article.getGuaranteeAmount();
+        if (article.getProductType() == ProductType.SYMBOLIC_RENTAL) {
+            if (amount == null || amount <= 0.0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "guaranteeAmount is required for rentals and must be greater than 0.");
+            }
+            if (amount > GUARANTEE_LIMIT) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "guaranteeAmount cannot exceed " + GUARANTEE_LIMIT + "€.");
+            }
+        } else if (amount != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "guaranteeAmount is only allowed for SYMBOLIC_RENTAL articles.");
+        }
+    }
+
+    public Page<Article> searchArticles(String query, ProductType type, Pageable pageable) {
 
         // Prove if fronend is sending real query or just empty string with spaces, if
         // so, treat it as no query
         boolean hasQuery = query != null && !query.trim().isEmpty();
 
         if (!hasQuery && type == null) {
-            // Case 1: Initial empty search, return all articles with pagination
-            return repository.findAll(pageable);
+            // Case 1: Initial empty search, return all non-sold articles
+            return repository.findAllNotSold(pageable);
         } else if (!hasQuery) {
             // Case 2: Filter by type only
-            return repository.findByType(type, pageable);
+            return repository.findByProductTypeNotSold(type, pageable);
         } else if (type == null) {
             // Case 3: Only text in search, no type filter (normal multi-match search)
             return repository.findByFuzzySearch(query, pageable);

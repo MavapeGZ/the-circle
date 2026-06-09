@@ -2,17 +2,33 @@ package com.thecircle.contracts.controllers;
 
 import com.thecircle.contracts.dto.ContractCreateRequest;
 import com.thecircle.contracts.dto.ContractDto;
-import com.thecircle.contracts.dto.ContractStatus;
+import com.thecircle.contracts.security.JwtAuthService;
+import com.thecircle.contracts.service.ContractPdfService;
+import com.thecircle.contracts.service.ContractService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.io.IOException;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/contracts")
 public class ContractsController {
+
+    private final ContractService contractService;
+    private final ContractPdfService pdfService;
+    private final JwtAuthService jwtAuthService;
+
+    public ContractsController(ContractService contractService, ContractPdfService pdfService,
+                               JwtAuthService jwtAuthService) {
+        this.contractService = contractService;
+        this.pdfService = pdfService;
+        this.jwtAuthService = jwtAuthService;
+    }
 
     @GetMapping("/health")
     public String health() {
@@ -21,66 +37,65 @@ public class ContractsController {
 
     @PostMapping
     public ResponseEntity<ContractDto> createContract(@RequestBody ContractCreateRequest request) {
-        return ResponseEntity.ok(new ContractDto(
-            "c1",
-            request.itemId(),
-            request.ownerId(),
-            request.receiverId(),
-            request.type(),
-            ContractStatus.DRAFT,
-            request.guaranteeAmount(),
-            request.conditions(),
-            request.returnDate(),
-            LocalDateTime.now(),
-            null
-        ));
+        if (request == null || request.itemId() == null || request.receiverId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "itemId and receiverId are required");
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(contractService.create(request));
     }
 
     @GetMapping("/{contractId}")
     public ResponseEntity<ContractDto> getContract(@PathVariable String contractId) {
-        return ResponseEntity.ok(new ContractDto(
-            contractId, "i1", "u1", "u2", com.thecircle.contracts.dto.ContractType.SALE, ContractStatus.ACTIVE,
-            new BigDecimal("0"), "Condiciones de prueba", null, LocalDateTime.now(), LocalDateTime.now()
-        ));
+        ContractDto dto = contractService.get(contractId);
+        if (dto == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(dto);
     }
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<ContractDto>> getUserContracts(@PathVariable String userId) {
-        return ResponseEntity.ok(List.of(
-            new ContractDto("c1", "i1", userId, "u2", com.thecircle.contracts.dto.ContractType.RENT, ContractStatus.ACTIVE,
-            new BigDecimal("50"), "Condiciones", LocalDateTime.now().plusDays(5), LocalDateTime.now(), LocalDateTime.now())
-        ));
-    }
-
-    @PostMapping("/{contractId}/sign")
-    public ResponseEntity<ContractDto> signContract(@PathVariable String contractId) {
-        return ResponseEntity.ok(new ContractDto(
-            contractId, "i1", "u1", "u2", com.thecircle.contracts.dto.ContractType.SALE, ContractStatus.ACTIVE,
-            new BigDecimal("0"), "Condiciones", null, LocalDateTime.now(), LocalDateTime.now()
-        ));
+        return ResponseEntity.ok(contractService.getByUser(userId));
     }
 
     @GetMapping("/{contractId}/pdf")
-    public ResponseEntity<byte[]> downloadContractPdf(@PathVariable String contractId) {
-        byte[] mockPdf = "MOCK PDF CONTENT".getBytes();
+    public ResponseEntity<byte[]> downloadContractPdf(
+            @PathVariable String contractId,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader) {
+        // PII guard: the rendered PDF embeds both parties' address + ID number, so
+        // only the contract's owner or receiver may download it.
+        String callerId = jwtAuthService.requireUserId(authHeader);
+        ContractDto dto = contractService.get(contractId);
+        if (dto == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!contractService.isParty(dto, callerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a party to this contract");
+        }
+        contractService.enrichSigners(dto, null);
+        byte[] pdf;
+        try {
+            pdf = pdfService.generatePdf(dto);
+        } catch (IOException ex) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate PDF", ex);
+        }
         return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=\"contract-" + contractId + ".pdf\"")
-                .body(mockPdf);
+                .header("Content-Disposition", "inline; filename=\"contract-" + contractId + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 
     @PostMapping("/{contractId}/guarantee/deposit")
-    public ResponseEntity<Void> depositGuarantee(@PathVariable String contractId) {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ContractDto> depositGuarantee(@PathVariable String contractId) {
+        return ResponseEntity.ok(contractService.depositGuarantee(contractId));
     }
 
     @PostMapping("/{contractId}/guarantee/release")
-    public ResponseEntity<Void> releaseGuarantee(@PathVariable String contractId) {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ContractDto> releaseGuarantee(@PathVariable String contractId) {
+        return ResponseEntity.ok(contractService.releaseGuarantee(contractId));
     }
 
     @PostMapping("/{contractId}/guarantee/claim")
-    public ResponseEntity<Void> claimGuarantee(@PathVariable String contractId) {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ContractDto> claimGuarantee(@PathVariable String contractId) {
+        return ResponseEntity.ok(contractService.claimGuarantee(contractId));
     }
 }
-

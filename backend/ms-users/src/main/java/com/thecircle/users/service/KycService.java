@@ -73,6 +73,10 @@ public class KycService {
         }
 
         user.setKycStatus(KycStatus.PENDING_REVIEW);
+        if (!user.isEmailVerified()) {
+            log.info("KYC submission for user {} also confirms email verification", userId);
+            user.setEmailVerified(true);
+        }
         userRepository.save(user);
 
         try {
@@ -82,11 +86,7 @@ public class KycService {
                 user.setKycStatus(KycStatus.VERIFIED);
                 userRepository.save(user);
 
-                // regenerate jwt with claim
-                Map<String, Object> claims = new HashMap<>();
-                claims.put("kyc_verified", true);
-                String token = jwtService.generateToken(claims, user);
-                return token;
+                return jwtService.generateToken(user);
             }
 
             deleteUploadedFiles(frontPath, backPath);
@@ -119,11 +119,11 @@ public class KycService {
 
     private Path resolveUserFile(Path userDir, String filename) throws IOException {
         if (filename.contains("/") || filename.contains("\\")) {
-            throw new IOException("Invalid upload filename");
+            throw new IOException("The file name cannot contain slashes ('/' or '\\'). Please rename the file and try again.");
         }
         Path resolved = userDir.resolve(filename).normalize();
         if (!resolved.startsWith(userDir)) {
-            throw new IOException("Invalid upload filename");
+            throw new IOException("The file name cannot contain '..' or path separators. Please rename the file using only letters, numbers, dots and dashes and try again.");
         }
         return resolved;
     }

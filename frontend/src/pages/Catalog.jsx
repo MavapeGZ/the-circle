@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import axios from 'axios'; // Import axios for proving isCancel
+import axios from 'axios';
 import api from '../services/api';
 import ArticleCard from '../components/ArticleCard';
 
@@ -8,21 +8,16 @@ function Catalog() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Search states
   const [query, setQuery] = useState('');
-  const [type, setType] = useState(''); // '' = All, 'OFFER' = Offers, 'DEMAND' = Demands
+  const [productType, setProductType] = useState('');
 
-  // We use a ref to store the current AbortController, so we can cancel it if needed
   const abortControllerRef = useRef(null);
 
-  // Function that calls your API Gateway / OpenSearch
-  const fetchArticles = async (searchQuery = '', searchType = '') => {
-    // If there is already a request in progress, we cancel it before launching the new one
+  const fetchArticles = async (searchQuery = '', searchProductType = '') => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
 
-    // Create a new AbortController for the new request
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
@@ -30,19 +25,17 @@ function Catalog() {
     setError('');
 
     try {
-      // We build the parameters. Axios converts them to: ?q=bike&type=OFFER
       const params = {};
       if (searchQuery) params.q = searchQuery;
-      if (searchType) params.type = searchType;
+      if (searchProductType) params.productType = searchProductType;
 
       const response = await api.get('/catalog/articles/search', { params, signal: controller.signal });
 
-      // OpenSearch returns { content: [...], totalElements, ... }
       setArticles(response.data.content || []);
     } catch (err) {
       if (axios.isCancel(err)) {
         console.log('Previous search request cancelled', err.message);
-        return; // Don't set error if the request was cancelled
+        return; 
       } else {
         console.error(err);
         setError('Error loading catalog. Please try again later.');
@@ -54,11 +47,9 @@ function Catalog() {
     }
   };
 
-  // Load articles on page entry (empty search)
   useEffect(() => {
     fetchArticles();
 
-    // Cleanup: If the user navigates away or component unmounts, we cancel any ongoing request
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -66,10 +57,9 @@ function Catalog() {
     };
   }, []);
 
-  // Handler for search button
   const handleSearch = (e) => {
     e.preventDefault();
-    fetchArticles(query, type);
+    fetchArticles(query, productType);
   };
 
   return (
@@ -91,14 +81,16 @@ function Catalog() {
         />
 
         <select
-          aria-label="Filter by type"
+          aria-label="Filter by product type"
           className="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
+          value={productType}
+          onChange={(e) => setProductType(e.target.value)}
         >
-          <option value="">All types</option>
-          <option value="OFFER">Only Offers</option>
-          <option value="DEMAND">Only Demands</option>
+          <option value="">All Types</option>
+          <option value="DONATION">🎁 Only Donations</option>
+          <option value="SYMBOLIC_SALE">Sales</option>
+          <option value="SYMBOLIC_RENTAL">Rentals</option>
+          <option value="DEMAND">Demands</option>
         </select>
 
         <button

@@ -29,10 +29,14 @@ public class ContractDto {
     private ContractType type;
     private ContractStatus status;
     private BigDecimal guaranteeAmount;
+    private GuaranteeStatus guaranteeStatus;
     private String conditions;
     private LocalDateTime returnDate;
     private LocalDateTime createdAt;
     private LocalDateTime signedAt;
+    private LocalDateTime receiverSignedAt;
+    private LocalDateTime ownerSignedAt;
+    private String storedContractId;
 
     public ContractDto() {}
 
@@ -83,6 +87,8 @@ public class ContractDto {
     public void setStatus(ContractStatus status) { this.status = status; }
     public BigDecimal getGuaranteeAmount() { return guaranteeAmount; }
     public void setGuaranteeAmount(BigDecimal guaranteeAmount) { this.guaranteeAmount = guaranteeAmount; }
+    public GuaranteeStatus getGuaranteeStatus() { return guaranteeStatus; }
+    public void setGuaranteeStatus(GuaranteeStatus guaranteeStatus) { this.guaranteeStatus = guaranteeStatus; }
     public String getConditions() { return conditions; }
     public void setConditions(String conditions) { this.conditions = conditions; }
     public LocalDateTime getReturnDate() { return returnDate; }
@@ -91,4 +97,10 @@ public class ContractDto {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getSignedAt() { return signedAt; }
     public void setSignedAt(LocalDateTime signedAt) { this.signedAt = signedAt; }
+    public LocalDateTime getReceiverSignedAt() { return receiverSignedAt; }
+    public void setReceiverSignedAt(LocalDateTime receiverSignedAt) { this.receiverSignedAt = receiverSignedAt; }
+    public LocalDateTime getOwnerSignedAt() { return ownerSignedAt; }
+    public void setOwnerSignedAt(LocalDateTime ownerSignedAt) { this.ownerSignedAt = ownerSignedAt; }
+    public String getStoredContractId() { return storedContractId; }
+    public void setStoredContractId(String storedContractId) { this.storedContractId = storedContractId; }
 }

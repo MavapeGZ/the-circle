@@ -17,6 +17,8 @@
         <module>ms-users</module>
         <module>ms-catalog</module>
         <module>ms-contracts</module>
+        <module>ms-gamification</module>
+        <module>ms-notifications</module>
     </modules>
     <properties>
         <java.version>21</java.version>

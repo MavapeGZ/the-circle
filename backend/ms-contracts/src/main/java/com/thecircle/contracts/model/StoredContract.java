@@ -18,6 +18,9 @@ public class StoredContract {
     private byte[] data;
 
     private LocalDateTime createdAt;
+    private String signerEmail;
+    private String clientIp;
+    private String userAgent;
 
     public StoredContract() {}
 
@@ -39,5 +42,11 @@ public class StoredContract {
     public void setData(byte[] data) { this.data = data; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getSignerEmail() { return signerEmail; }
+    public void setSignerEmail(String signerEmail) { this.signerEmail = signerEmail; }
+    public String getClientIp() { return clientIp; }
+    public void setClientIp(String clientIp) { this.clientIp = clientIp; }
+    public String getUserAgent() { return userAgent; }
+    public void setUserAgent(String userAgent) { this.userAgent = userAgent; }
 }
 

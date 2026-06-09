@@ -1,8 +1,39 @@
 server:
   port: 8082
+  # Production-safe defaults: never expose stacktraces or internal messages over HTTP.
+  # The local/dev profile below opts in for easier debugging.
+  error:
+    include-message: never
+    include-stacktrace: never
 
 spring:
   application:
     name: ms-catalog
   opensearch:
     uris: http://127.0.0.1:9200
+jwt:
+  secret: ${JWT_SECRET}
+
+# Shared key guarding service-to-service endpoints under /internal/**.
+# Blank disables the guard (local dev). Set CATALOG_INTERNAL_KEY in shared envs.
+catalog:
+  internal:
+    api-key: ${CATALOG_INTERNAL_KEY:}
+
+# Outbound call into ms-users to verify sellers have a payout IBAN before
+# they can publish a paid (SALE/RENT) article.
+services:
+  users:
+    base-url: ${USERS_BASE_URL:http://localhost:8081}
+    internal:
+      api-key: ${USERS_INTERNAL_KEY:}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local,dev
+server:
+  error:
+    include-message: always
+    include-stacktrace: always

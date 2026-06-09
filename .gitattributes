@@ -1,0 +1,5 @@
+# Force LF on shell scripts so the pre-commit hook stays executable on Linux/macOS
+# even when the repo is cloned on Windows (which would otherwise rewrite to CRLF
+# and break /usr/bin/env bash).
+.githooks/* text eol=lf
+*.sh text eol=lf

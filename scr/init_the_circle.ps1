@@ -62,6 +62,12 @@ Start-ServiceWindow (Join-Path $RepoRoot "backend/ms-catalog") "mvn spring-boot:
 # ms-contracts
 Start-ServiceWindow (Join-Path $RepoRoot "backend/ms-contracts") "mvn spring-boot:run" "ms-contracts"
 
+# ms-gamification
+Start-ServiceWindow (Join-Path $RepoRoot "backend/ms-gamification") "mvn spring-boot:run" "ms-gamification"
+
+# ms-notifications
+Start-ServiceWindow (Join-Path $RepoRoot "backend/ms-notifications") "mvn spring-boot:run" "ms-notifications"
+
 # Frontend
 Start-ServiceWindow (Join-Path $RepoRoot "frontend") "npm run dev" "Frontend (Vite)"
 

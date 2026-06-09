@@ -25,16 +25,32 @@ public class Article {
     private String description;
 
     @Field(type = FieldType.Keyword, name = "type")
-    private ArticleType type; // OFFER o DEMAND
+    private ProductType productType; // DONATION, SYMBOLIC_RENTAL, SYMBOLIC_SALE, DEMAND
 
-    @Field(type = FieldType.Keyword, name = "transaction_mode")
-    private TransactionMode transactionMode; // RENT, SELL, DONATE, GIFT
+    // Availability lifecycle. Driven by ms-contracts: RESERVED when a contract is
+    // created, SOLD once both parties sign. SOLD articles are hidden from searches.
+    //
+    // MAPPING CAVEAT: the SOLD filters rely on a `term` query, which only matches
+    // when "status" is mapped as `keyword`. As with `created_at` below, createIndex
+    // = true does NOT update the mapping of an already-existing "articles" index, so
+    // on a pre-existing index "status" may be dynamically mapped as `text` and the
+    // `term` filter silently matches nothing (SOLD items keep showing). A reindex or
+    // explicit mapping migration is required on deploy to an existing index.
+    @Field(type = FieldType.Keyword, name = "status")
+    private ArticleStatus status;
 
     @Field(type = FieldType.Keyword, name = "category")
     private String category;
 
     @Field(type = FieldType.Double, name = "price")
-    private Double price; // Could be 0.0 for free offers or demands
+    private Double price; // Symbolic amount for SELL/RENT; 0.0 for donations/demands
+
+    // Refundable security deposit set by the owner when listing a SYMBOLIC_RENTAL.
+    // Capped at 20€ (see ArticleService). Null for other product types. Held in
+    // escrow by ms-contracts during the rental and released back to the receiver
+    // on return (or claimed by the owner on damage).
+    @Field(type = FieldType.Double, name = "guarantee_amount")
+    private Double guaranteeAmount;
 
     // User ID of the author of the article. This is not a reference to a User
     // document, just a simple field to store the ID.
@@ -47,4 +63,7 @@ public class Article {
     // perform a migration/reindex so the new mapping takes effect.
     @Field(type = FieldType.Date, format = DateFormat.strict_date_optional_time_nanos, name = "created_at")
     private java.time.Instant createdAt;
+
+    @Field(type = FieldType.Text, name = "image_base64", index = false)
+    private String imageBase64;
 }

@@ -1,0 +1,41 @@
+{
+  "contractId": "TXN-2026-0001",
+  "itemId": "ART-PS5-001",
+  "ownerId": "user-alice-001",
+  "receiverId": "user-bob-002",
+  "type": "RENT",
+  "status": "PENDING_SIGNATURES",
+  "guaranteeAmount": 250.00,
+  "monthlyRent": 80.00,
+  "price": 80.00,
+  "propertyAddress": "PlayStation 5 + 2 Controllers + FIFA 24",
+  "startDate": "2026-05-12",
+  "endDate": "2026-06-12",
+  "returnDate": "2026-06-12T18:00:00",
+  "createdAt": "2026-05-12T15:30:00",
+  "conditions": "Renter agrees to return console in original condition. Guarantee refunded upon inspection.",
+  "clauses": [
+    "Item shall not be sublet or transferred to third parties.",
+    "Renter assumes liability for damage beyond normal wear.",
+    "Late return incurs a fee of 10 EUR per day.",
+    "Guarantee withheld if peripherals are missing on return."
+  ],
+  "primarySigner": {
+    "fullName": "Alice Owner",
+    "idNumber": "12345678A",
+    "email": "alice@thecircle.test",
+    "address": "Calle Mayor 10, Madrid",
+    "phone": "+34 600 111 222",
+    "signatureText": "Alice Owner",
+    "signingDate": "2026-05-12"
+  },
+  "secondarySigner": {
+    "fullName": "Bob Receiver",
+    "idNumber": "87654321B",
+    "email": "bob@thecircle.test",
+    "address": "Av. Diagonal 200, Barcelona",
+    "phone": "+34 600 333 444",
+    "signatureText": "Bob Receiver",
+    "signingDate": "2026-05-12"
+  }
+}
