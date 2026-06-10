@@ -1,0 +1,7 @@
+{
+    email mavape4403@gmail.com
+}
+
+api.the-circle.duckdns.org {
+    reverse_proxy api-gateway:8080
+}
