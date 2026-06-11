@@ -141,6 +141,16 @@ services:
       - caddy_config:/config
     depends_on: [api-gateway]
 
+  duckdns:
+    image: lscr.io/linuxserver/duckdns:latest
+    container_name: thecircle-duckdns
+    environment:
+      - SUBDOMAINS=the-circle
+      - TOKEN=${DUCKDNS_TOKEN}
+      - UPDATE_IP=ipv4
+    restart: unless-stopped
+    networks: [ thecircle ]
+
 volumes:
   postgres_data:
   opensearch_data:
