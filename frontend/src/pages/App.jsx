@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import Login from './Login';
@@ -16,49 +16,61 @@ import Checkout from './Checkout';
 import PaymentReceipt from './PaymentReceipt';
 import Settings from './Settings';
 
-function App() {
+// Navigation lives inside BrowserRouter so it can use useNavigate to redirect.
+function NavBar() {
   const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   return (
-    <BrowserRouter>
-      {/* Navigation menu with Tailwind */}
-      <nav className="bg-blue-600 p-4 text-white shadow-md flex justify-between items-center relative z-10">
-        {/* Left side: Brand and main links */}
-        <div className="flex gap-4 items-center">
-          <span className="font-extrabold text-xl tracking-wider">THE CIRCLE</span>
-          <Link to="/" className="font-bold hover:text-blue-200 transition-colors ml-4">Home</Link>
-          <Link to="/catalog" className="font-bold hover:text-blue-200 transition-colors">Catalog</Link>
-          {user && (
-            <Link to="/create" className="font-bold hover:text-blue-200 transition-colors">Publish</Link>
-          )}
-          {user && (
-            <Link to="/contracts" className="font-bold hover:text-blue-200 transition-colors">Contracts</Link>
-          )}
-        </div>
+    <nav className="bg-blue-600 p-4 text-white shadow-md flex justify-between items-center relative z-10">
+      {/* Left side: Brand and main links */}
+      <div className="flex gap-4 items-center">
+        <span className="font-extrabold text-xl tracking-wider">THE CIRCLE</span>
+        <Link to="/" className="font-bold hover:text-blue-200 transition-colors ml-4">Home</Link>
+        <Link to="/catalog" className="font-bold hover:text-blue-200 transition-colors">Catalog</Link>
+        {user && (
+          <Link to="/create" className="font-bold hover:text-blue-200 transition-colors">Publish</Link>
+        )}
+        {user && (
+          <Link to="/contracts" className="font-bold hover:text-blue-200 transition-colors">Contracts</Link>
+        )}
+      </div>
 
-        {/* Right side: Authentication links */}
-        <div className="flex gap-4 items-center">
-          {user ? (
-            <>
-              {/* Setting for logged-in users */}
-              <Link to="/settings" className="font-bold hover:text-blue-200 transition-colors mr-2">
-                Settings
-              </Link>
-              <button
-                onClick={logout}
-                className="font-bold bg-red-500 px-4 py-2 rounded hover:bg-red-600 transition-colors shadow-sm"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="font-bold hover:text-blue-200 transition-colors">Login</Link>
-              <Link to="/register" className="font-bold bg-green-500 px-4 py-2 rounded hover:bg-green-600 transition-colors shadow-sm">Register</Link>
-            </>
-          )}
-        </div>
-      </nav>
+      {/* Right side: Authentication links */}
+      <div className="flex gap-4 items-center">
+        {user ? (
+          <>
+            {/* Setting for logged-in users */}
+            <Link to="/settings" className="font-bold hover:text-blue-200 transition-colors mr-2">
+              Settings
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="font-bold bg-red-500 px-4 py-2 rounded hover:bg-red-600 transition-colors shadow-sm"
+            >
+              Logout
+            </button>
+          </>
+        ) : (
+          <>
+            <Link to="/login" className="font-bold hover:text-blue-200 transition-colors">Login</Link>
+            <Link to="/register" className="font-bold bg-green-500 px-4 py-2 rounded hover:bg-green-600 transition-colors shadow-sm">Register</Link>
+          </>
+        )}
+      </div>
+    </nav>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <NavBar />
 
       {/* Application routes */}
       <main className="flex-grow bg-gray-50">
