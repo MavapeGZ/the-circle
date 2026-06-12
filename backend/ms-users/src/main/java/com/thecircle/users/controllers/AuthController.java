@@ -73,9 +73,18 @@ public class AuthController {
     }
 
     @PostMapping("/verify-email")
-    public ResponseEntity<AuthenticationResponse> verifyEmail(@RequestBody VerifyOtpRequest request) {
+    public ResponseEntity<AuthenticationResponse> verifyEmail(
+            @RequestBody VerifyOtpRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
         try {
-            return ResponseEntity.ok(service.verifyEmail(request));
+            AuthService.OtpVerificationResult result =
+                    service.verifyEmail(request, httpRequest.getHeader("User-Agent"));
+            attachDeviceCookie(httpResponse, result.deviceToken);
+            return ResponseEntity.ok(AuthenticationResponse.builder()
+                    .token(result.token)
+                    .message("Email verified")
+                    .build());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(AuthenticationResponse.builder().message(e.getMessage()).build());
@@ -106,7 +115,7 @@ public class AuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         try {
-            AuthService.LoginOtpResult result = service.verifyLoginOtp(request, httpRequest.getHeader("User-Agent"));
+            AuthService.OtpVerificationResult result = service.verifyLoginOtp(request, httpRequest.getHeader("User-Agent"));
             attachDeviceCookie(httpResponse, result.deviceToken);
             return ResponseEntity.ok(AuthenticationResponse.builder().token(result.token).build());
         } catch (IllegalArgumentException e) {

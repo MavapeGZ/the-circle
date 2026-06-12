@@ -77,7 +77,14 @@ public class AuthService {
                 .build();
     }
 
-    public AuthenticationResponse verifyEmail(VerifyOtpRequest request) {
+    /**
+     * Confirms the signup email-verification OTP. The device that completed the
+     * OTP is the same one that just proved control of the mailbox, so it is
+     * marked trusted here: a subsequent login from it skips the login OTP (see
+     * issue #57). Returns JWT + device-trust token for the controller to set as
+     * a cookie.
+     */
+    public OtpVerificationResult verifyEmail(VerifyOtpRequest request, String userAgent) {
         AuthOtpService.OtpSession session = otpService.consume(
                 request.getSessionId(), request.getOtp(), AuthOtpService.Purpose.EMAIL_VERIFICATION);
         if (session == null) {
@@ -89,10 +96,8 @@ public class AuthService {
         user.setEmailVerified(true);
         repository.save(user);
 
-        return AuthenticationResponse.builder()
-                .token(buildJwt(user))
-                .message("Email verified")
-                .build();
+        String deviceToken = deviceCookieService.issueDeviceCookie(user.getId(), userAgent);
+        return new OtpVerificationResult(buildJwt(user), deviceToken);
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request, String deviceCookie) {
@@ -129,7 +134,7 @@ public class AuthService {
      * Returns JWT + the new device-trust token to set as a cookie by the
      * controller.
      */
-    public LoginOtpResult verifyLoginOtp(VerifyOtpRequest request, String userAgent) {
+    public OtpVerificationResult verifyLoginOtp(VerifyOtpRequest request, String userAgent) {
         AuthOtpService.OtpSession session = otpService.consume(
                 request.getSessionId(), request.getOtp(), AuthOtpService.Purpose.LOGIN);
         if (session == null) {
@@ -140,7 +145,7 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalStateException("User not found for sign-in session"));
 
         String deviceToken = deviceCookieService.issueDeviceCookie(user.getId(), userAgent);
-        return new LoginOtpResult(buildJwt(user), deviceToken);
+        return new OtpVerificationResult(buildJwt(user), deviceToken);
     }
 
     private String buildJwt(User user) {
@@ -161,11 +166,16 @@ public class AuthService {
         }
     }
 
-    public static final class LoginOtpResult {
+    /**
+     * Result of a successful OTP verification (signup email-verification or
+     * login second-factor): the JWT plus the device-trust token the controller
+     * sets as the {@code tc_device} cookie so the device is remembered.
+     */
+    public static final class OtpVerificationResult {
         public final String token;
         public final String deviceToken;
 
-        public LoginOtpResult(String token, String deviceToken) {
+        public OtpVerificationResult(String token, String deviceToken) {
             this.token = token;
             this.deviceToken = deviceToken;
         }
