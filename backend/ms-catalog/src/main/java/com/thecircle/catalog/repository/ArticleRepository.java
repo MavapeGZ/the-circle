@@ -3,6 +3,8 @@ package com.thecircle.catalog.repository;
 import com.thecircle.catalog.model.Article;
 import com.thecircle.catalog.model.ProductType;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.annotations.Query;
@@ -11,6 +13,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ArticleRepository extends ElasticsearchRepository<Article, String> {
+
+    List<Article> findByAuthorId(Long authorId);
 
     // Extra method to find articles by type (DONATION, SYMBOLIC_RENTAL, SYMBOLIC_SALE, or DEMAND)
     Page<Article> findByProductType(ProductType productType, Pageable pageable);

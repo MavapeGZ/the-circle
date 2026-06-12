@@ -83,6 +83,18 @@ public class InternalArticleController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Article not found"));
     }
 
+    /**
+     * Service-to-service endpoint used by ms-users.
+     * When a user deletes their account, this endpoint soft-deletes all their
+     * articles from the catalog to remove them from public visibility.
+     */
+    @DeleteMapping("/users/{authorId}")
+    public ResponseEntity<Void> deleteUserArticles(@PathVariable Long authorId, HttpServletRequest request) {
+        assertInternalCaller(request);
+        service.removeArticlesByAuthorId(authorId);
+        return ResponseEntity.noContent().build();
+    }
+
     private void assertInternalCaller(HttpServletRequest request) {
         if (internalApiKey == null || internalApiKey.isBlank()) {
             return;

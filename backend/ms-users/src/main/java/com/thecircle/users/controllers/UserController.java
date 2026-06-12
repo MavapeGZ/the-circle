@@ -9,6 +9,7 @@ import com.thecircle.users.repository.UserRepository;
 import com.thecircle.users.model.User;
 import com.thecircle.users.model.KycStatus;
 import com.thecircle.users.dto.UserProfileDto;
+import com.thecircle.users.service.CatalogClient;
 import com.thecircle.users.service.DeviceCookieService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,7 @@ public class UserController {
     private final PasswordEncoder passwordEncoder;
     private final DeviceCookieService deviceCookieService;
     private final IbanCipher ibanCipher;
+    private final CatalogClient catalogClient;
 
     @GetMapping("/health")
     public String health() {
@@ -193,6 +195,8 @@ public class UserController {
 
         // Revoke all existing device sessions to log out from all devices immediately
         deviceCookieService.revokeAllDevices(user.getId());
+
+        catalogClient.removeUserArticles(user.getId());
 
         return ResponseEntity.ok().build();
     }

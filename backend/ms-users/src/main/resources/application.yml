@@ -38,6 +38,11 @@ kyc:
 
 # Shared key guarding service-to-service endpoints under /internal/**.
 # Blank disables the guard (local dev). Set USERS_INTERNAL_KEY in shared envs.
+catalog:
+  base-url: ${CATALOG_BASE_URL:http://localhost:8082}
+  internal:
+    api-key: ${CATALOG_INTERNAL_KEY:}
+    
 users:
   internal:
     api-key: ${USERS_INTERNAL_KEY:}
