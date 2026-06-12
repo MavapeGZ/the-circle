@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import Login from './Login';
@@ -16,12 +16,17 @@ import Checkout from './Checkout';
 import PaymentReceipt from './PaymentReceipt';
 import Settings from './Settings';
 
-function App() {
+// Navigation lives inside BrowserRouter so it can use useNavigate to redirect.
+function NavBar() {
   const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   return (
-    <BrowserRouter>
-      {/* Navigation menu with Tailwind */}
       <nav className="bg-blue-600 p-4 text-white shadow-md flex justify-between items-center relative z-10">
         {/* Left side: Brand and main links */}
         <div className="flex gap-4 items-center">
@@ -45,7 +50,7 @@ function App() {
                 Settings
               </Link>
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="font-bold bg-red-500 px-4 py-2 rounded hover:bg-red-600 transition-colors shadow-sm"
               >
                 Logout
@@ -59,6 +64,13 @@ function App() {
           )}
         </div>
       </nav>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <NavBar />
 
       {/* Application routes */}
       <main className="flex-grow bg-gray-50">
