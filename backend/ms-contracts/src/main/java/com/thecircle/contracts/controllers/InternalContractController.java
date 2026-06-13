@@ -66,9 +66,9 @@ public class InternalContractController {
         }
     }
 
-    private boolean isDevLikeProfile() {
+private boolean isDevLikeProfile() {
         String[] active = environment.getActiveProfiles();
-        if (active.length == 0) return true;
+        if (active.length == 0) return false; // fail closed unless explicitly local/dev
         return Arrays.stream(active).anyMatch(p -> p.equalsIgnoreCase("local") || p.equalsIgnoreCase("dev"));
     }
 }
