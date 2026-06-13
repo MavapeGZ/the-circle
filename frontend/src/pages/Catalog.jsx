@@ -69,21 +69,33 @@ function Catalog() {
       return;
     }
 
+    const controller = new AbortController();
+
     const loadProfiles = async () => {
       try {
         const { data } = await api.get('/users/public', {
           params: { ids: authorIds.join(',') },
+          signal: controller.signal,
         });
 
-        const profilesById = Object.fromEntries((data || []).map((profile) => [String(profile.id), profile]));
-        setSellerProfiles(profilesById);
+        if (!controller.signal.aborted) {
+          const profilesById = Object.fromEntries((data || []).map((profile) => [String(profile.id), profile]));
+          setSellerProfiles(profilesById);
+        }
       } catch (err) {
+        if (axios.isCancel(err) || err?.name === 'CanceledError') {
+          return;
+        }
         console.error('Error loading seller profiles:', err);
         setSellerProfiles({});
       }
     };
 
     loadProfiles();
+
+    return () => {
+      controller.abort();
+    };
   }, [articles]);
 
   const handleSearch = (e) => {
