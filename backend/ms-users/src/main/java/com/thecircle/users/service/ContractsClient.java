@@ -24,8 +24,11 @@ public class ContractsClient {
     @Value("${contracts.internal.api-key:}")
     private String apiKey;
 
-    public ContractsClient(RestTemplateBuilder builder) {
-        this.restTemplate = builder.build();
+public ContractsClient(RestTemplateBuilder builder) {
+        this.restTemplate = builder
+                .setConnectTimeout(java.time.Duration.ofSeconds(2))
+                .setReadTimeout(java.time.Duration.ofSeconds(5))
+                .build();
     }
 
     public void removeOwnedOpenContracts(Long userId) {
