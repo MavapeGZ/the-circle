@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import { ZONE_OPTIONS } from '../constants/zones';
 
 function Settings() {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ function Settings() {
     lastName: '',
     email: '',
     address: '',
+    zone: '',
     idNumber: '',
     ibanLast4: null,
     marketingEmailsOptIn: true,
@@ -78,6 +80,7 @@ function Settings() {
         firstName: settings.firstName,
         lastName: settings.lastName,
         address: settings.address,
+        zone: settings.zone,
         idNumber: settings.idNumber
       });
       showMessage('Profile updated successfully!');
@@ -239,6 +242,22 @@ function Settings() {
                   placeholder="Street, number, city, postal code"
                 />
                 <p className="text-xs text-gray-500 mt-1">Required on signed contracts.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Approximate Area</label>
+                <select
+                  value={settings.zone || ''}
+                  onChange={(e) => setSettings({ ...settings, zone: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="">Select your area</option>
+                  {ZONE_OPTIONS.map((zone) => (
+                    <option key={zone.value} value={zone.value}>
+                      {zone.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">This is a broad area used for catalog search filtering, not an exact location.</p>
               </div>
               <button type="submit" className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition">
                 Save Profile

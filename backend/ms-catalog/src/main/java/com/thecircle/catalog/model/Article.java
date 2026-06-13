@@ -57,6 +57,9 @@ public class Article {
     @Field(type = FieldType.Long, name = "author_id")
     private Long authorId;
 
+    @Field(type = FieldType.Keyword, name = "zone")
+    private String zone;
+
     // NOTE: changing this annotation will NOT update the mapping for deployments
     // where the "articles" index already exists. createIndex = true only creates
     // missing indexes. To apply a different date mapping in production you must

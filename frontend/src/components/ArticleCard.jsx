@@ -62,6 +62,8 @@ export default function ArticleCard({ article }) {
           <div className="flex justify-between items-start mb-3">
             <div className="flex gap-2 flex-wrap">
               {renderBadge()}
+{article.zone.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
+              )}
               {article.status === 'RESERVED' && (
                 <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full border border-yellow-300">
                   Reserved

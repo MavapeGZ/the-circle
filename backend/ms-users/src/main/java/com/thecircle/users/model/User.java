@@ -40,6 +40,9 @@ public class User implements UserDetails {
     @Column(length = 255)
     private String address;
 
+    @Column(length = 100)
+    private String zone;
+
     @Column(name = "id_number", length = 50)
     private String idNumber;
 
