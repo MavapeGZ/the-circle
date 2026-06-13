@@ -154,24 +154,34 @@ public class ArticleService {
         }
     }
 
-    public Page<Article> searchArticles(String query, ProductType type, Pageable pageable) {
+    public Page<Article> searchArticles(String query, ProductType type, String zone, Pageable pageable) {
 
         // Prove if fronend is sending real query or just empty string with spaces, if
         // so, treat it as no query
         boolean hasQuery = query != null && !query.trim().isEmpty();
+        boolean hasZone = zone != null && !zone.trim().isEmpty();
+        String normalizedZone = hasZone ? zone.trim() : null;
 
-        if (!hasQuery && type == null) {
+        if (!hasQuery && type == null && !hasZone) {
             // Case 1: Initial empty search, return all non-sold articles
             return repository.findAllNotSold(pageable);
-        } else if (!hasQuery) {
+        } else if (!hasQuery && type != null && !hasZone) {
             // Case 2: Filter by type only
             return repository.findByProductTypeNotSold(type, pageable);
-        } else if (type == null) {
+        } else if (hasQuery && type == null && !hasZone) {
             // Case 3: Only text in search, no type filter (normal multi-match search)
             return repository.findByFuzzySearch(query, pageable);
-        } else {
+        } else if (hasQuery && type != null && !hasZone) {
             // Case 4: Both text and type filter (multi-match search with type filter)
             return repository.findByFuzzySearchAndType(query, type, pageable);
+        } else if (!hasQuery && type == null) {
+            return repository.findAllNotSoldByZone(normalizedZone, pageable);
+        } else if (!hasQuery) {
+            return repository.findByProductTypeNotSoldAndZone(type, normalizedZone, pageable);
+        } else if (type == null) {
+            return repository.findByFuzzySearchAndZone(query, normalizedZone, pageable);
+        } else {
+            return repository.findByFuzzySearchAndTypeAndZone(query, type, normalizedZone, pageable);
         }
     }
 }

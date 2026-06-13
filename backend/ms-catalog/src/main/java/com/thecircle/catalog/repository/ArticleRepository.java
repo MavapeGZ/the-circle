@@ -33,12 +33,24 @@ public interface ArticleRepository extends ElasticsearchRepository<Article, Stri
     @Query("{ \"bool\": { \"must_not\": [ { \"terms\": { \"status\": [\"SOLD\", \"DELETED\"] } }, { \"terms\": { \"status.keyword\": [\"SOLD\", \"DELETED\"] } } ] } }")
     Page<Article> findAllNotSold(Pageable pageable);
 
+    @Query("{ \"bool\": { \"filter\": [ { \"term\": { \"zone\": \"?0\" } } ], \"must_not\": [ { \"terms\": { \"status\": [\"SOLD\", \"DELETED\"] } }, { \"terms\": { \"status.keyword\": [\"SOLD\", \"DELETED\"] } } ] } }")
+    Page<Article> findAllNotSoldByZone(String zone, Pageable pageable);
+
     @Query("{ \"bool\": { \"filter\": [ { \"term\": { \"type\": \"?0\" } } ], \"must_not\": [ { \"terms\": { \"status\": [\"SOLD\", \"DELETED\"] } }, { \"terms\": { \"status.keyword\": [\"SOLD\", \"DELETED\"] } } ] } }")
     Page<Article> findByProductTypeNotSold(ProductType type, Pageable pageable);
+
+    @Query("{ \"bool\": { \"filter\": [ { \"term\": { \"type\": \"?0\" } }, { \"term\": { \"zone\": \"?1\" } } ], \"must_not\": [ { \"terms\": { \"status\": [\"SOLD\", \"DELETED\"] } }, { \"terms\": { \"status.keyword\": [\"SOLD\", \"DELETED\"] } } ] } }")
+    Page<Article> findByProductTypeNotSoldAndZone(ProductType type, String zone, Pageable pageable);
 
     @Query("{ \"bool\": { \"must\": [ { \"multi_match\": { \"query\": \"?0\", \"fields\": [\"title\", \"description\"], \"fuzziness\": \"AUTO\" } } ], \"must_not\": [ { \"terms\": { \"status\": [\"SOLD\", \"DELETED\"] } }, { \"terms\": { \"status.keyword\": [\"SOLD\", \"DELETED\"] } } ] } }")
     Page<Article> findByFuzzySearch(String query, Pageable pageable);
 
+    @Query("{ \"bool\": { \"must\": [ { \"multi_match\": { \"query\": \"?0\", \"fields\": [\"title\", \"description\"], \"fuzziness\": \"AUTO\" } } ], \"filter\": [ { \"term\": { \"zone\": \"?1\" } } ], \"must_not\": [ { \"terms\": { \"status\": [\"SOLD\", \"DELETED\"] } }, { \"terms\": { \"status.keyword\": [\"SOLD\", \"DELETED\"] } } ] } }")
+    Page<Article> findByFuzzySearchAndZone(String query, String zone, Pageable pageable);
+
     @Query("{ \"bool\": { \"must\": [ { \"multi_match\": { \"query\": \"?0\", \"fields\": [\"title\", \"description\"], \"fuzziness\": \"AUTO\" } } ], \"filter\": [ { \"term\": { \"type\": \"?1\" } } ], \"must_not\": [ { \"terms\": { \"status\": [\"SOLD\", \"DELETED\"] } }, { \"terms\": { \"status.keyword\": [\"SOLD\", \"DELETED\"] } } ] } }")
     Page<Article> findByFuzzySearchAndType(String query, ProductType type, Pageable pageable);
+
+    @Query("{ \"bool\": { \"must\": [ { \"multi_match\": { \"query\": \"?0\", \"fields\": [\"title\", \"description\"], \"fuzziness\": \"AUTO\" } } ], \"filter\": [ { \"term\": { \"type\": \"?1\" } }, { \"term\": { \"zone\": \"?2\" } } ], \"must_not\": [ { \"terms\": { \"status\": [\"SOLD\", \"DELETED\"] } }, { \"terms\": { \"status.keyword\": [\"SOLD\", \"DELETED\"] } } ] } }")
+    Page<Article> findByFuzzySearchAndTypeAndZone(String query, ProductType type, String zone, Pageable pageable);
 }

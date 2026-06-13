@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import api from '../services/api';
 import ArticleCard from '../components/ArticleCard';
+import { ZONE_OPTIONS } from '../constants/zones';
 
 function Catalog() {
   const [articles, setArticles] = useState([]);
@@ -10,10 +11,11 @@ function Catalog() {
 
   const [query, setQuery] = useState('');
   const [productType, setProductType] = useState('');
+  const [zone, setZone] = useState('');
 
   const abortControllerRef = useRef(null);
 
-  const fetchArticles = async (searchQuery = '', searchProductType = '') => {
+  const fetchArticles = async (searchQuery = '', searchProductType = '', searchZone = '') => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -28,6 +30,7 @@ function Catalog() {
       const params = {};
       if (searchQuery) params.q = searchQuery;
       if (searchProductType) params.productType = searchProductType;
+      if (searchZone) params.zone = searchZone;
 
       const response = await api.get('/catalog/articles/search', { params, signal: controller.signal });
 
@@ -59,7 +62,7 @@ function Catalog() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    fetchArticles(query, productType);
+    fetchArticles(query, productType, zone);
   };
 
   return (
@@ -91,6 +94,20 @@ function Catalog() {
           <option value="SYMBOLIC_SALE">Sales</option>
           <option value="SYMBOLIC_RENTAL">Rentals</option>
           <option value="DEMAND">Demands</option>
+        </select>
+
+        <select
+          aria-label="Filter by area"
+          className="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          value={zone}
+          onChange={(e) => setZone(e.target.value)}
+        >
+          <option value="">All areas</option>
+          {ZONE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
 
         <button

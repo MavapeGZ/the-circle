@@ -70,7 +70,7 @@ public class InternalUserController {
         User u = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         return ResponseEntity.ok(new UserIdentityDto(
-                u.getId(), u.getEmail(), u.getFirstName(), u.getLastName(), u.getAddress(), u.getIdNumber()));
+                u.getId(), u.getEmail(), u.getFirstName(), u.getLastName(), u.getAddress(), u.getIdNumber(), u.getZone()));
     }
 
     /**
@@ -85,10 +85,10 @@ public class InternalUserController {
         User u = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         boolean hasIban = u.getIbanEncrypted() != null && !u.getIbanEncrypted().isBlank();
-        return ResponseEntity.ok(new PayoutAccountResponse(hasIban, u.getIbanLast4()));
+        return ResponseEntity.ok(new PayoutAccountResponse(hasIban, u.getIbanLast4(), u.getZone()));
     }
 
-    public record PayoutAccountResponse(boolean hasIban, String ibanLast4) {}
+    public record PayoutAccountResponse(boolean hasIban, String ibanLast4, String zone) {}
 
     private void assertInternalCaller(HttpServletRequest request) {
         // Blank key disables the guard (local dev), mirroring ms-notifications.

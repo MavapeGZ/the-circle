@@ -5,6 +5,7 @@ public record UserProfileDto(
     String email,
     String firstName,
     String lastName,
+    String zone,
     String kycStatus
 ) {}
 

@@ -27,12 +27,22 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 @Slf4j
 public class UserController {
+
+    private static final Set<String> ALLOWED_ZONES = Set.of(
+            "MADRID",
+            "BARCELONA",
+            "VALENCIA",
+            "SEVILLE",
+            "BILBAO_AND_SURROUNDINGS",
+            "MALAGA",
+            "OTHER");
 
     private final KycService kycService;
     private final UserRepository userRepository;
@@ -54,6 +64,7 @@ public class UserController {
                 user.getLastName(),
                 user.getEmail(),
                 user.getAddress(),
+            user.getZone(),
                 user.getIdNumber(),
                 user.getIbanLast4(),
                 user.isMarketingEmailsOptIn(),
@@ -98,6 +109,8 @@ public class UserController {
             user.setLastName(request.lastName());
         if (request.address() != null)
             user.setAddress(request.address());
+        if (request.zone() != null)
+            user.setZone(normalizeZone(request.zone()));
         if (request.idNumber() != null)
             user.setIdNumber(request.idNumber());
         if (request.marketingEmailsOptIn() != null)
@@ -112,6 +125,7 @@ public class UserController {
                 user.getLastName(),
                 user.getEmail(),
                 user.getAddress(),
+            user.getZone(),
                 user.getIdNumber(),
                 user.getIbanLast4(),
                 user.isMarketingEmailsOptIn(),
@@ -305,6 +319,7 @@ public class UserController {
                 null,
                 u.getFirstName(),
                 u.getLastName(),
+            u.getZone(),
                 u.getKycStatus().name());
 
         return ResponseEntity.ok(profileDto);
@@ -327,17 +342,17 @@ public class UserController {
         try {
             User u = getAuthenticatedUser(authentication);
             return ResponseEntity.ok(new UserProfileDto(u.getId(), u.getEmail(), u.getFirstName(),
-                    u.getLastName(), u.getKycStatus().name()));
+                u.getLastName(), u.getZone(), u.getKycStatus().name()));
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode()).build();
         }
     }
 
-    public record SettingsResponse(String firstName, String lastName, String email, String address, String idNumber,
-            String ibanLast4, boolean marketingEmailsOptIn, boolean systemEmailsOptIn) {
+        public record SettingsResponse(String firstName, String lastName, String email, String address, String zone,
+            String idNumber, String ibanLast4, boolean marketingEmailsOptIn, boolean systemEmailsOptIn) {
     }
 
-    public record UpdateProfileRequest(String firstName, String lastName, String address, String idNumber,
+        public record UpdateProfileRequest(String firstName, String lastName, String address, String zone, String idNumber,
             Boolean marketingEmailsOptIn, Boolean systemEmailsOptIn) {
     }
 
@@ -361,5 +376,16 @@ public class UserController {
     }
 
     public record DeviceDto(Long id, String userAgent, LocalDateTime createdAt, LocalDateTime lastSeenAt) {
+    }
+
+    private String normalizeZone(String zone) {
+        String normalized = zone.trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        if (!ALLOWED_ZONES.contains(normalized)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid zone.");
+        }
+        return normalized;
     }
 }

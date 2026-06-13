@@ -32,7 +32,7 @@ public class UsersClient {
         this.internalApiKey = internalApiKey;
     }
 
-    public record PayoutAccount(boolean hasIban, String ibanLast4) {}
+    public record PayoutAccount(boolean hasIban, String ibanLast4, String zone) {}
 
     public PayoutAccount getPayoutAccount(Long userId) {
         if (userId == null) return null;
