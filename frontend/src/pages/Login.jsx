@@ -1,5 +1,5 @@
 import { useState, useContext } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 const STEP_CREDENTIALS = 'credentials';
@@ -11,6 +11,8 @@ const FLOW_EMAIL_VERIFICATION = 'email-verification';
 function Login() {
   const { login, verifyLoginOtp, verifyEmail } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionExpired = searchParams.get('expired') === '1';
 
   const [step, setStep] = useState(STEP_CREDENTIALS);
   const [submitting, setSubmitting] = useState(false);
@@ -84,6 +86,12 @@ function Login() {
         <h2 className="text-3xl font-bold text-center text-blue-600 mb-6">
           {step === STEP_CREDENTIALS ? 'Sign In' : 'Verify Sign-in'}
         </h2>
+
+        {sessionExpired && !error && (
+          <p className="bg-amber-100 text-amber-700 p-3 rounded mb-4 text-center">
+            Your session has expired. Please sign in again to continue.
+          </p>
+        )}
 
         {error && <p className="bg-red-100 text-red-600 p-3 rounded mb-4 text-center">{error}</p>}
 

@@ -22,4 +22,28 @@ api.interceptors.request.use(
   }
 );
 
+// Interceptor: a 401 means the session is missing or expired (JWT TTL is short and
+// there is no refresh flow). Clear the stale token and bounce to login with an
+// "expired" hint, instead of letting callers surface a cryptic error. Skipped for:
+//  - /auth/* requests, where 401 is a normal "bad credentials/OTP" form error;
+//  - requests opting out via { skipAuthRedirect: true } (e.g. the silent session
+//    probe on app bootstrap, so anonymous visitors on public pages aren't kicked).
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const config = error?.config || {};
+    const isAuthEndpoint = (config.url || '').includes('/auth/');
+    const hadToken = !!localStorage.getItem('token');
+
+    if (status === 401 && hadToken && !isAuthEndpoint && !config.skipAuthRedirect) {
+      localStorage.removeItem('token');
+      if (window.location.pathname !== '/login') {
+        window.location.assign('/login?expired=1');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

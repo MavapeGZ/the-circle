@@ -1,5 +1,6 @@
 package com.thecircle.users.security;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,8 +24,6 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable);
-        http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -37,6 +36,13 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                 .anyRequest().authenticated()
             )
+            // Without an explicit entry point Spring defaults to Http403ForbiddenEntryPoint,
+            // so an expired/missing JWT surfaced as 403 (indistinguishable from a real
+            // permission denial). Return 401 instead so the frontend can detect an expired
+            // session and redirect to login. See issue #72.
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(
+                    (request, response, authException) ->
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")))
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(authenticationProvider)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
