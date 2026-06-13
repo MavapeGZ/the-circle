@@ -67,9 +67,12 @@ services:
     environment:
       <<: *app-env
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/users_db
-      JWT_SECRET: ${JWT_SECRET}
       KYC_UPLOAD_DIR: /data/kyc
+      CATALOG_BASE_URL: http://ms-catalog:8082
+      CONTRACTS_BASE_URL: http://ms-contracts:8083
+      GAMIFICATION_BASE_URL: http://ms-gamification:8084
       USERS_INTERNAL_KEY: ${USERS_INTERNAL_KEY}
+      CATALOG_INTERNAL_KEY: ${CATALOG_INTERNAL_KEY}
       CONTRACTS_INTERNAL_KEY: ${CONTRACTS_INTERNAL_KEY}
       NOTIFICATIONS_BASE_URL: http://ms-notifications:8085
       NOTIFICATIONS_INTERNAL_KEY: ${NOTIFICATIONS_INTERNAL_KEY}
