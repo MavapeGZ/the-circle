@@ -8,6 +8,10 @@ import com.thecircle.users.dto.KycResponse;
 import com.thecircle.users.model.KycStatus;
 import com.thecircle.users.model.User;
 import com.thecircle.users.repository.UserRepository;
+import com.thecircle.users.service.CatalogClient;
+import com.thecircle.users.service.ContractsClient;
+import com.thecircle.users.service.DeviceCookieService;
+import com.thecircle.users.service.IbanCipher;
 import com.thecircle.users.service.KycService;
 import com.thecircle.users.service.GamificationClient;
 import org.junit.jupiter.api.Test;
@@ -44,6 +48,21 @@ class UserControllerTest {
 
     @Mock
     private GamificationClient gamificationClient;
+
+    @Mock
+    private DeviceCookieService deviceCookieService;
+
+    @Mock
+    private IbanCipher ibanCipher;
+
+    @Mock
+    private CatalogClient catalogClient;
+
+    @Mock
+    private ContractsClient contractsClient;
+
+    @Mock
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private UserController userController;
@@ -105,5 +124,32 @@ class UserControllerTest {
             logger.detachAppender(listAppender);
             listAppender.stop();
         }
+    }
+
+    @Test
+    void deleteAccount_requestsContractCleanupForOwnedOpenContracts() {
+        Long userId = 1L;
+        UserDetails principal = org.springframework.security.core.userdetails.User
+                .withUsername("owner@example.com")
+                .password("password")
+                .authorities(List.of(new SimpleGrantedAuthority("ROLE_USER")))
+                .build();
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                principal,
+                "password",
+                principal.getAuthorities()
+        );
+
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(buildUser(userId)));
+        when(userRepository.save(org.mockito.ArgumentMatchers.any(User.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(passwordEncoder.encode(org.mockito.ArgumentMatchers.anyString())).thenReturn("encoded");
+
+        ResponseEntity<Void> response = userController.deleteAccount(authentication);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        org.mockito.Mockito.verify(deviceCookieService).revokeAllDevices(userId);
+        org.mockito.Mockito.verify(catalogClient).removeUserArticles(userId);
+        org.mockito.Mockito.verify(contractsClient).removeOwnedOpenContracts(userId);
     }
 }

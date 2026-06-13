@@ -12,6 +12,7 @@ import com.thecircle.users.dto.UserProfileDto;
 import com.thecircle.users.dto.PublicBadgeDto;
 import com.thecircle.users.dto.PublicProfileDto;
 import com.thecircle.users.service.CatalogClient;
+import com.thecircle.users.service.ContractsClient;
 import com.thecircle.users.service.DeviceCookieService;
 import com.thecircle.users.service.GamificationClient;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +56,7 @@ public class UserController {
     private final DeviceCookieService deviceCookieService;
     private final IbanCipher ibanCipher;
     private final CatalogClient catalogClient;
+    private final ContractsClient contractsClient;
     private final GamificationClient gamificationClient;
 
     @GetMapping("/health")
@@ -217,6 +219,7 @@ public class UserController {
         deviceCookieService.revokeAllDevices(user.getId());
 
         catalogClient.removeUserArticles(user.getId());
+        contractsClient.removeOwnedOpenContracts(user.getId());
 
         return ResponseEntity.ok().build();
     }

@@ -42,6 +42,11 @@ catalog:
   base-url: ${CATALOG_BASE_URL:http://localhost:8082}
   internal:
     api-key: ${CATALOG_INTERNAL_KEY:}
+
+contracts:
+  base-url: ${CONTRACTS_BASE_URL:http://localhost:8083}
+  internal:
+    api-key: ${CONTRACTS_INTERNAL_KEY:}
     
 users:
   internal:
