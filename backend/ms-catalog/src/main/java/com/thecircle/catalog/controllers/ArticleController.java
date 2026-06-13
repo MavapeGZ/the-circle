@@ -52,11 +52,10 @@ public class ArticleController {
                     .parseSignedClaims(token)
                     .getPayload();
 
-            Long userId = Long.valueOf(claims.get("userId").toString());
-            UsersClient.PayoutAccount payout = usersClient.getPayoutAccount(userId);
-            if (payout != null) {
-                article.setZone(payout.zone());
-            }
+Long userId = Long.valueOf(claims.get("userId").toString());
+UsersClient.PayoutAccount payout = usersClient.getPayoutAccount(userId);
+// Always overwrite any client-provided zone to prevent spoofing.
+article.setZone(payout != null ? payout.zone() : null);
             if (article.getProductType() == ProductType.DONATION
                     || article.getProductType() == ProductType.DEMAND) {
                 if (article.getPrice() != null && article.getPrice() > 0) {
