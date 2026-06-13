@@ -219,10 +219,7 @@ function ArticleDetail() {
             <div className="flex justify-between items-center mb-4">
               <div className="flex gap-2">
                 {renderBadge()}
-                {article.zone && (
-                  <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">
-                    {article.zone.replaceAll('_', ' ').toLowerCase()}
-                  </span>
+{article.zone.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
                 )}
                 <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">
                   {article.category}
