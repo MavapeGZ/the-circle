@@ -45,9 +45,19 @@ public class GamificationController {
         return ResponseEntity.ok(gamificationService.getUserSummary(userId));
     }
 
+    @GetMapping("/users/{userId}/points")
+    public ResponseEntity<UserPointsDto> getUserPoints(@PathVariable Long userId) {
+        return ResponseEntity.ok(gamificationService.getUserPoints(userId));
+    }
+
     @GetMapping("/users/{userId}/badges")
     public ResponseEntity<List<BadgeDto>> getUserBadges(@PathVariable Long userId) {
         return ResponseEntity.ok(gamificationService.getUserBadges(userId));
+    }
+
+    @GetMapping("/users/summaries")
+    public ResponseEntity<List<UserSummaryDto>> getUserSummaries(@RequestParam List<Long> ids) {
+        return ResponseEntity.ok(gamificationService.getUserSummaries(ids));
     }
 
     @GetMapping("/badges")

@@ -28,6 +28,8 @@ public class Badge {
     // but not yet decided; the field name is kept for that future contract.
     private String iconUrl;
 
+    private String tier;
+
     // Points threshold (null = not points-based)
     private Integer requiredPoints;
 
@@ -38,12 +40,13 @@ public class Badge {
     // How many times the event must occur (null = not event-based)
     private Integer requiredEventCount;
 
-    public Badge(String code, String name, String description, String iconUrl,
+    public Badge(String code, String name, String description, String iconUrl, String tier,
                  Integer requiredPoints, EventType requiredEventType, Integer requiredEventCount) {
         this.code = code;
         this.name = name;
         this.description = description;
         this.iconUrl = iconUrl;
+        this.tier = tier;
         this.requiredPoints = requiredPoints;
         this.requiredEventType = requiredEventType;
         this.requiredEventCount = requiredEventCount;

@@ -15,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest
@@ -46,10 +48,10 @@ class GamificationServiceTest {
     @BeforeEach
     void seedBadges() {
         badgeRepo.deleteAll();
-        badgeRepo.save(new Badge(BADGE_FIRST_STEPS,    "Primeros pasos",   "10 pts",  "🌱", 10,   null,                          null));
-        badgeRepo.save(new Badge(BADGE_HELPER,          "Colaborador",      "100 pts", "🤝", 100,  null,                          null));
-        badgeRepo.save(new Badge(BADGE_FIRST_DONATION,  "Primera donación", "1 dona",  "🎁", null, EventType.ITEM_DONATED,         1));
-        badgeRepo.save(new Badge(BADGE_SERIAL_DONOR,    "Donador habitual", "5 donas", "💝", null, EventType.ITEM_DONATED,         5));
+        badgeRepo.save(new Badge(BADGE_FIRST_STEPS,    "Primeros pasos",   "10 pts",  "🌱", "bronze", 10,   null,                          null));
+        badgeRepo.save(new Badge(BADGE_HELPER,          "Colaborador",      "100 pts", "🤝", "gold", 100,  null,                          null));
+        badgeRepo.save(new Badge(BADGE_FIRST_DONATION,  "Primera donación", "1 dona",  "🎁", "bronze", null, EventType.ITEM_DONATED,         1));
+        badgeRepo.save(new Badge(BADGE_SERIAL_DONOR,    "Donador habitual", "5 donas", "💝", "silver", null, EventType.ITEM_DONATED,         5));
     }
 
     private AwardEventDto event(EventType type) {
@@ -171,5 +173,24 @@ class GamificationServiceTest {
         assertFalse(badges.isEmpty());
         assertTrue(badges.stream().anyMatch(b -> b.getCode().equals(BADGE_FIRST_STEPS)));
         assertTrue(badges.stream().anyMatch(b -> b.getCode().equals(BADGE_SERIAL_DONOR)));
+    }
+
+    @Test
+    void getUserPoints_unknownUser_returnsZero() {
+        var points = service.getUserPoints(999L);
+        assertEquals(999L, points.userId());
+        assertEquals(0, points.totalPoints());
+    }
+
+    @Test
+    void getUserSummaries_returnsRequestedUsers() {
+        service.processEvent(event(EventType.REVIEW_RECEIVED));
+        var summaries = service.getUserSummaries(List.of(USER_ID, 999L));
+
+        assertEquals(2, summaries.size());
+        assertEquals(USER_ID, summaries.get(0).getUserId());
+        assertEquals(999L, summaries.get(1).getUserId());
+        assertFalse(summaries.get(0).getBadges().isEmpty());
+        assertTrue(summaries.get(1).getBadges().isEmpty());
     }
 }

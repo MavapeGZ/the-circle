@@ -9,6 +9,7 @@ import com.thecircle.users.model.KycStatus;
 import com.thecircle.users.model.User;
 import com.thecircle.users.repository.UserRepository;
 import com.thecircle.users.service.KycService;
+import com.thecircle.users.service.GamificationClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -40,6 +41,9 @@ class UserControllerTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private GamificationClient gamificationClient;
 
     @InjectMocks
     private UserController userController;

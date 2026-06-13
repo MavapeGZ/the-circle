@@ -15,6 +15,7 @@ import ContractDetail from './ContractDetail';
 import Checkout from './Checkout';
 import PaymentReceipt from './PaymentReceipt';
 import Settings from './Settings';
+import ProfilePage from './ProfilePage';
 
 // Navigation lives inside BrowserRouter so it can use useNavigate to redirect.
 function NavBar() {
@@ -33,6 +34,9 @@ function NavBar() {
         <span className="font-extrabold text-xl tracking-wider">THE CIRCLE</span>
         <Link to="/" className="font-bold hover:text-blue-200 transition-colors ml-4">Home</Link>
         <Link to="/catalog" className="font-bold hover:text-blue-200 transition-colors">Catalog</Link>
+        {user && (
+          <Link to="/profile" className="font-bold hover:text-blue-200 transition-colors">Profile</Link>
+        )}
         {user && (
           <Link to="/create" className="font-bold hover:text-blue-200 transition-colors">Publish</Link>
         )}
@@ -83,6 +87,9 @@ function App() {
           <Route path="/create" element={<CreateArticle />} />
           <Route path="/catalog/:id" element={<ArticleDetail />} />
           <Route path="/catalog/edit/:id" element={<EditArticle />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/:id" element={<ProfilePage />} />
+          <Route path="/users/:id" element={<ProfilePage />} />
           <Route path="/contracts" element={<MyContracts />} />
           <Route path="/contracts/:contractId/sign" element={<SignContract />} />
           <Route path="/contracts/:contractId/checkout" element={<Checkout />} />
