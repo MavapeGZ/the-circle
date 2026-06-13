@@ -17,7 +17,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Logger;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +29,6 @@ public class ArticleService {
     // Page size used to drain findAllNotSold below. Bounds per-request memory and
     // stays under OpenSearch's default 10k result window per page.
     private static final int SCAN_PAGE_SIZE = 500;
-    private static final Logger logger = Logger.getLogger(ArticleService.class.getName());
 
     public Article createArticle(Article article) {
         article.setId(null);
@@ -42,10 +40,10 @@ public class ArticleService {
     }
 
     public Iterable<Article> getAllArticles() {
-        // Hide SOLD articles from browsing; keep everything else (incl. legacy nulls).
-        // SOLD is excluded server-side (term query) instead of pulling the whole index
-        // into memory and filtering here. Pages are drained so the result stays
-        // complete.
+        // Hide SOLD and DELETED articles from browsing; keep everything else (incl.
+        // legacy nulls). Both are excluded server-side (terms query) instead of pulling
+        // the whole index into memory and filtering here. Pages are drained so the
+        // result stays complete.
         List<Article> visible = new ArrayList<>();
         int page = 0;
         Page<Article> current;
