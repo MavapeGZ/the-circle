@@ -86,9 +86,10 @@ OpenSearch requires a high virtual memory map limit. If the `opensearch` contain
    DB_USER=thecircle
    DB_PASSWORD=change-me
    JWT_SECRET=replace-with-a-long-random-secret
-   USERS_INTERNAL_KEY=replace-with-a-shared-internal-key
-   CATALOG_INTERNAL_KEY=replace-with-a-shared-internal-key
-   CONTRACTS_INTERNAL_KEY=replace-with-a-shared-internal-key
+  USERS_INTERNAL_KEY=replace-with-a-shared-internal-key
+  CATALOG_INTERNAL_KEY=replace-with-a-shared-internal-key
+  CONTRACTS_INTERNAL_KEY=replace-with-a-shared-internal-key
+  NOTIFICATIONS_INTERNAL_KEY=replace-with-a-shared-internal-key
    ```
 
    Then start the containers:
