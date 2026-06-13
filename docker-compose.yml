@@ -101,6 +101,10 @@ services:
     environment:
       <<: *app-env
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/contracts_db
+      MS_USERS_URL: http://ms-users:8081
+      MS_CATALOG_URL: http://ms-catalog:8082
+      USERS_INTERNAL_KEY: ${USERS_INTERNAL_KEY}
+      CATALOG_INTERNAL_KEY: ${CATALOG_INTERNAL_KEY}
       CONTRACTS_INTERNAL_KEY: ${CONTRACTS_INTERNAL_KEY}
       NOTIFICATIONS_BASE_URL: http://ms-notifications:8085
       NOTIFICATIONS_INTERNAL_KEY: ${NOTIFICATIONS_INTERNAL_KEY}
