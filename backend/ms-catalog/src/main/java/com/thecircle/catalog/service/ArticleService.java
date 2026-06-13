@@ -5,6 +5,7 @@ import com.thecircle.catalog.model.ArticleStatus;
 import com.thecircle.catalog.model.ProductType;
 import com.thecircle.catalog.repository.ArticleRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,14 +17,20 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ArticleService {
 
     private final ArticleRepository repository;
     private final double SYMBOLIC_LIMIT_PRICE = 10.0;
     private static final double GUARANTEE_LIMIT = 20.0;
+    // Page size used to drain findAllNotSold below. Bounds per-request memory and
+    // stays under OpenSearch's default 10k result window per page.
+    private static final int SCAN_PAGE_SIZE = 500;
+    private static final Logger logger = Logger.getLogger(ArticleService.class.getName());
 
     public Article createArticle(Article article) {
         article.setId(null);
@@ -34,14 +41,11 @@ public class ArticleService {
         return repository.save(article);
     }
 
-    // Page size used to drain findAllNotSold below. Bounds per-request memory and
-    // stays under OpenSearch's default 10k result window per page.
-    private static final int SCAN_PAGE_SIZE = 500;
-
     public Iterable<Article> getAllArticles() {
         // Hide SOLD articles from browsing; keep everything else (incl. legacy nulls).
         // SOLD is excluded server-side (term query) instead of pulling the whole index
-        // into memory and filtering here. Pages are drained so the result stays complete.
+        // into memory and filtering here. Pages are drained so the result stays
+        // complete.
         List<Article> visible = new ArrayList<>();
         int page = 0;
         Page<Article> current;
@@ -88,6 +92,22 @@ public class ArticleService {
 
     public void deleteArticle(String id) {
         repository.deleteById(id);
+    }
+
+    public void removeArticlesByAuthorId(Long authorId) {
+        List<Article> userArticles = repository.findByAuthorId(authorId);
+
+        if (userArticles.isEmpty()) {
+            log.info("No articles found for unsubscribed user {}", authorId);
+            return;
+        }
+
+        for (Article article : userArticles) {
+            article.setStatus(ArticleStatus.DELETED);
+        }
+
+        repository.saveAll(userArticles);
+        log.info("Soft-deleted {} articles in OpenSearch for unsubscribed user {}", userArticles.size(), authorId);
     }
 
     private void validateAndAdjustPrice(Article article) {
