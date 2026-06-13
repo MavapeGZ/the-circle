@@ -55,6 +55,9 @@ notifications:
     connect-timeout-ms: ${NOTIFICATIONS_CONNECT_TIMEOUT_MS:5000}
     read-timeout-ms: ${NOTIFICATIONS_READ_TIMEOUT_MS:30000}
 
+gamification:
+  base-url: ${GAMIFICATION_BASE_URL:http://localhost:8084}
+
 signature:
   otp:
     length: ${OTP_LENGTH:6}

@@ -1,7 +1,21 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ZONE_OPTIONS } from '../constants/zones';
 
-export default function ArticleCard({ article }) {
+function zoneLabel(zone) {
+  return ZONE_OPTIONS.find((option) => option.value === zone)?.label || zone || 'Not shared';
+}
+
+function initials(name) {
+  return (name || 'S')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('');
+}
+
+export default function ArticleCard({ article, sellerProfile }) {
   const renderBadge = () => {
     switch (article.productType) {
       case 'DONATION':
@@ -33,7 +47,10 @@ export default function ArticleCard({ article }) {
     }
   };
     
-  const priceDisplay = !article.price ? 'Free' : `${article.price} €`;
+  const priceDisplay = article.price == null || article.price === 0 ? 'Free' : `${article.price} €`;
+  const sellerName = sellerProfile?.displayName || `User ${article.authorId || article.id}`;
+  const sellerInitials = initials(sellerProfile?.displayName || sellerName);
+  const sellerZone = zoneLabel(sellerProfile?.approximateZone);
 
   // Format the date (comes in ISO format from OpenSearch)
   const formattedDate = new Date(article.createdAt).toLocaleDateString('en-US', {
@@ -41,13 +58,30 @@ export default function ArticleCard({ article }) {
   });
 
   return (
-    <Link to={`/catalog/${article.id}`} className="block h-full">
-      <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 border border-gray-100 overflow-hidden flex flex-col h-full">
-        {/* Image section */}
+    <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 border border-gray-100 overflow-hidden flex flex-col h-full">
+      <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-3">
+        <Link to={`/users/${article.authorId}`} className="flex items-center gap-3 min-w-0 group">
+          <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-black overflow-hidden shrink-0">
+            {sellerProfile?.avatarUrl ? (
+              <img src={sellerProfile.avatarUrl} alt={sellerName} className="h-full w-full object-cover" />
+            ) : (
+              <span>{sellerInitials}</span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="font-bold text-gray-900 truncate group-hover:text-blue-700">{sellerName}</p>
+            <p className="text-xs text-gray-500 truncate">{sellerZone}</p>
+          </div>
+        </Link>
+
+        <span className="text-gray-400 text-xs whitespace-nowrap">{formattedDate}</span>
+      </div>
+
+      <Link to={`/catalog/${article.id}`} className="block flex-grow">
         {article.imageBase64 ? (
-          <img 
-            src={article.imageBase64} 
-            alt={article.title} 
+          <img
+            src={article.imageBase64}
+            alt={article.title}
             className="w-full h-48 object-cover border-b border-gray-100"
           />
         ) : (
@@ -62,35 +96,35 @@ export default function ArticleCard({ article }) {
           <div className="flex justify-between items-start mb-3">
             <div className="flex gap-2 flex-wrap">
               {renderBadge()}
-{article.zone.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
-              )}
+              <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">
+                {zoneLabel(article.zone)}
+              </span>
               {article.status === 'RESERVED' && (
                 <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full border border-yellow-300">
                   Reserved
                 </span>
               )}
             </div>
-            <span className="text-gray-400 text-xs">{formattedDate}</span>
           </div>
-          
+
           <h3 className="text-xl font-bold text-gray-800 mb-2 line-clamp-2">
             {article.title}
           </h3>
-          
+
           <p className="text-gray-600 text-sm line-clamp-3 mb-4">
             {article.description}
           </p>
         </div>
+      </Link>
 
-        <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center mt-auto">
-          <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-2 py-1 rounded">
-            {article.category}
-          </span>
-          <span className="font-extrabold text-lg text-gray-800">
-            {priceDisplay}
-          </span>
-        </div>
+      <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center mt-auto">
+        <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-2 py-1 rounded">
+          {article.category}
+        </span>
+        <span className="font-extrabold text-lg text-gray-800">
+          {priceDisplay}
+        </span>
       </div>
-    </Link>
+    </div>
   );
 }

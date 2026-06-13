@@ -6,6 +6,7 @@ import { ZONE_OPTIONS } from '../constants/zones';
 
 function Catalog() {
   const [articles, setArticles] = useState([]);
+  const [sellerProfiles, setSellerProfiles] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -59,6 +60,31 @@ function Catalog() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const authorIds = [...new Set(articles.map((article) => article.authorId).filter(Boolean))];
+
+    if (authorIds.length === 0) {
+      setSellerProfiles({});
+      return;
+    }
+
+    const loadProfiles = async () => {
+      try {
+        const { data } = await api.get('/users/public', {
+          params: { ids: authorIds.join(',') },
+        });
+
+        const profilesById = Object.fromEntries((data || []).map((profile) => [String(profile.id), profile]));
+        setSellerProfiles(profilesById);
+      } catch (err) {
+        console.error('Error loading seller profiles:', err);
+        setSellerProfiles({});
+      }
+    };
+
+    loadProfiles();
+  }, [articles]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -134,7 +160,11 @@ function Catalog() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {articles.map((article) => (
-            <ArticleCard key={article.id} article={article} />
+            <ArticleCard
+              key={article.id}
+              article={article}
+              sellerProfile={sellerProfiles[String(article.authorId)]}
+            />
           ))}
         </div>
       )}

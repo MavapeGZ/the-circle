@@ -9,8 +9,11 @@ import com.thecircle.users.repository.UserRepository;
 import com.thecircle.users.model.User;
 import com.thecircle.users.model.KycStatus;
 import com.thecircle.users.dto.UserProfileDto;
+import com.thecircle.users.dto.PublicBadgeDto;
+import com.thecircle.users.dto.PublicProfileDto;
 import com.thecircle.users.service.CatalogClient;
 import com.thecircle.users.service.DeviceCookieService;
+import com.thecircle.users.service.GamificationClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -25,9 +28,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -50,6 +55,7 @@ public class UserController {
     private final DeviceCookieService deviceCookieService;
     private final IbanCipher ibanCipher;
     private final CatalogClient catalogClient;
+    private final GamificationClient gamificationClient;
 
     @GetMapping("/health")
     public String health() {
@@ -310,19 +316,35 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<UserProfileDto> getUserProfile(@PathVariable Long userId) {
-        var u = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        public ResponseEntity<PublicProfileDto> getUserProfile(@PathVariable Long userId) {
+        return userRepository.findById(userId)
+            .filter(user -> user.getDeletedAt() == null)
+            .map(user -> ResponseEntity.ok(buildPublicProfile(user)))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        }
 
-        UserProfileDto profileDto = new UserProfileDto(
-                u.getId(),
-                null,
-                u.getFirstName(),
-                u.getLastName(),
-            u.getZone(),
-                u.getKycStatus().name());
+        @GetMapping("/public")
+        public ResponseEntity<List<PublicProfileDto>> getPublicProfiles(@RequestParam List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
 
-        return ResponseEntity.ok(profileDto);
+        List<Long> uniqueIds = ids.stream().distinct().toList();
+        List<User> users = userRepository.findAllById(uniqueIds).stream()
+            .filter(user -> user.getDeletedAt() == null)
+            .toList();
+        var usersById = users.stream().collect(Collectors.toMap(User::getId, user -> user, (left, right) -> left, LinkedHashMap::new));
+        var summariesById = gamificationClient.getSummaries(uniqueIds).stream()
+            .collect(Collectors.toMap(GamificationClient.UserSummary::userId, summary -> summary,
+                (left, right) -> left, LinkedHashMap::new));
+
+        List<PublicProfileDto> profiles = uniqueIds.stream()
+            .map(usersById::get)
+            .filter(java.util.Objects::nonNull)
+            .map(user -> buildPublicProfile(user, summariesById.get(user.getId())))
+            .toList();
+
+        return ResponseEntity.ok(profiles);
     }
 
     @PostMapping("/{userId}/reviews")
@@ -376,6 +398,43 @@ public class UserController {
     }
 
     public record DeviceDto(Long id, String userAgent, LocalDateTime createdAt, LocalDateTime lastSeenAt) {
+    }
+
+    private PublicProfileDto buildPublicProfile(User user) {
+        var summary = gamificationClient.getSummaries(List.of(user.getId())).stream().findFirst().orElse(null);
+        return buildPublicProfile(user, summary);
+    }
+
+    private PublicProfileDto buildPublicProfile(User user, GamificationClient.UserSummary summary) {
+        int points = summary != null ? summary.totalPoints() : 0;
+        List<PublicBadgeDto> badges = summary != null
+                ? summary.badges().stream()
+                .map(badge -> new PublicBadgeDto(
+                        badge.code(),
+                        badge.name(),
+                        badge.description(),
+                        badge.iconUrl(),
+                        badge.tier(),
+                        badge.earnedAt()))
+                .toList()
+                : List.of();
+
+        String displayName = (List.of(user.getFirstName(), user.getLastName()).stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(" "))).trim();
+        if (displayName.isBlank()) {
+            displayName = "User " + user.getId();
+        }
+
+        return new PublicProfileDto(
+                user.getId(),
+                displayName,
+                null,
+                user.getZone(),
+                user.getCreatedAt(),
+                points,
+                badges);
     }
 
     private String normalizeZone(String zone) {
