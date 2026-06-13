@@ -91,6 +91,7 @@ services:
       OPENSEARCH_URIS: http://opensearch:9200
       USERS_BASE_URL: http://ms-users:8081
       USERS_INTERNAL_KEY: ${USERS_INTERNAL_KEY}
+      CATALOG_INTERNAL_KEY: ${CATALOG_INTERNAL_KEY}
     depends_on:
       opensearch: { condition: service_healthy }
 
