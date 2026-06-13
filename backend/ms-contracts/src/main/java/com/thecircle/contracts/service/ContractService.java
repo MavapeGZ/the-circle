@@ -9,7 +9,11 @@ import com.thecircle.contracts.dto.GuaranteeStatus;
 import com.thecircle.contracts.dto.SignerDto;
 import com.thecircle.contracts.dto.SignerRole;
 import com.thecircle.contracts.model.Contract;
+import com.thecircle.contracts.repository.PaymentRepository;
 import com.thecircle.contracts.repository.ContractRepository;
+import com.thecircle.contracts.repository.SignatureRecordRepository;
+import com.thecircle.contracts.repository.SignatureSessionRepository;
+import com.thecircle.contracts.repository.StoredContractRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +28,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Persists and reads business contracts. The OTP signature workflow calls
@@ -39,17 +45,29 @@ public class ContractService {
     private final UsersClient usersClient;
     private final CatalogClient catalogClient;
     private final PaymentService paymentService;
+    private final PaymentRepository paymentRepository;
+    private final StoredContractRepository storedContractRepository;
+    private final SignatureRecordRepository signatureRecordRepository;
+    private final SignatureSessionRepository signatureSessionRepository;
 
     /** TTL (hours) after which an unsigned PENDING contract is purged. */
     @Value("${contracts.pending-ttl-hours:72}")
     private long pendingTtlHours;
 
     public ContractService(ContractRepository repository, UsersClient usersClient,
-                           CatalogClient catalogClient, PaymentService paymentService) {
+                           CatalogClient catalogClient, PaymentService paymentService,
+                           PaymentRepository paymentRepository,
+                           StoredContractRepository storedContractRepository,
+                           SignatureRecordRepository signatureRecordRepository,
+                           SignatureSessionRepository signatureSessionRepository) {
         this.repository = repository;
         this.usersClient = usersClient;
         this.catalogClient = catalogClient;
         this.paymentService = paymentService;
+        this.paymentRepository = paymentRepository;
+        this.storedContractRepository = storedContractRepository;
+        this.signatureRecordRepository = signatureRecordRepository;
+        this.signatureSessionRepository = signatureSessionRepository;
     }
 
     @Transactional
@@ -147,6 +165,51 @@ public class ContractService {
     public List<ContractDto> getByUser(String userId) {
         return repository.findByOwnerIdOrReceiverIdOrderByCreatedAtDesc(userId, userId)
                 .stream().map(this::toDto).toList();
+    }
+
+    /**
+     * Removes the open contracts owned by a deleted user together with their
+     * payments, generated PDFs and signature evidence.
+     *
+     * <p>Completed and cancelled contracts are retained as history. Receiver-side
+     * contracts are also retained, because they belong to the other party's
+     * product lifecycle.
+     */
+    @Transactional
+    public int deleteOpenOwnerContracts(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return 0;
+        }
+
+        List<Contract> openOwnerContracts = repository.findByOwnerIdOrReceiverIdOrderByCreatedAtDesc(userId, userId)
+                .stream()
+                .filter(contract -> userId.equals(contract.getOwnerId()))
+                .filter(contract -> contract.getStatus() != ContractStatus.COMPLETED)
+                .filter(contract -> contract.getStatus() != ContractStatus.CANCELLED)
+                .toList();
+
+        if (openOwnerContracts.isEmpty()) {
+            return 0;
+        }
+
+        List<String> contractIds = openOwnerContracts.stream().map(Contract::getId).toList();
+        Set<String> itemIds = openOwnerContracts.stream()
+                .map(Contract::getItemId)
+                .filter(itemId -> itemId != null && !itemId.isBlank())
+                .collect(Collectors.toSet());
+
+        signatureSessionRepository.deleteByContractIdIn(contractIds);
+        signatureRecordRepository.deleteByContractIdIn(contractIds);
+        storedContractRepository.deleteByContractIdIn(contractIds);
+        paymentRepository.deleteByContractIdIn(contractIds);
+        repository.deleteAll(openOwnerContracts);
+
+        for (String itemId : itemIds) {
+            catalogClient.setStatus(itemId, "AVAILABLE");
+        }
+
+        log.info("Removed {} open owner contract(s) for deleted user {}", openOwnerContracts.size(), userId);
+        return openOwnerContracts.size();
     }
 
     /**

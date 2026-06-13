@@ -70,6 +70,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       KYC_UPLOAD_DIR: /data/kyc
       USERS_INTERNAL_KEY: ${USERS_INTERNAL_KEY}
+      CONTRACTS_INTERNAL_KEY: ${CONTRACTS_INTERNAL_KEY}
       NOTIFICATIONS_BASE_URL: http://ms-notifications:8085
       NOTIFICATIONS_INTERNAL_KEY: ${NOTIFICATIONS_INTERNAL_KEY}
       DEVICE_COOKIE_SECURE: "true"
@@ -97,6 +98,7 @@ services:
     environment:
       <<: *app-env
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/contracts_db
+      CONTRACTS_INTERNAL_KEY: ${CONTRACTS_INTERNAL_KEY}
       NOTIFICATIONS_BASE_URL: http://ms-notifications:8085
       NOTIFICATIONS_INTERNAL_KEY: ${NOTIFICATIONS_INTERNAL_KEY}
     depends_on:

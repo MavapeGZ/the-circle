@@ -10,6 +10,10 @@ import com.thecircle.contracts.dto.GuaranteeStatus;
 import com.thecircle.contracts.dto.SignerRole;
 import com.thecircle.contracts.model.Contract;
 import com.thecircle.contracts.repository.ContractRepository;
+import com.thecircle.contracts.repository.PaymentRepository;
+import com.thecircle.contracts.repository.SignatureRecordRepository;
+import com.thecircle.contracts.repository.SignatureSessionRepository;
+import com.thecircle.contracts.repository.StoredContractRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -41,6 +45,18 @@ class ContractServiceTest {
 
     @Mock
     private CatalogClient catalogClient;
+
+    @Mock
+    private PaymentRepository paymentRepository;
+
+    @Mock
+    private StoredContractRepository storedContractRepository;
+
+    @Mock
+    private SignatureRecordRepository signatureRecordRepository;
+
+    @Mock
+    private SignatureSessionRepository signatureSessionRepository;
 
     @InjectMocks
     private ContractService service;
@@ -254,5 +270,37 @@ class ContractServiceTest {
         assertNotNull(dto.getPrimarySigner());
         assertNull(dto.getPrimarySigner().getFullName());
         assertEquals("buyer@x.com", dto.getPrimarySigner().getEmail());
+    }
+
+    @Test
+    void deleteOpenOwnerContracts_removesOnlyOpenOwnerSideContracts() {
+        Contract active = storedContract("c1");
+        active.setOwnerId("10");
+        active.setStatus(ContractStatus.ACTIVE);
+        active.setItemId("item-1");
+
+        Contract completed = storedContract("c2");
+        completed.setOwnerId("10");
+        completed.setStatus(ContractStatus.COMPLETED);
+        completed.setItemId("item-2");
+
+        Contract receiverSide = storedContract("c3");
+        receiverSide.setOwnerId("30");
+        receiverSide.setReceiverId("10");
+        receiverSide.setStatus(ContractStatus.ACTIVE);
+        receiverSide.setItemId("item-3");
+
+        when(repository.findByOwnerIdOrReceiverIdOrderByCreatedAtDesc("10", "10"))
+                .thenReturn(List.of(active, completed, receiverSide));
+
+        int removed = service.deleteOpenOwnerContracts("10");
+
+        assertEquals(1, removed);
+        verify(signatureSessionRepository).deleteByContractIdIn(List.of("c1"));
+        verify(signatureRecordRepository).deleteByContractIdIn(List.of("c1"));
+        verify(storedContractRepository).deleteByContractIdIn(List.of("c1"));
+        verify(paymentRepository).deleteByContractIdIn(List.of("c1"));
+        verify(repository).deleteAll(List.of(active));
+        verify(catalogClient).setStatus("item-1", "AVAILABLE");
     }
 }

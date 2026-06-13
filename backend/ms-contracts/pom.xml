@@ -20,6 +20,12 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Email delivery for OTP-based advanced electronic signature -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
