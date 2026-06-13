@@ -34,13 +34,22 @@ public class GamificationClient {
             return List.of();
         }
         try {
-            String ids = userIds.stream().distinct().map(String::valueOf).reduce((left, right) -> left + "," + right).orElse("");
-            return restTemplate.exchange(
+            String ids = String.join(",", userIds.stream()
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .map(String::valueOf)
+                    .toList());
+            if (ids.isBlank()) {
+                return List.of();
+            }
+
+            var response = restTemplate.exchange(
                     baseUrl + "/api/gamification/users/summaries?ids={ids}",
                     HttpMethod.GET,
                     null,
                     new ParameterizedTypeReference<List<UserSummary>>() {},
-                    ids).getBody();
+                    ids);
+            return response.getBody() != null ? response.getBody() : List.of();
         } catch (RuntimeException ex) {
             log.warn("Could not fetch gamification summaries for users {}: {}", userIds, ex.getMessage());
             return List.of();
