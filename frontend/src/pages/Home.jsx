@@ -26,7 +26,7 @@ function Home() {
               Browse Catalog
             </Link>
             <Link
-              to={user ? '/create' : '/login?authRequired=publish-article'}
+              to={user ? '/create' : '/login?authRequired=publish-article&next=/create'}
               className="w-full sm:w-auto px-8 py-4 bg-transparent border-2 border-white text-white font-bold rounded-full hover:bg-white hover:text-blue-700 hover:scale-105 transition-all duration-300"
             >
               Publish an Article

@@ -8,17 +8,22 @@ const STEP_OTP = 'otp';
 const FLOW_LOGIN_OTP = 'login-otp';
 const FLOW_EMAIL_VERIFICATION = 'email-verification';
 
+// Message shown when the user was redirected here from a guarded action.
+const AUTH_REQUIRED_MESSAGES = {
+  'publish-article': 'You must be logged in to publish an article.',
+};
+
 function Login() {
   const { login, verifyLoginOtp, verifyEmail } = useContext(AuthContext);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionExpired = searchParams.get('expired') === '1';
   const authRequired = searchParams.get('authRequired');
+  // Where to land after a successful sign-in (set by ProtectedRoute). Restricted
+  // to internal paths so the param can't be used as an open redirect.
+  const nextParam = searchParams.get('next');
+  const redirectTo = nextParam && nextParam.startsWith('/') ? nextParam : '/';
 
-  // Message shown when the user was redirected here from a guarded action.
-  const AUTH_REQUIRED_MESSAGES = {
-    'publish-article': 'You must be logged in to publish an article.',
-  };
   const authRequiredMessage = authRequired
     ? AUTH_REQUIRED_MESSAGES[authRequired] || 'You must be logged in to continue.'
     : '';
@@ -43,7 +48,7 @@ function Login() {
     try {
       const data = await login(email, password);
       if (data.token) {
-        navigate('/');
+        navigate(redirectTo);
       } else if (data.requiresOtp && data.sessionId) {
         setFlow(FLOW_LOGIN_OTP);
         setSessionId(data.sessionId);
@@ -81,7 +86,7 @@ function Login() {
       } else {
         await verifyLoginOtp(sessionId, otp);
       }
-      navigate('/');
+      navigate(redirectTo);
     } catch (err) {
       setError('Invalid or expired code. Try again.');
     } finally {
@@ -102,7 +107,7 @@ function Login() {
           </p>
         )}
 
-        {authRequiredMessage && !error && (
+        {authRequiredMessage && !error && !sessionExpired && (
           <p className="bg-amber-100 text-amber-700 p-3 rounded mb-4 text-center">
             {authRequiredMessage}
           </p>
