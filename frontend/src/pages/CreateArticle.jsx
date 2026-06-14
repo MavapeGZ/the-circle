@@ -89,7 +89,9 @@ function CreateArticle() {
       console.error('Error uploading article:', err);
       const status = err?.response?.status;
       const backendMsg = err?.response?.data?.message || err?.response?.data?.error;
-      if (status === 422) {
+      if (status === 401 || status === 403) {
+        setError('You must be logged in to publish an article.');
+      } else if (status === 422) {
         setMissingIban(true);
         setError(backendMsg || 'Missing payout information. Please add an IBAN in Settings before publishing paid items.');
       } else if (status === 400 && backendMsg) {
