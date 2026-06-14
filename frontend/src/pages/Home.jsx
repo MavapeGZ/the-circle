@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
 function Home() {
+  const { user } = useContext(AuthContext);
+
   return (
     <div className="flex flex-col min-h-[calc(100vh-72px)] bg-gray-50">
       
@@ -22,8 +25,8 @@ function Home() {
             >
               Browse Catalog
             </Link>
-            <Link 
-              to="/create" 
+            <Link
+              to={user ? '/create' : '/login?authRequired=publish-article'}
               className="w-full sm:w-auto px-8 py-4 bg-transparent border-2 border-white text-white font-bold rounded-full hover:bg-white hover:text-blue-700 hover:scale-105 transition-all duration-300"
             >
               Publish an Article

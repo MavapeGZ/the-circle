@@ -13,6 +13,15 @@ function Login() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionExpired = searchParams.get('expired') === '1';
+  const authRequired = searchParams.get('authRequired');
+
+  // Message shown when the user was redirected here from a guarded action.
+  const AUTH_REQUIRED_MESSAGES = {
+    'publish-article': 'You must be logged in to publish an article.',
+  };
+  const authRequiredMessage = authRequired
+    ? AUTH_REQUIRED_MESSAGES[authRequired] || 'You must be logged in to continue.'
+    : '';
 
   const [step, setStep] = useState(STEP_CREDENTIALS);
   const [submitting, setSubmitting] = useState(false);
@@ -90,6 +99,12 @@ function Login() {
         {sessionExpired && !error && (
           <p className="bg-amber-100 text-amber-700 p-3 rounded mb-4 text-center">
             Your session has expired. Please sign in again to continue.
+          </p>
+        )}
+
+        {authRequiredMessage && !error && (
+          <p className="bg-amber-100 text-amber-700 p-3 rounded mb-4 text-center">
+            {authRequiredMessage}
           </p>
         )}
 

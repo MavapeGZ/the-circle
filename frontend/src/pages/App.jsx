@@ -16,6 +16,7 @@ import Checkout from './Checkout';
 import PaymentReceipt from './PaymentReceipt';
 import Settings from './Settings';
 import ProfilePage from './ProfilePage';
+import ProtectedRoute from '../components/ProtectedRoute';
 
 // Navigation lives inside BrowserRouter so it can use useNavigate to redirect.
 function NavBar() {
@@ -84,7 +85,14 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/create" element={<CreateArticle />} />
+          <Route
+            path="/create"
+            element={
+              <ProtectedRoute reason="publish-article">
+                <CreateArticle />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/catalog/:id" element={<ArticleDetail />} />
           <Route path="/catalog/edit/:id" element={<EditArticle />} />
           <Route path="/profile" element={<ProfilePage />} />
