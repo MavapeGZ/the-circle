@@ -6,10 +6,10 @@ import { AuthContext } from '../context/AuthContext';
 // redirected to the login screen, which shows an explanatory message based on
 // the `authRequired` reason and returns them to `next` after they sign in.
 function ProtectedRoute({ children, reason }) {
-  const { user } = useContext(AuthContext);
+  const { isAuthenticated } = useContext(AuthContext);
   const location = useLocation();
 
-  if (!user) {
+  if (!isAuthenticated) {
     const params = new URLSearchParams();
     if (reason) params.set('authRequired', reason);
     params.set('next', location.pathname + location.search);
