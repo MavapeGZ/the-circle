@@ -11,6 +11,9 @@ const FLOW_EMAIL_VERIFICATION = 'email-verification';
 // Message shown when the user was redirected here from a guarded action.
 const AUTH_REQUIRED_MESSAGES = {
   'publish-article': 'You must be logged in to publish an article.',
+  'edit-article': 'You must be logged in to edit an article.',
+  'view-contracts': 'You must be logged in to view your contracts.',
+  settings: 'You must be logged in to access your settings.',
 };
 
 function Login() {
