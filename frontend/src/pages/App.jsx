@@ -94,17 +94,73 @@ function App() {
             }
           />
           <Route path="/catalog/:id" element={<ArticleDetail />} />
-          <Route path="/catalog/edit/:id" element={<EditArticle />} />
+          <Route
+            path="/catalog/edit/:id"
+            element={
+              <ProtectedRoute reason="edit-article">
+                <EditArticle />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:id" element={<ProfilePage />} />
           <Route path="/users/:id" element={<ProfilePage />} />
-          <Route path="/contracts" element={<MyContracts />} />
-          <Route path="/contracts/:contractId/sign" element={<SignContract />} />
-          <Route path="/contracts/:contractId/checkout" element={<Checkout />} />
-          <Route path="/contracts/:contractId/payments/:paymentId/receipt" element={<PaymentReceipt />} />
-          <Route path="/contracts/:contractId/payments/:paymentId/failure" element={<PaymentReceipt />} />
-          <Route path="/contracts/:contractId" element={<ContractDetail />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route
+            path="/contracts"
+            element={
+              <ProtectedRoute reason="view-contracts">
+                <MyContracts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contracts/:contractId/sign"
+            element={
+              <ProtectedRoute reason="view-contracts">
+                <SignContract />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contracts/:contractId/checkout"
+            element={
+              <ProtectedRoute reason="view-contracts">
+                <Checkout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contracts/:contractId/payments/:paymentId/receipt"
+            element={
+              <ProtectedRoute reason="view-contracts">
+                <PaymentReceipt />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contracts/:contractId/payments/:paymentId/failure"
+            element={
+              <ProtectedRoute reason="view-contracts">
+                <PaymentReceipt />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contracts/:contractId"
+            element={
+              <ProtectedRoute reason="view-contracts">
+                <ContractDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute reason="settings">
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </main>
     </BrowserRouter>
