@@ -69,8 +69,12 @@ function Login() {
     } catch (err) {
       const status = err?.response?.status;
 
+      // Keep a single combined message for both "no such account" and "wrong
+      // password". Splitting them would let anyone probe which emails are
+      // registered (user enumeration) — the backend deliberately returns one
+      // 401 for both cases, and forgot-password hides existence the same way.
       if (status === 404 || status === 401) {
-        setError('Could not sign in. Account or password is incorrect.');
+        setError('The account does not exist or the credentials are incorrect.');
       } else {
         setError('Could not sign in. Please try again.');
       }

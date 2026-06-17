@@ -69,6 +69,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/users_db
       JWT_SECRET: ${JWT_SECRET}
       KYC_UPLOAD_DIR: /data/kyc
+      AVATAR_UPLOAD_DIR: /data/avatars
       CATALOG_BASE_URL: http://ms-catalog:8082
       CONTRACTS_BASE_URL: http://ms-contracts:8083
       GAMIFICATION_BASE_URL: http://ms-gamification:8084
@@ -80,6 +81,7 @@ services:
       DEVICE_COOKIE_SECURE: "true"
     volumes:
       - ./data/kyc:/data/kyc
+      - ./data/avatars:/data/avatars
     depends_on:
       postgres: { condition: service_healthy }
 

@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import api from '../services/api';
+import api, { resolveAssetUrl } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import BadgeList from '../components/BadgeList';
 import { ZONE_OPTIONS } from '../constants/zones';
@@ -93,7 +93,7 @@ export default function ProfilePage() {
         <div className="relative flex flex-col lg:flex-row lg:items-center gap-6">
           <div className="h-24 w-24 rounded-3xl bg-white/15 border border-white/20 flex items-center justify-center text-3xl font-black overflow-hidden shrink-0">
             {profile.avatarUrl ? (
-              <img src={profile.avatarUrl} alt={profile.displayName} className="h-full w-full object-cover" />
+              <img src={resolveAssetUrl(profile.avatarUrl)} alt={profile.displayName} className="h-full w-full object-cover" />
             ) : (
               <span>{profileInitials}</span>
             )}

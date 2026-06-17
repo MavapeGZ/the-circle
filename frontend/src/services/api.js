@@ -46,4 +46,15 @@ api.interceptors.response.use(
   }
 );
 
+// Origin of the API (the gateway), without the trailing `/api`. The backend
+// returns avatar URLs as gateway-relative paths like `/api/users/5/avatar`;
+// resolveAssetUrl turns those into absolute URLs an <img> tag can load.
+export const apiOrigin = API_URL.replace(/\/api\/?$/, '');
+
+export const resolveAssetUrl = (path) => {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${apiOrigin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 export default api;
