@@ -14,10 +14,10 @@ OUT="backup-${STAMP}"
 cd "$(dirname "$0")/.."         # raíz del repo
 mkdir -p "$OUT"
 
-echo "==> Parando la app para una copia consistente..."
+echo "==> Stopping the app for a consistent backup..."
 $COMPOSE stop
 
-echo "==> Postgres (copia del volumen)"
+echo "==> Postgres (volume copy)"
 docker run --rm \
   -v "${PROJECT}_postgres_data":/data \
   -v "$PWD/$OUT":/out \
@@ -26,7 +26,7 @@ docker run --rm \
 #   $COMPOSE start postgres && sleep 5
 #   docker exec thecircle-postgres pg_dumpall -U "${DB_USER:-thecircle}" > "$OUT/postgres_dumpall.sql"
 
-echo "==> OpenSearch (copia del volumen)"
+echo "==> OpenSearch (volume copy)"
 docker run --rm \
   -v "${PROJECT}_opensearch_data":/data \
   -v "$PWD/$OUT":/out \
@@ -36,20 +36,20 @@ echo "==> KYC uploads"
 if [ -d data/kyc ]; then
   tar czf "$OUT/kyc.tar.gz" -C . data/kyc
 else
-  echo "   (sin uploads de KYC todavía)"
+  echo "   (no KYC uploads yet)"
 fi
 
-echo "==> .env (secretos)"
+echo "==> .env (secrets)"
 cp .env "$OUT/.env"
 
-echo "==> Re-arrancando la app..."
+echo "==> Restarting the app..."
 $COMPOSE start
 
-echo "==> Empaquetando..."
+echo "==> Packaging..."
 tar czf "${OUT}.tar.gz" -C . "$OUT"
 rm -rf "$OUT"
 
 echo ""
 echo "OK -> ${OUT}.tar.gz"
-echo "Cópialo FUERA de la sandbox antes de que caduque, p. ej.:"
+echo "Copy it OUTSIDE the sandbox before it expires, e.g.:"
 echo "  scp ubuntu@<IP>:$(pwd)/${OUT}.tar.gz ."
