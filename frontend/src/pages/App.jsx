@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { useContext, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { resolveAssetUrl } from '../services/api';
 import Login from './Login';
 import Register from './Register';
 import ForgotPassword from './ForgotPassword';
@@ -37,12 +38,21 @@ function NavBar() {
 
   const navLinkClass = 'font-bold hover:text-blue-200 transition-colors';
 
+  // Initials shown when the user has no profile picture yet.
+  const userInitials = user
+    ? `${user.firstName || ''} ${user.lastName || ''}`
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0].toUpperCase())
+        .join('') || 'U'
+    : '';
+
   // Shared link set, reused for the desktop row and the mobile dropdown.
   const mainLinks = (
     <>
       <Link to="/" onClick={closeMenu} className={navLinkClass}>Home</Link>
       <Link to="/catalog" onClick={closeMenu} className={navLinkClass}>Catalog</Link>
-      {user && <Link to="/profile" onClick={closeMenu} className={navLinkClass}>Profile</Link>}
       {user && <Link to="/create" onClick={closeMenu} className={navLinkClass}>Publish</Link>}
       {user && <Link to="/contracts" onClick={closeMenu} className={navLinkClass}>Contracts</Link>}
     </>
@@ -50,6 +60,16 @@ function NavBar() {
 
   const authLinks = user ? (
     <>
+      <Link to="/profile" onClick={closeMenu} aria-label="Profile" title="Profile" className="flex items-center gap-2">
+        <span className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-black overflow-hidden shrink-0 ring-2 ring-white/70 hover:ring-white transition-colors">
+          {user.avatarUrl ? (
+            <img src={resolveAssetUrl(user.avatarUrl)} alt="Profile" className="h-full w-full object-cover" />
+          ) : (
+            <span>{userInitials}</span>
+          )}
+        </span>
+        <span className="md:hidden font-bold">Profile</span>
+      </Link>
       <Link to="/settings" onClick={closeMenu} className={navLinkClass}>Settings</Link>
       <button
         onClick={handleLogout}

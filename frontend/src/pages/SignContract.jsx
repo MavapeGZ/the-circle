@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
+import BadgeToast from '../components/BadgeToast';
 import { contractTypeLabel } from '../utils/contractType';
 import { contractStatusLabel } from '../utils/contractStatus';
 
@@ -177,6 +178,7 @@ function SignContract() {
 
   return (
     <div className="max-w-5xl mx-auto mt-8 p-4">
+      {result?.earnedBadges?.length > 0 && <BadgeToast badges={result.earnedBadges} to="/profile" />}
       <button
         type="button"
         onClick={() => navigate(backTo)}

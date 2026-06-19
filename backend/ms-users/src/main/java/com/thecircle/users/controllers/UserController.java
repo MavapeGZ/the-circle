@@ -441,7 +441,7 @@ public class UserController {
         try {
             User u = getAuthenticatedUser(authentication);
             return ResponseEntity.ok(new UserProfileDto(u.getId(), u.getEmail(), u.getFirstName(),
-                u.getLastName(), u.getZone(), u.getKycStatus().name()));
+                u.getLastName(), u.getZone(), u.getKycStatus().name(), avatarUrl(u)));
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode()).build();
         }

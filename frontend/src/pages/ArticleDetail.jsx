@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import api from '../services/api';
+import api, { resolveAssetUrl } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import BadgeList from '../components/BadgeList';
 import { ZONE_OPTIONS } from '../constants/zones';
@@ -271,7 +271,7 @@ function ArticleDetail() {
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xl overflow-hidden shrink-0">
                   {owner.avatarUrl ? (
-                    <img src={owner.avatarUrl} alt={owner.displayName} className="h-full w-full object-cover" />
+                    <img src={resolveAssetUrl(owner.avatarUrl)} alt={owner.displayName} className="h-full w-full object-cover" />
                   ) : (
                     <span>{(owner.displayName || 'User').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('')}</span>
                   )}
