@@ -23,7 +23,7 @@ graph LR
 
 ## ms-users
 
-Responsable de la identidad, el perfil publico y la informacion sensible del usuario.
+Responsable de la identidad, el perfil público y la información sensible del usuario.
 
 ### Entidades
 
