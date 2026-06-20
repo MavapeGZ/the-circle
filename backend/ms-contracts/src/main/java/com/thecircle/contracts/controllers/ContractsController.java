@@ -5,6 +5,7 @@ import com.thecircle.contracts.dto.ContractDto;
 import com.thecircle.contracts.security.JwtAuthService;
 import com.thecircle.contracts.service.ContractPdfService;
 import com.thecircle.contracts.service.ContractService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -36,7 +37,7 @@ public class ContractsController {
     }
 
     @PostMapping
-    public ResponseEntity<ContractDto> createContract(@RequestBody ContractCreateRequest request) {
+    public ResponseEntity<ContractDto> createContract(@Valid @RequestBody ContractCreateRequest request) {
         if (request == null || request.itemId() == null || request.receiverId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "itemId and receiverId are required");
         }

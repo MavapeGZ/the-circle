@@ -52,7 +52,7 @@ public class AuthController {
     private boolean deviceCookieSecure;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthenticationResponse> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthenticationResponse> register(@Valid @RequestBody RegisterRequest request) {
         try {
             return ResponseEntity.ok(service.register(request));
         } catch (IllegalArgumentException e) {
@@ -74,7 +74,7 @@ public class AuthController {
 
     @PostMapping("/verify-email")
     public ResponseEntity<AuthenticationResponse> verifyEmail(
-            @RequestBody VerifyOtpRequest request,
+            @Valid @RequestBody VerifyOtpRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         try {
@@ -93,7 +93,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthenticationResponse> authenticate(
-            @RequestBody AuthenticationRequest request,
+            @Valid @RequestBody AuthenticationRequest request,
             HttpServletRequest httpRequest) {
         String deviceCookie = readDeviceCookie(httpRequest);
         try {
@@ -111,7 +111,7 @@ public class AuthController {
 
     @PostMapping("/login-otp")
     public ResponseEntity<AuthenticationResponse> verifyLoginOtp(
-            @RequestBody VerifyOtpRequest request,
+            @Valid @RequestBody VerifyOtpRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         try {
@@ -149,7 +149,7 @@ public class AuthController {
     }
 
     @PostMapping("/verify-reset-otp")
-    public ResponseEntity<AuthenticationResponse> verifyResetOtp(@RequestBody VerifyOtpRequest request,
+    public ResponseEntity<AuthenticationResponse> verifyResetOtp(@Valid @RequestBody VerifyOtpRequest request,
                                                                  HttpServletRequest httpRequest) {
         try {
             String sourceIp = resolveClientIp(httpRequest);
@@ -171,7 +171,7 @@ public class AuthController {
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<AuthenticationResponse> resetPassword(@RequestBody ResetPasswordRequest request,
+    public ResponseEntity<AuthenticationResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request,
                                                                 HttpServletRequest httpRequest) {
         try {
             String sourceIp = resolveClientIp(httpRequest);

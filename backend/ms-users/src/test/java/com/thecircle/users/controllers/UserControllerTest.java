@@ -23,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.slf4j.LoggerFactory;
@@ -67,6 +68,49 @@ class UserControllerTest {
     @InjectMocks
     private UserController userController;
 
+    // Minimal but real JPEG magic bytes (SOI + APP0) so upload validation passes.
+    private static final byte[] JPEG_BYTES = new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
+
+    private static Authentication ownerAuth() {
+        UserDetails principal = org.springframework.security.core.userdetails.User
+                .withUsername("owner@example.com")
+                .password("password")
+                .authorities(List.of(new SimpleGrantedAuthority("ROLE_USER")))
+                .build();
+        return new UsernamePasswordAuthenticationToken(principal, "password", principal.getAuthorities());
+    }
+
+    @Test
+    void uploadIdentity_whenFileTypeDisguised_returnsBadRequest() throws Exception {
+        Long userId = 1L;
+        // .png extension + declared png, but the bytes are not a real PNG.
+        MockMultipartFile front = new MockMultipartFile("front", "front.png", "image/png", new byte[]{1, 2, 3, 4});
+        MockMultipartFile back = new MockMultipartFile("back", "back.png", "image/png", new byte[]{1, 2, 3, 4});
+
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(buildUser(userId)));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(buildUser(userId)));
+
+        ResponseEntity<KycResponse> response = userController.uploadIdentity(userId, front, back, ownerAuth());
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertFalse(response.getBody().success());
+    }
+
+    @Test
+    void uploadIdentity_whenFileEmpty_returnsBadRequest() {
+        Long userId = 1L;
+        MockMultipartFile front = new MockMultipartFile("front", "front.jpg", "image/jpeg", new byte[0]);
+        MockMultipartFile back = new MockMultipartFile("back", "back.jpg", "image/jpeg", JPEG_BYTES);
+
+        when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(buildUser(userId)));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(buildUser(userId)));
+
+        ResponseEntity<KycResponse> response = userController.uploadIdentity(userId, front, back, ownerAuth());
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
     private static User buildUser(Long userId) {
         return User.builder()
                 .id(userId)
@@ -82,8 +126,8 @@ class UserControllerTest {
     @Test
     void uploadIdentity_whenKycProcessingFails_returnsGenericInternalServerError() throws Exception {
         Long userId = 1L;
-        MockMultipartFile front = new MockMultipartFile("front", "front.jpg", "image/jpeg", new byte[]{1});
-        MockMultipartFile back = new MockMultipartFile("back", "back.jpg", "image/jpeg", new byte[]{2});
+        MockMultipartFile front = new MockMultipartFile("front", "front.jpg", "image/jpeg", JPEG_BYTES);
+        MockMultipartFile back = new MockMultipartFile("back", "back.jpg", "image/jpeg", JPEG_BYTES);
         Logger logger = (Logger) LoggerFactory.getLogger(UserController.class);
         ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
         listAppender.start();

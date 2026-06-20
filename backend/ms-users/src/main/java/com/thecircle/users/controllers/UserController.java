@@ -16,6 +16,11 @@ import com.thecircle.users.service.CatalogClient;
 import com.thecircle.users.service.ContractsClient;
 import com.thecircle.users.service.DeviceCookieService;
 import com.thecircle.users.service.GamificationClient;
+import com.thecircle.users.service.UploadValidation;
+import com.thecircle.users.validation.ValidationPatterns;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -51,6 +56,9 @@ public class UserController {
             "BILBAO_AND_SURROUNDINGS",
             "MALAGA",
             "OTHER");
+
+    // Each KYC scan capped at 5 MB; aligns with spring.servlet.multipart.max-file-size.
+    private static final long MAX_KYC_BYTES = 5L * 1024 * 1024;
 
     private final KycService kycService;
     private final AvatarService avatarService;
@@ -89,7 +97,7 @@ public class UserController {
      * UI. Sending an empty/blank value clears the IBAN.
      */
     @PatchMapping("/me/iban")
-    public ResponseEntity<IbanResponse> updateIban(@RequestBody UpdateIbanRequest request,
+    public ResponseEntity<IbanResponse> updateIban(@Valid @RequestBody UpdateIbanRequest request,
                                                    Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
         String raw = request.iban();
@@ -111,7 +119,7 @@ public class UserController {
     }
 
     @PatchMapping("/me")
-    public ResponseEntity<SettingsResponse> updateProfile(@RequestBody UpdateProfileRequest request,
+    public ResponseEntity<SettingsResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request,
             Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
 
@@ -146,16 +154,13 @@ public class UserController {
     }
 
     @PostMapping("/me/change-password")
-    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest request,
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request,
             Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
 
-        // New password validation (avoid accepting weak passwords)
+        // Strength is enforced by @Valid on ChangePasswordRequest (same rule as
+        // registration). Here we only verify the current password matches.
         String newPass = request.newPassword();
-        if (newPass == null || newPass.trim().isEmpty() || newPass.length() < 6) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "New password must be at least 6 characters long and cannot be empty.");
-        }
 
         // Current password verification
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
@@ -263,6 +268,12 @@ public class UserController {
                 return ResponseEntity.status(404).body(new KycResponse(false, "User not found", null));
             }
 
+            // Validate both documents at the upload boundary: non-empty, <=5 MB,
+            // single safe extension (jpg/jpeg/png/pdf), declared type and real
+            // magic bytes all agreeing. Rejects disguised/oversized uploads.
+            UploadValidation.validate(front, "front", UploadValidation.DOCUMENT_TYPES, MAX_KYC_BYTES);
+            UploadValidation.validate(back, "back", UploadValidation.DOCUMENT_TYPES, MAX_KYC_BYTES);
+
             String newJwt = kycService.processKyc(userId, front, back);
             if (newJwt != null) {
                 return ResponseEntity.ok(new KycResponse(true, "User verified", newJwt));
@@ -270,6 +281,9 @@ public class UserController {
                 return ResponseEntity.accepted()
                         .body(new KycResponse(false, "Document received; verification pending or rejected", null));
             }
+        } catch (IllegalArgumentException e) {
+            // File validation failure (empty / too large / wrong type / bad magic bytes).
+            return ResponseEntity.badRequest().body(new KycResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("KYC verification failed for user {}", userId, e);
             return ResponseEntity.internalServerError()
@@ -425,7 +439,7 @@ public class UserController {
     }
 
     @PostMapping("/{userId}/reviews")
-    public ResponseEntity<ReviewDto> createReview(@PathVariable String userId, @RequestBody ReviewDto dto) {
+    public ResponseEntity<ReviewDto> createReview(@PathVariable String userId, @Valid @RequestBody ReviewDto dto) {
         return ResponseEntity.ok(new ReviewDto("r1", dto.reviewerId(), userId, dto.contractId(), dto.rating(),
                 dto.comment(), LocalDateTime.now()));
     }
@@ -452,11 +466,25 @@ public class UserController {
             String avatarUrl) {
     }
 
-        public record UpdateProfileRequest(String firstName, String lastName, String address, String zone, String idNumber,
+        public record UpdateProfileRequest(
+            @Pattern(regexp = ValidationPatterns.NAME, message = "First name " + ValidationPatterns.NAME_MSG)
+            String firstName,
+            @Pattern(regexp = ValidationPatterns.NAME, message = "Last name " + ValidationPatterns.NAME_MSG)
+            String lastName,
+            @Size(max = 255, message = "Address must be at most 255 characters")
+            @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Address " + ValidationPatterns.NO_ANGLE_MSG)
+            String address,
+            @Size(max = 64, message = "Zone must be at most 64 characters")
+            String zone,
+            @Size(max = 50, message = "ID number must be at most 50 characters")
+            @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "ID number " + ValidationPatterns.NO_ANGLE_MSG)
+            String idNumber,
             Boolean marketingEmailsOptIn, Boolean systemEmailsOptIn) {
     }
 
-    public record UpdateIbanRequest(String iban) {
+    public record UpdateIbanRequest(
+            @Size(max = 34, message = "IBAN must be at most 34 characters")
+            String iban) {
         // Records auto-generate toString() with every component; that default
         // would dump the full IBAN if an instance is ever logged. Mask it.
         @Override
@@ -468,7 +496,12 @@ public class UserController {
     public record IbanResponse(String ibanLast4) {
     }
 
-    public record ChangePasswordRequest(String currentPassword, String newPassword) {
+    public record ChangePasswordRequest(
+            @jakarta.validation.constraints.NotBlank(message = "Current password is required")
+            String currentPassword,
+            @jakarta.validation.constraints.NotBlank(message = "New password is required")
+            @Pattern(regexp = ValidationPatterns.PASSWORD, message = "Password " + ValidationPatterns.PASSWORD_MSG)
+            String newPassword) {
         @Override
         public String toString() {
             return "ChangePasswordRequest{currentPassword=***, newPassword=***}";

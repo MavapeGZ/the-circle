@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import api, { resolveAssetUrl } from '../services/api';
+import api, { resolveAssetUrl, extractApiError } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import BadgeList from '../components/BadgeList';
 import { ZONE_OPTIONS } from '../constants/zones';
@@ -119,7 +119,7 @@ function ArticleDetail() {
       });
     } catch (err) {
       console.error('Error creating contract:', err);
-      alert('Could not start the deal. Please try again.');
+      alert(extractApiError(err, 'Could not start the deal. Please try again.'));
       setAcquiring(false);
     }
   };
@@ -150,7 +150,7 @@ function ArticleDetail() {
       });
     } catch (err) {
       console.error('Error creating contract:', err);
-      alert('Could not start the deal. Please try again.');
+      alert(extractApiError(err, 'Could not start the deal. Please try again.'));
       setAcquiring(false);
     }
   };

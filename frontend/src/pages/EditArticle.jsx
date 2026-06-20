@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import api from '../services/api';
+import api, { extractApiError } from '../services/api';
 
 // Product types that have no price (free / priority). DEMAND is priority, so no price selection.
 const PRICELESS_TYPES = ['DONATION', 'DEMAND'];
@@ -103,7 +103,7 @@ function EditArticle() {
       navigate(`/catalog/${id}`);
     } catch (err) {
       console.error('Error updating article:', err);
-      setError('Failed to update the article. Please try again.');
+      setError(extractApiError(err, 'Failed to update the article. Please try again.'));
     } finally {
       setSaving(false);
     }

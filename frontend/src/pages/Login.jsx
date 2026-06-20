@@ -1,6 +1,7 @@
 import { useState, useContext } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { extractApiError } from '../services/api';
 
 const STEP_CREDENTIALS = 'credentials';
 const STEP_OTP = 'otp';
@@ -73,7 +74,11 @@ function Login() {
       // password". Splitting them would let anyone probe which emails are
       // registered (user enumeration) — the backend deliberately returns one
       // 401 for both cases, and forgot-password hides existence the same way.
-      if (status === 404 || status === 401) {
+      if (status === 400) {
+        // Format-level validation (blank/invalid email, missing password). Safe to
+        // surface — it says nothing about whether the account exists.
+        setError(extractApiError(err, 'Please check your email and password.'));
+      } else if (status === 404 || status === 401) {
         setError('The account does not exist or the credentials are incorrect.');
       } else {
         setError('Could not sign in. Please try again.');

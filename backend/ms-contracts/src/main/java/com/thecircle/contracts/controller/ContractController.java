@@ -16,6 +16,7 @@ import com.thecircle.contracts.service.ContractStorageService;
 import com.thecircle.contracts.service.SignatureService;
 import com.thecircle.contracts.service.SignatureWorkflowService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -57,14 +58,14 @@ public class ContractController {
     }
 
     @PostMapping(value = "/generate", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<byte[]> generate(@RequestBody ContractDto dto) {
+    public ResponseEntity<byte[]> generate(@Valid @RequestBody ContractDto dto) {
         byte[] pdf = renderPdf(dto);
         StoredContract sc = persist(pdf, dto != null ? dto.getContractId() : null);
         return pdfResponse(sc);
     }
 
     @PostMapping(value = "/generate-and-sign", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<byte[]> generateAndSign(@RequestBody ContractSignRequestDto req) {
+    public ResponseEntity<byte[]> generateAndSign(@Valid @RequestBody ContractSignRequestDto req) {
         if (req == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "The request body is empty. Please include the contract data and try again.");
@@ -97,12 +98,12 @@ public class ContractController {
     }
 
     @PostMapping(value = "/sign/request", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<SignRequestResponseDto> signRequest(@RequestBody SignRequestDto req) {
+    public ResponseEntity<SignRequestResponseDto> signRequest(@Valid @RequestBody SignRequestDto req) {
         return ResponseEntity.ok(workflowService.requestOtp(req));
     }
 
     @PostMapping(value = "/sign/confirm", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<SignConfirmResponseDto> signConfirm(@RequestBody SignConfirmDto req,
+    public ResponseEntity<SignConfirmResponseDto> signConfirm(@Valid @RequestBody SignConfirmDto req,
                                                               HttpServletRequest http) {
         if (req == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,

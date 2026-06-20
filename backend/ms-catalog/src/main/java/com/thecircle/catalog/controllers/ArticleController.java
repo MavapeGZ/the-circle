@@ -4,6 +4,7 @@ import com.thecircle.catalog.client.UsersClient;
 import com.thecircle.catalog.model.Article;
 import com.thecircle.catalog.model.ProductType;
 import com.thecircle.catalog.service.ArticleService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.Page;
@@ -40,7 +41,7 @@ public class ArticleController {
     // Create (Register)
     @PostMapping
     public ResponseEntity<Article> create(
-            @RequestBody Article article,
+            @Valid @RequestBody Article article,
             @RequestHeader("Authorization") String authHeader) {
 
         try {
@@ -128,7 +129,7 @@ article.setZone(payout != null ? payout.zone() : null);
 
     // Update
     @PutMapping("/{id}")
-    public ResponseEntity<Article> update(@PathVariable String id, @RequestBody Article article) {
+    public ResponseEntity<Article> update(@PathVariable String id, @Valid @RequestBody Article article) {
         if (service.getArticleById(id).isEmpty()) {
             return ResponseEntity.notFound().build();
         }

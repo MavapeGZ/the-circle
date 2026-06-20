@@ -2,6 +2,10 @@ package com.thecircle.contracts.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.thecircle.contracts.validation.ValidationPatterns;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -14,13 +18,18 @@ public class ContractDto {
     @JsonAlias({"contractId"})
     private String contractId;
 
+    @Size(max = 255, message = "Property address must be at most 255 characters")
+    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Property address " + ValidationPatterns.NO_ANGLE_MSG)
     private String propertyAddress;
     private LocalDate startDate;
     private LocalDate endDate;
     private BigDecimal monthlyRent;
     private BigDecimal price;
-    private List<String> clauses;
+    private List<@Size(max = 2000, message = "Clause is too long")
+            @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Clause " + ValidationPatterns.NO_ANGLE_MSG) String> clauses;
+    @Valid
     private SignerDto primarySigner;
+    @Valid
     private SignerDto secondarySigner;
 
     private String itemId;
@@ -30,6 +39,8 @@ public class ContractDto {
     private ContractStatus status;
     private BigDecimal guaranteeAmount;
     private GuaranteeStatus guaranteeStatus;
+    @Size(max = 2000, message = "Conditions must be at most 2000 characters")
+    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Conditions " + ValidationPatterns.NO_ANGLE_MSG)
     private String conditions;
     private LocalDateTime returnDate;
     private LocalDateTime createdAt;

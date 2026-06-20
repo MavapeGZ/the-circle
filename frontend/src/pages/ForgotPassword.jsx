@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import api, { extractApiError } from '../services/api';
 
 const STEP_EMAIL = 'email';
 const STEP_OTP = 'otp';
@@ -60,9 +60,8 @@ function ForgotPassword() {
       setStep(STEP_PASSWORD);
     } catch (err) {
       const status = err?.response?.status;
-      const msg = err?.response?.data?.message;
       if (status === 400) {
-        setError(msg || 'The reset code does not match or has expired.');
+        setError(extractApiError(err, 'The reset code does not match or has expired.'));
       } else {
         setError('Something went wrong. Please try again later.');
       }
@@ -74,8 +73,8 @@ function ForgotPassword() {
   const submitNewPassword = async (e) => {
     e.preventDefault();
     setError('');
-    if (newPassword.length < 6) {
-      setError('New password must be at least 6 characters long.');
+    if (newPassword.length < 8) {
+      setError('New password must be at least 8 characters long.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -88,9 +87,8 @@ function ForgotPassword() {
       setStep(STEP_DONE);
     } catch (err) {
       const status = err?.response?.status;
-      const msg = err?.response?.data?.message;
       if (status === 400) {
-        setError(msg || 'Your reset session has expired. Please start over.');
+        setError(extractApiError(err, 'Your reset session has expired. Please start over.'));
       } else {
         setError('Something went wrong. Please try again later.');
       }
