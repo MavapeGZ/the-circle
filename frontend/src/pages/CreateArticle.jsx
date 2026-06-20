@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import api, { extractApiError } from '../services/api';
 
 // Product types that have no price (free / priority). DEMAND is priority, so no price selection.
 const PRICELESS_TYPES = ['DONATION', 'DEMAND'];
@@ -88,16 +88,13 @@ function CreateArticle() {
     } catch (err) {
       console.error('Error uploading article:', err);
       const status = err?.response?.status;
-      const backendMsg = err?.response?.data?.message || err?.response?.data?.error;
       if (status === 401 || status === 403) {
         setError('You must be logged in to publish an article.');
       } else if (status === 422) {
         setMissingIban(true);
-        setError(backendMsg || 'Missing payout information. Please add an IBAN in Settings before publishing paid items.');
-      } else if (status === 400 && backendMsg) {
-        setError(backendMsg);
+        setError(extractApiError(err, 'Missing payout information. Please add an IBAN in Settings before publishing paid items.'));
       } else {
-        setError('Failed to publish the article. Please check your connection and try again.');
+        setError(extractApiError(err, 'Failed to publish the article. Please check your connection and try again.'));
       }
     } finally {
       setLoading(false);
@@ -137,11 +134,13 @@ function CreateArticle() {
             id="title"
             name="title"
             required
+            maxLength={140}
             placeholder="e.g., Mountain Bike in good condition"
             className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
             value={formData.title}
             onChange={handleChange}
           />
+          <p className="text-xs text-gray-400 mt-1 text-right">{formData.title.length}/140</p>
         </div>
 
         {/* DESCRIPTION */}
@@ -154,11 +153,13 @@ function CreateArticle() {
             name="description"
             required
             rows="4"
+            maxLength={4000}
             placeholder="Describe the item, its condition, and any other relevant details..."
             className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
             value={formData.description}
             onChange={handleChange}
           />
+          <p className="text-xs text-gray-400 mt-1 text-right">{formData.description.length}/4000</p>
         </div>
 
         {/* PRODUCT TYPE */}

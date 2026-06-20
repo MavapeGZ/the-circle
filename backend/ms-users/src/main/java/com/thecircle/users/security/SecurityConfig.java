@@ -1,5 +1,6 @@
 package com.thecircle.users.security;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -26,6 +27,13 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
+                // Internal ERROR re-dispatch (e.g. when a controller throws
+                // ResponseStatusException) must not be re-authenticated. In a
+                // stateless chain the SecurityContext is already cleared by the
+                // time the container forwards to /error, so without this the real
+                // 4xx (400 invalid IBAN/zone, 409, etc.) is masked as a 401 and
+                // the frontend wrongly treats it as an expired session.
+                .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 // Not gateway-routed; guarded by a shared internal API key in the controller.

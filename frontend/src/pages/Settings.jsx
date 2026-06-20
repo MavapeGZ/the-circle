@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import api, { resolveAssetUrl } from '../services/api';
+import api, { resolveAssetUrl, extractApiError } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { ZONE_OPTIONS } from '../constants/zones';
 
@@ -108,7 +108,7 @@ function Settings() {
       });
       showMessage('Profile updated successfully!');
     } catch (err) {
-      showMessage('Failed to update profile.', 'error');
+      showMessage(extractApiError(err, 'Failed to update profile.'), 'error');
     }
   };
 
@@ -121,7 +121,7 @@ function Settings() {
       });
       showMessage('Notification preferences saved!');
     } catch (err) {
-      showMessage('Failed to update notifications.', 'error');
+      showMessage(extractApiError(err, 'Failed to update notifications.'), 'error');
     }
   };
 
@@ -135,7 +135,7 @@ function Settings() {
       setPasswords({ current: '', new: '' });
       showMessage('Password changed successfully!');
     } catch (err) {
-      showMessage(err.response?.data?.message || 'Incorrect current password.', 'error');
+      showMessage(extractApiError(err, 'Incorrect current password.'), 'error');
     }
   };
 
@@ -147,7 +147,7 @@ function Settings() {
       setIbanInput('');
       showMessage(res.data.ibanLast4 ? 'Payout IBAN saved.' : 'Payout IBAN cleared.');
     } catch (err) {
-      showMessage(err.response?.data?.message || 'Invalid IBAN. Please double-check the digits.', 'error');
+      showMessage(extractApiError(err, 'Invalid IBAN. Please double-check the digits.'), 'error');
     }
   };
 
@@ -161,7 +161,7 @@ function Settings() {
       setSettings((prev) => ({ ...prev, avatarUrl: res.data.avatarUrl }));
       showMessage('Profile picture updated!');
     } catch (err) {
-      showMessage(err.response?.data?.message || 'Could not upload the picture.', 'error');
+      showMessage(extractApiError(err, 'Could not upload the picture.'), 'error');
     } finally {
       setAvatarUploading(false);
     }

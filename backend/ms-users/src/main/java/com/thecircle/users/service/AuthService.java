@@ -49,14 +49,22 @@ public class AuthService {
 
     @Transactional
     public AuthenticationResponse register(RegisterRequest request) {
-        if (repository.existsByEmail(request.getEmail())) {
+        // Normalise the email once (trim + lowercase) so the uniqueness check and
+        // the stored value match the case-insensitive lookups done at login and
+        // password-reset time. Names are trimmed of stray surrounding whitespace.
+        String email = request.getEmail() == null ? null
+                : request.getEmail().trim().toLowerCase(java.util.Locale.ROOT);
+        String firstName = request.getFirstName() == null ? null : request.getFirstName().trim();
+        String lastName = request.getLastName() == null ? null : request.getLastName().trim();
+
+        if (repository.existsByEmail(email)) {
             throw new IllegalArgumentException("Email already in use");
         }
 
         User user = User.builder()
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .email(request.getEmail())
+                .firstName(firstName)
+                .lastName(lastName)
+                .email(email)
                 .address(request.getAddress())
                 .idNumber(request.getIdNumber())
                 .password(passwordEncoder.encode(request.getPassword()))

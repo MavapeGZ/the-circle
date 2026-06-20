@@ -12,7 +12,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Locale;
-import java.util.Set;
 
 /**
  * Stores and serves user profile pictures on local disk, one folder per user.
@@ -27,9 +26,6 @@ public class AvatarService {
     // Keep avatars small; these are display thumbnails, not document scans.
     private static final long MAX_BYTES = 5L * 1024 * 1024;
 
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/jpeg", "image/png", "image/webp", "image/gif");
-
     private final Path uploadsRoot;
 
     public AvatarService(
@@ -42,16 +38,10 @@ public class AvatarService {
      * the user. Returns the generated filename to persist on the user row.
      */
     public String store(Long userId, MultipartFile file) throws IOException {
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("No image file was provided.");
-        }
-        if (file.getSize() > MAX_BYTES) {
-            throw new IllegalArgumentException("Image is too large. The maximum size is 5 MB.");
-        }
-        String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
-            throw new IllegalArgumentException("Unsupported image type. Use JPEG, PNG, WEBP or GIF.");
-        }
+        // Non-empty, size-bounded, single safe extension, declared type and real
+        // magic bytes all agreeing on JPG or PNG. Rejects disguised uploads
+        // (e.g. an HTML/SVG/script file renamed to .png).
+        UploadValidation.validate(file, "image", UploadValidation.IMAGE_TYPES, MAX_BYTES);
 
         Path userDir = uploadsRoot.resolve(String.valueOf(userId)).normalize();
         if (!userDir.startsWith(uploadsRoot)) {
@@ -62,7 +52,7 @@ public class AvatarService {
         // Drop any prior avatar so a user never accumulates files on disk.
         deleteExisting(userDir);
 
-        String filename = "avatar-" + System.currentTimeMillis() + extensionFor(contentType);
+        String filename = "avatar-" + System.currentTimeMillis() + extensionFor(file.getContentType());
         Path target = userDir.resolve(filename).normalize();
         if (!target.startsWith(userDir)) {
             throw new IOException("Resolved avatar file escaped the user directory.");

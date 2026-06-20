@@ -1,18 +1,16 @@
 import { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { extractApiError } from '../services/api';
 
 const STEP_ACCOUNT = 'account';
 const STEP_OTP = 'otp';
 const STEP_KYC = 'kyc';
 const STEP_DONE = 'done';
 
-function describeError(err, fallback) {
-  const serverMessage = err?.response?.data?.message;
-  if (serverMessage) return serverMessage;
-  if (err?.code === 'ERR_NETWORK') return 'We could not connect to the server. Please try again in a moment.';
-  return fallback;
-}
+// Surfaces backend bean-validation field messages (e.g. weak password, name with
+// '<>') instead of a generic fallback.
+const describeError = (err, fallback) => extractApiError(err, fallback);
 
 function Register() {
   const { register, verifyEmail, fetchMe, uploadKycDocuments } = useContext(AuthContext);
