@@ -11,12 +11,14 @@ public final class ValidationPatterns {
     }
 
     /**
-     * Reject the angle brackets every HTML/script injection payload needs.
-     * Output-encoding at render time remains the real XSS defence; this keeps
-     * obvious markup out of stored free-text fields.
+     * Reject tag-like sequences ({@code <} immediately followed by a letter,
+     * {@code /} or {@code !}) so HTML/script payloads cannot be stored, while
+     * still allowing a bare {@code <} or {@code >} in ordinary prose. Output-
+     * encoding at render time remains the real XSS defence. {@code (?s)} so the
+     * check also covers multi-line text.
      */
-    public static final String NO_ANGLE = "^[^<>]*$";
-    public static final String NO_ANGLE_MSG = "must not contain '<' or '>' characters";
+    public static final String NO_ANGLE = "(?s)^(?!.*<[a-zA-Z/!]).*$";
+    public static final String NO_ANGLE_MSG = "must not contain HTML tags";
 
     /** Opaque identifiers (item / owner / receiver / contract): no markup, bounded. */
     public static final String ID = "^[A-Za-z0-9._\\-]{1,64}$";

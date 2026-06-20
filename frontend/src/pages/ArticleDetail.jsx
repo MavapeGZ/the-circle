@@ -9,6 +9,14 @@ function zoneLabel(zone) {
   return ZONE_OPTIONS.find((option) => option.value === zone)?.label || zone || 'Not shared';
 }
 
+// Strip angle brackets when embedding a (possibly legacy) article title into the
+// contract conditions, so a title saved before input validation — e.g.
+// "<strong>hola</strong>" — does not trip the server-side NO_ANGLE check and
+// block the deal. New titles can no longer contain markup anyway.
+function cleanTitle(title) {
+  return (title || '').replace(/[<>]/g, '');
+}
+
 function ArticleDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -109,7 +117,7 @@ function ArticleDetail() {
         type: cfg.contractType,
         price: article.price ?? 0,
         guaranteeAmount,
-        conditions: `${cfg.label}: ${article.title}`
+        conditions: `${cfg.label}: ${cleanTitle(article.title)}`
           + (isRent ? ` (${rentDays} days, deposit ${guaranteeAmount} €)` : '')
           + (article.price ? ` - ${article.price} €` : ''),
         returnDate,
@@ -142,7 +150,7 @@ function ArticleDetail() {
         type: 'CESSION_PERMANENT',
         price: article.price ?? 0,
         guaranteeAmount: null,
-        conditions: `Fulfill demand: ${article.title}`,
+        conditions: `Fulfill demand: ${cleanTitle(article.title)}`,
         returnDate: null,
       });
       navigate(`/contracts/${res.data.id}/sign`, {

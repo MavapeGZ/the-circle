@@ -11,11 +11,13 @@ public final class ValidationPatterns {
     }
 
     /**
-     * Reject the angle brackets every HTML/script injection payload needs.
-     * Output-encoding at render time is still the real XSS defence, but this
-     * keeps markup like {@code <strong>} / {@code <script>} out of stored titles
-     * and descriptions.
+     * Reject tag-like sequences ({@code <} immediately followed by a letter,
+     * {@code /} or {@code !}) so markup like {@code <strong>} / {@code <script>}
+     * cannot be stored in titles or descriptions, while still allowing a bare
+     * {@code <} or {@code >} in ordinary prose ({@code "size > 10cm"}). Output-
+     * encoding at render time remains the real XSS defence. {@code (?s)} so the
+     * check also covers multi-line text.
      */
-    public static final String NO_ANGLE = "^[^<>]*$";
-    public static final String NO_ANGLE_MSG = "must not contain '<' or '>' characters";
+    public static final String NO_ANGLE = "(?s)^(?!.*<[a-zA-Z/!]).*$";
+    public static final String NO_ANGLE_MSG = "must not contain HTML tags";
 }

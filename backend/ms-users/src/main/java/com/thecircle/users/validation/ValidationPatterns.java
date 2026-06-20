@@ -37,13 +37,16 @@ public final class ValidationPatterns {
     public static final String ID_NUMBER_MSG = "must contain only letters, digits and hyphens (max 50 characters)";
 
     /**
-     * Reject the angle brackets that every HTML/script injection payload needs.
-     * Output-encoding at render time is still the real XSS defence, but blocking
-     * {@code <} and {@code >} on input stops the obvious stored-XSS attempts and
-     * keeps junk markup out of the database.
+     * Reject tag-like sequences ({@code <} immediately followed by a letter,
+     * {@code /} or {@code !}) so HTML/script payloads — {@code <script>},
+     * {@code </b>}, {@code <!--} — cannot be stored, while still allowing a bare
+     * {@code <} or {@code >} in ordinary prose ({@code "size > 10cm"},
+     * {@code "talla < M"}). Output-encoding at render time remains the real XSS
+     * defence; this just keeps markup out of the database. {@code (?s)} so the
+     * check also covers multi-line text.
      */
-    public static final String NO_ANGLE = "^[^<>]*$";
-    public static final String NO_ANGLE_MSG = "must not contain '<' or '>' characters";
+    public static final String NO_ANGLE = "(?s)^(?!.*<[a-zA-Z/!]).*$";
+    public static final String NO_ANGLE_MSG = "must not contain HTML tags";
 
     /** Canonical UUID form, used for opaque session identifiers. */
     public static final String UUID =
