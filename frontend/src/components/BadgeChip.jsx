@@ -1,4 +1,5 @@
 import React from 'react';
+import { resolveAssetUrl } from '../services/api';
 
 function isImageUrl(value) {
   return typeof value === 'string' && /^(https?:|data:|\/)/.test(value);
@@ -35,7 +36,7 @@ export default function BadgeChip({ badge }) {
       }`}
     >
       {isImageUrl(icon) ? (
-        <img src={icon} alt={badge.name} loading="lazy" className="h-5 w-5 rounded-full object-cover" />
+        <img src={resolveAssetUrl(icon)} alt={badge.name} loading="lazy" className="h-5 w-5 rounded-full object-cover" />
       ) : (
         <span className="text-base leading-none" aria-hidden="true">{icon}</span>
       )}
