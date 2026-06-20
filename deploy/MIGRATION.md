@@ -1,87 +1,87 @@
-# MIGRATION.md — Mover el despliegue a otra sandbox / VM
+# MIGRATION.md — Move the deployment to another sandbox / VM
 
-Runbook para cuando se acabe el crédito de la sandbox de AWS y la uni te dé otra
-(o para mover el stack a cualquier otra VM Ubuntu).
+Runbook for when the AWS sandbox credit runs out and the uni gives you another one
+(or for moving the stack to any other Ubuntu VM).
 
-El stack es **Docker sobre una VM**, así que migrar es básicamente: provisionar VM
-nueva → restaurar datos → `docker compose up`. ~20-30 min.
+The stack is **Docker on a VM**, so migrating is basically: provision a new VM
+→ restore data → `docker compose up`. ~20-30 min.
 
 ---
 
-## Qué viaja solo (no tocas nada)
+## What travels by itself (you touch nothing)
 
-| Pieza | Por qué |
+| Piece | Why |
 |---|---|
-| **Frontend (Vercel)** | Sigue apuntando a `api.the-circle.duckdns.org`, que no cambia. Cero cambios. |
-| **DNS (DuckDNS)** | El contenedor `duckdns` del compose actualiza la IP solo al arrancar. |
-| **Certificado TLS (Caddy)** | Let's Encrypt se re-emite solo en la VM nueva (mismo dominio). |
-| **Config** | `docker-compose.prod.yml`, `Dockerfile`s, `Caddyfile`, `init.sql` — todo en git. |
-| **CORS** | La URL de Vercel no cambia → el valor de `CORS_ALLOWED_ORIGINS` sigue valiendo. |
+| **Frontend (Vercel)** | Still points to `api.the-circle.duckdns.org`, which doesn't change. Zero changes. |
+| **DNS (DuckDNS)** | The compose `duckdns` container updates the IP by itself on startup. |
+| **TLS certificate (Caddy)** | Let's Encrypt re-issues by itself on the new VM (same domain). |
+| **Config** | `docker-compose.prod.yml`, `Dockerfile`s, `Caddyfile`, `init.sql` — all in git. |
+| **CORS** | The Vercel URL doesn't change → the `CORS_ALLOWED_ORIGINS` value still holds. |
 
-## Qué hay que llevarse a mano
+## What you have to carry over by hand
 
-| Dato | Dónde vive | Crítico |
+| Data | Where it lives | Critical |
 |---|---|---|
-| **`.env`** | Solo en la VM (secretos, nunca en git) | Sí |
-| **Volumen Postgres** | `the-circle_postgres_data` (usuarios, contratos, gamificación, notificaciones) | Sí |
-| **Volumen OpenSearch** | `the-circle_opensearch_data` — **los artículos del catálogo viven SOLO aquí**, `ms-catalog` no tiene BD | Sí |
-| **Subidas KYC** | `data/kyc` (bind-mount) | Sí |
-| El cert de Caddy | `the-circle_caddy_data` | No — se re-emite solo |
+| **`.env`** | Only on the VM (secrets, never in git) | Yes |
+| **Postgres volume** | `the-circle_postgres_data` (users, contracts, gamification, notifications) | Yes |
+| **OpenSearch volume** | `the-circle_opensearch_data` — **the catalog articles live ONLY here**, `ms-catalog` has no DB | Yes |
+| **KYC uploads** | `data/kyc` (bind-mount) | Yes |
+| The Caddy cert | `the-circle_caddy_data` | No — re-issued by itself |
 
-> ⚠️ **El backup hay que hacerlo ANTES de que muera la sandbox vieja.** Una vez
-> borrada la VM, los volúmenes Docker son irrecuperables.
+> ⚠️ **The backup must be done BEFORE the old sandbox dies.** Once the VM is
+> deleted, the Docker volumes are unrecoverable.
 
 ---
 
-## 1. Backup (en la VM VIEJA, antes de que caduque)
+## 1. Backup (on the OLD VM, before it expires)
 
-Usa el script `scripts/backup.sh` (incluido en el repo). Para una copia consistente
-para Postgres genera un volcado lógico con `pg_dumpall`; para OpenSearch para el
-contenedor unos segundos y copia el volumen.
+Use the `scripts/backup.sh` script (included in the repo). For a consistent copy
+of Postgres it generates a logical dump with `pg_dumpall`; for OpenSearch it stops
+the container for a few seconds and copies the volume.
 
 ```bash
 cd /opt/the-circle
 ./scripts/backup.sh
-# -> genera  backup-YYYYMMDD-HHMMSS.tar.gz  en /opt/the-circle
+# -> generates  backup-YYYYMMDD-HHMMSS.tar.gz  in /opt/the-circle
 ```
 
-Cópiatelo a tu portátil (o a donde sea, fuera de la sandbox que va a morir):
+Copy it to your laptop (or wherever, outside the sandbox that's going to die):
 
 ```bash
-# desde tu portátil:
-scp ubuntu@<IP-VM-VIEJA>:/opt/the-circle/backup-*.tar.gz .
+# from your laptop:
+scp ubuntu@<OLD-VM-IP>:/opt/the-circle/backup-*.tar.gz .
 ```
 
 ---
 
-## 2. Provisionar la VM nueva
+## 2. Provision the new VM
 
-Estos pasos son de **máquina** (no están en git) y hay que repetirlos. Son los
-mismos que hiciste la primera vez:
+These steps are **machine-level** (not in git) and have to be repeated. They're the
+same ones you did the first time:
 
-1. **Lanza una VM Ubuntu** (EC2 `t3.medium` o Lightsail 4 GB) en la sandbox nueva.
-2. **Abre los puertos 80 y 443** de entrada en el **Security Group** (el 22 ya viene abierto).
-3. **Instala Docker**:
+1. **Launch an Ubuntu VM** (EC2 `t3.medium` or Lightsail 4 GB) in the new sandbox.
+2. **Open inbound ports 80 and 443** in the **Security Group** (22 is already open).
+3. **Install Docker**:
    ```bash
    curl -fsSL https://get.docker.com | sudo sh
    sudo usermod -aG docker $USER && newgrp docker
    ```
-4. **`vm.max_map_count` para OpenSearch** (si no, OpenSearch no arranca):
+4. **`vm.max_map_count` for OpenSearch** (otherwise OpenSearch won't start):
    ```bash
    sudo sysctl -w vm.max_map_count=262144
    echo 'vm.max_map_count=262144' | sudo tee /etc/sysctl.d/99-opensearch.conf
    ```
-5. **Swap de 2 GB** (en un box de 4 GB evita que el kernel mate un servicio por OOM
-   cuando arrancan los 6 JVMs + OpenSearch a la vez):
+5. **2 GB swap** (on a 4 GB box it prevents the kernel from killing a service via OOM
+   when the 6 JVMs + OpenSearch start at the same time):
    ```bash
    sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
    sudo mkswap /swapfile && sudo swapon /swapfile
    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
    ```
-6. **Clona el repo** (deploy key NUEVA — la vieja se fue con la VM vieja):
+6. **Clone the repo** (NEW deploy key — the old one went with the old VM):
    ```bash
    ssh-keygen -t ed25519 -C "the-circle-ec2" -f ~/.ssh/the_circle -N ""
-   cat ~/.ssh/the_circle.pub      # añádela en GitHub: repo > Settings > Deploy keys
+   cat ~/.ssh/the_circle.pub      # add it on GitHub: repo > Settings > Deploy keys
    cat >> ~/.ssh/config <<'EOF'
    Host github.com
        HostName github.com
@@ -97,24 +97,24 @@ mismos que hiciste la primera vez:
 
 ---
 
-## 3. Restore + arranque (en la VM nueva)
+## 3. Restore + startup (on the new VM)
 
-Sube el `.tar.gz` del backup a la VM nueva y restaura **ANTES** del primer `up`
-(así Postgres ve el volumen ya poblado, no re-ejecuta `init.sql` y no choca con
-Hibernate):
+Upload the backup `.tar.gz` to the new VM and restore **BEFORE** the first `up`
+(so Postgres sees the volume already populated, doesn't re-run `init.sql` and doesn't
+clash with Hibernate):
 
 ```bash
-# sube el backup a la VM nueva:
-#   scp backup-*.tar.gz ubuntu@<IP-VM-NUEVA>:/opt/the-circle/
+# upload the backup to the new VM:
+#   scp backup-*.tar.gz ubuntu@<NEW-VM-IP>:/opt/the-circle/
 cd /opt/the-circle
 ./scripts/restore.sh backup-YYYYMMDD-HHMMSS.tar.gz
 ```
 
-El script restaura el `.env`, la carpeta `data/kyc` y rellena los volúmenes de
-Postgres y OpenSearch. Después, levanta el stack:
+The script restores the `.env`, the `data/kyc` folder and fills the Postgres and
+OpenSearch volumes. Then, bring up the stack:
 
 ```bash
-# build secuencial para no reventar la RAM (la 1ª vez compila las 6 imágenes)
+# sequential build to avoid blowing up the RAM (the 1st time it compiles all 6 images)
 for s in api-gateway ms-users ms-catalog ms-contracts ms-gamification ms-notifications; do
   docker compose -f docker-compose.prod.yml build "$s"
 done
@@ -124,35 +124,35 @@ docker compose -f docker-compose.prod.yml ps
 
 ---
 
-## 4. Post-migración (checklist)
+## 4. Post-migration (checklist)
 
-- [ ] **DuckDNS** → el contenedor `duckdns` actualiza la IP nueva solo en cuanto
-  arranca. Verifica: `docker compose -f docker-compose.prod.yml logs duckdns`
-  (debe decir `successful`). El frontend de Vercel y el CORS no se tocan.
-- [ ] **Certificado** → Caddy re-emite el cert solo. Verifica:
+- [ ] **DuckDNS** → the `duckdns` container updates the new IP by itself as soon as
+  it starts. Verify: `docker compose -f docker-compose.prod.yml logs duckdns`
+  (should say `successful`). The Vercel frontend and CORS are not touched.
+- [ ] **Certificate** → Caddy re-issues the cert by itself. Verify:
   `curl -sI https://api.the-circle.duckdns.org/actuator/health` → `200`.
-  (Si el DNS aún apunta a la IP vieja, Caddy reintenta hasta que DuckDNS actualiza.)
-- [ ] **Scheduler de start/stop** → las credenciales IAM de la cuenta vieja **no
-  sirven** en la sandbox nueva. Crea un usuario IAM nuevo
-  (`gh-lightsail-scheduler` / o el equivalente EC2) con permiso
-  `ec2:StartInstances`/`ec2:StopInstances`/`ec2:DescribeInstances` sobre la
-  instancia nueva, genera claves y actualiza los **Secrets de GitHub**:
-  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, y el ID de la
-  instancia nueva.
-- [ ] **AWS Budgets** → vuelve a configurar las alertas (10/25/40 $) en la cuenta nueva.
-- [ ] **Smoke test** → registro → OTP en Gmail → KYC → login → crear artículo
-  (búsqueda) → firmar contrato (PDF + email). Si pasa, migración verde.
+  (If DNS still points to the old IP, Caddy retries until DuckDNS updates.)
+- [ ] **Start/stop scheduler** → the IAM credentials of the old account **don't
+  work** on the new sandbox. Create a new IAM user
+  (`gh-lightsail-scheduler` / or the EC2 equivalent) with permission
+  `ec2:StartInstances`/`ec2:StopInstances`/`ec2:DescribeInstances` over the
+  new instance, generate keys and update the **GitHub Secrets**:
+  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and the new
+  instance ID.
+- [ ] **AWS Budgets** → reconfigure the alerts ($10/25/40) on the new account.
+- [ ] **Smoke test** → registration → OTP in Gmail → KYC → login → create article
+  (search) → sign contract (PDF + email). If it passes, migration is green.
 
 ---
 
-## Notas
+## Notes
 
-- **Versiones fijadas**: el backup por copia de volumen funciona porque Postgres
-  (`postgres:15-alpine`) y OpenSearch (`2.11.0`) están pineados en el compose. Si
-  algún día subes la versión **mayor** de Postgres, NO uses la copia de volumen:
-  usa el volcado lógico (hay un `pg_dumpall` comentado en `backup.sh`).
-- **Caddy / Let's Encrypt**: no se backupea el cert a propósito; se re-emite. Ojo
-  con migrar muchas veces seguidas: Let's Encrypt limita a ~5 certificados
-  duplicados por dominio y semana.
-- **OpenSearch permisos**: la copia de volumen preserva UID/GID, así que al
-  restaurar OpenSearch puede leer sus datos sin tocar permisos.
+- **Pinned versions**: the volume-copy backup works because Postgres
+  (`postgres:15-alpine`) and OpenSearch (`2.11.0`) are pinned in the compose. If
+  one day you bump the **major** version of Postgres, do NOT use the volume copy:
+  use the logical dump (there's a commented-out `pg_dumpall` in `backup.sh`).
+- **Caddy / Let's Encrypt**: the cert is intentionally not backed up; it's re-issued.
+  Be careful migrating many times in a row: Let's Encrypt limits to ~5 duplicate
+  certificates per domain per week.
+- **OpenSearch permissions**: the volume copy preserves UID/GID, so when restoring
+  OpenSearch can read its data without touching permissions.

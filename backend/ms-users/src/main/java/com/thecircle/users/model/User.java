@@ -46,6 +46,13 @@ public class User implements UserDetails {
     @Column(name = "id_number", length = 50)
     private String idNumber;
 
+    // Stored filename of the user's profile picture (under the avatar upload
+    // dir, in a per-user folder). Null when no picture has been uploaded. The
+    // bytes are served via GET /api/users/{id}/avatar; only the filename is
+    // persisted here.
+    @Column(name = "profile_picture", length = 255)
+    private String profilePicture;
+
     // Encrypted IBAN of the user's payout account (AES-GCM, key derived from
     // JWT_SECRET via HKDF). Only sellers need it; receivers paying for symbolic
     // transactions never touch a stored IBAN. The plaintext IBAN is never

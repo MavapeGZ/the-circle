@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import api from '../services/api';
+import { Link, useParams } from 'react-router-dom';
+import api, { resolveAssetUrl } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import BadgeList from '../components/BadgeList';
 import { ZONE_OPTIONS } from '../constants/zones';
@@ -20,11 +20,11 @@ function initials(name) {
 
 export default function ProfilePage() {
   const { id: profileId } = useParams();
-  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
 
   const resolvedId = profileId || user?.id;
   const [profile, setProfile] = useState(null);
+  const [allBadges, setAllBadges] = useState([]);
   const [loading, setLoading] = useState(Boolean(resolvedId));
   const [error, setError] = useState('');
 
@@ -41,8 +41,16 @@ export default function ProfilePage() {
       setError('');
 
       try {
-        const { data } = await api.get(`/users/${resolvedId}`);
-        if (mounted) setProfile(data);
+        // Fetch the profile and the full badge catalogue together. The catalogue
+        // lets us show every badge (dimmed until earned), not just earned ones.
+        const [{ data }, catalogue] = await Promise.all([
+          api.get(`/users/${resolvedId}`),
+          api.get('/gamification/badges').then((r) => r.data).catch(() => []),
+        ]);
+        if (mounted) {
+          setProfile(data);
+          setAllBadges(catalogue);
+        }
       } catch (err) {
         if (mounted) {
           const status = err?.response?.status;
@@ -86,6 +94,15 @@ export default function ProfilePage() {
 
   const profileInitials = initials(profile.displayName);
 
+  // Merge the earned badges into the full catalogue so every badge is shown:
+  // earned ones keep their award date, the rest render dimmed as "not earned yet".
+  const earnedByCode = new Map((profile.badges || []).map((b) => [b.code, b]));
+  const earnedCount = profile.badges?.length || 0;
+  const mergedBadges = (allBadges.length ? allBadges : profile.badges || []).map((badge) => {
+    const earned = earnedByCode.get(badge.code);
+    return { ...badge, earned: Boolean(earned), earnedAt: earned?.earnedAt || null };
+  });
+
   return (
     <div className="max-w-5xl mx-auto mt-8 p-4 space-y-6">
       <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 p-6 text-white shadow-2xl overflow-hidden relative">
@@ -93,7 +110,7 @@ export default function ProfilePage() {
         <div className="relative flex flex-col lg:flex-row lg:items-center gap-6">
           <div className="h-24 w-24 rounded-3xl bg-white/15 border border-white/20 flex items-center justify-center text-3xl font-black overflow-hidden shrink-0">
             {profile.avatarUrl ? (
-              <img src={profile.avatarUrl} alt={profile.displayName} className="h-full w-full object-cover" />
+              <img src={resolveAssetUrl(profile.avatarUrl)} alt={profile.displayName} className="h-full w-full object-cover" />
             ) : (
               <span>{profileInitials}</span>
             )}
@@ -116,12 +133,6 @@ export default function ProfilePage() {
                 <Link to="/settings" className="inline-flex items-center rounded-full bg-white text-blue-900 px-4 py-2 font-bold shadow hover:bg-blue-50 transition-colors">
                   Edit settings
                 </Link>
-                <button
-                  onClick={() => navigate('/settings', { state: { tab: 'profile' } })}
-                  className="inline-flex items-center rounded-full border border-white/25 px-4 py-2 font-bold text-white hover:bg-white/10 transition-colors"
-                >
-                  Open profile form
-                </button>
               </div>
             )}
           </div>
@@ -133,12 +144,15 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between gap-4 mb-5">
             <div>
               <h2 className="text-2xl font-extrabold text-gray-900">Badges</h2>
-              <p className="text-sm text-gray-500">Hover a badge to see its description and the date it was earned.</p>
+              <p className="text-sm text-gray-500">Hover a badge to see its description and the date it was earned. Dimmed badges are not earned yet.</p>
             </div>
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700">{profile.badges?.length || 0} earned</span>
+            <span className="flex flex-col items-center justify-center shrink-0 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-100 px-4 py-2 text-center shadow-sm">
+              <span className="text-2xl font-extrabold leading-none text-blue-700">{earnedCount}</span>
+              <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-blue-500">earned</span>
+            </span>
           </div>
 
-          <BadgeList badges={profile.badges} emptyMessage="This user has not earned any badges yet." />
+          <BadgeList badges={mergedBadges} emptyMessage="No badges available yet." />
         </article>
 
         <aside className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 space-y-5">
@@ -146,16 +160,8 @@ export default function ProfilePage() {
             <h2 className="text-lg font-bold text-gray-900 mb-2">About</h2>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between gap-4">
-                <dt className="text-gray-500">Profile ID</dt>
-                <dd className="font-semibold text-gray-900">{profile.id}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
                 <dt className="text-gray-500">Zone</dt>
                 <dd className="font-semibold text-gray-900 text-right">{zoneLabel(profile.approximateZone)}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-gray-500">Points</dt>
-                <dd className="font-semibold text-gray-900">{profile.points}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-gray-500">Member since</dt>

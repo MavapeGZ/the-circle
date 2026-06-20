@@ -2,6 +2,7 @@ package com.thecircle.users.controllers;
 
 import com.thecircle.users.dto.KycResponse;
 import com.thecircle.users.dto.ReviewDto;
+import com.thecircle.users.service.AvatarService;
 import com.thecircle.users.service.IbanCipher;
 import com.thecircle.users.service.IbanValidator;
 import com.thecircle.users.service.KycService;
@@ -18,6 +19,7 @@ import com.thecircle.users.service.GamificationClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -51,6 +53,7 @@ public class UserController {
             "OTHER");
 
     private final KycService kycService;
+    private final AvatarService avatarService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final DeviceCookieService deviceCookieService;
@@ -76,7 +79,8 @@ public class UserController {
                 user.getIdNumber(),
                 user.getIbanLast4(),
                 user.isMarketingEmailsOptIn(),
-                user.isSystemEmailsOptIn()));
+                user.isSystemEmailsOptIn(),
+                avatarUrl(user)));
     }
 
     /**
@@ -137,7 +141,8 @@ public class UserController {
                 user.getIdNumber(),
                 user.getIbanLast4(),
                 user.isMarketingEmailsOptIn(),
-                user.isSystemEmailsOptIn()));
+                user.isSystemEmailsOptIn(),
+                avatarUrl(user)));
     }
 
     @PostMapping("/me/change-password")
@@ -294,6 +299,75 @@ public class UserController {
         }
     }
 
+    /**
+     * Uploads or replaces the authenticated user's profile picture. The image is
+     * validated and stored by {@link AvatarService}; only the generated filename
+     * is persisted. Returns the public URL the frontend can render.
+     */
+    @PostMapping("/me/avatar")
+    public ResponseEntity<AvatarResponse> uploadAvatar(@RequestParam("file") MultipartFile file,
+            Authentication authentication) {
+        User user = getAuthenticatedUser(authentication);
+        try {
+            String filename = avatarService.store(user.getId(), file);
+            user.setProfilePicture(filename);
+            userRepository.save(user);
+            return ResponseEntity.ok(new AvatarResponse(avatarUrl(user)));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (Exception e) {
+            log.error("Avatar upload failed for user {}", user.getId(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Could not save the picture. Please try again.");
+        }
+    }
+
+    @DeleteMapping("/me/avatar")
+    public ResponseEntity<AvatarResponse> deleteAvatar(Authentication authentication) {
+        User user = getAuthenticatedUser(authentication);
+        avatarService.delete(user.getId());
+        user.setProfilePicture(null);
+        userRepository.save(user);
+        return ResponseEntity.ok(new AvatarResponse(null));
+    }
+
+    /**
+     * Serves a user's profile picture bytes. Public (no auth) so a plain
+     * {@code <img>} tag can load it — browsers cannot attach the JWT to image
+     * requests. Only the opaque image is exposed; no profile data leaks here.
+     */
+    @GetMapping("/{userId}/avatar")
+    public ResponseEntity<byte[]> getAvatar(@PathVariable Long userId) {
+        Optional<User> maybe = userRepository.findById(userId);
+        if (maybe.isEmpty() || maybe.get().getDeletedAt() != null
+                || maybe.get().getProfilePicture() == null) {
+            return ResponseEntity.notFound().build();
+        }
+        User user = maybe.get();
+        try {
+            byte[] bytes = avatarService.load(userId, user.getProfilePicture());
+            if (bytes == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok()
+                    .contentType(avatarService.mediaTypeFor(user.getProfilePicture()))
+                    .body(bytes);
+        } catch (Exception e) {
+            log.error("Failed to read avatar for user {}", userId, e);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /** Public URL for a user's avatar, or null when none is set. */
+    private String avatarUrl(User user) {
+        if (user.getProfilePicture() == null) {
+            return null;
+        }
+        // Cache-bust with the stored filename (it carries a timestamp) so a
+        // replaced picture is not masked by a stale cached image.
+        return "/api/users/" + user.getId() + "/avatar?v=" + user.getProfilePicture();
+    }
+
     private boolean isOwnerOrAdmin(Authentication authentication, Long userId) {
         if (authentication == null || !authentication.isAuthenticated())
             return false;
@@ -367,14 +441,15 @@ public class UserController {
         try {
             User u = getAuthenticatedUser(authentication);
             return ResponseEntity.ok(new UserProfileDto(u.getId(), u.getEmail(), u.getFirstName(),
-                u.getLastName(), u.getZone(), u.getKycStatus().name()));
+                u.getLastName(), u.getZone(), u.getKycStatus().name(), avatarUrl(u)));
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode()).build();
         }
     }
 
         public record SettingsResponse(String firstName, String lastName, String email, String address, String zone,
-            String idNumber, String ibanLast4, boolean marketingEmailsOptIn, boolean systemEmailsOptIn) {
+            String idNumber, String ibanLast4, boolean marketingEmailsOptIn, boolean systemEmailsOptIn,
+            String avatarUrl) {
     }
 
         public record UpdateProfileRequest(String firstName, String lastName, String address, String zone, String idNumber,
@@ -401,6 +476,9 @@ public class UserController {
     }
 
     public record DeviceDto(Long id, String userAgent, LocalDateTime createdAt, LocalDateTime lastSeenAt) {
+    }
+
+    public record AvatarResponse(String avatarUrl) {
     }
 
     private PublicProfileDto buildPublicProfile(User user) {
@@ -433,7 +511,7 @@ public class UserController {
         return new PublicProfileDto(
                 user.getId(),
                 displayName,
-                null,
+                avatarUrl(user),
                 user.getZone(),
                 user.getCreatedAt(),
                 points,

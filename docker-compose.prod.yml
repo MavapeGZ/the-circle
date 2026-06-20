@@ -69,6 +69,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/users_db
       JWT_SECRET: ${JWT_SECRET}
       KYC_UPLOAD_DIR: /data/kyc
+      AVATAR_UPLOAD_DIR: /data/avatars
       CATALOG_BASE_URL: http://ms-catalog:8082
       CONTRACTS_BASE_URL: http://ms-contracts:8083
       GAMIFICATION_BASE_URL: http://ms-gamification:8084
@@ -80,6 +81,7 @@ services:
       DEVICE_COOKIE_SECURE: "true"
     volumes:
       - ./data/kyc:/data/kyc
+      - ./data/avatars:/data/avatars
     depends_on:
       postgres: { condition: service_healthy }
 
@@ -104,10 +106,11 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/contracts_db
       MS_USERS_URL: http://ms-users:8081
       MS_CATALOG_URL: http://ms-catalog:8082
+      MS_NOTIFICATIONS_URL: http://ms-notifications:8085
+      MS_GAMIFICATION_URL: http://ms-gamification:8084
       USERS_INTERNAL_KEY: ${USERS_INTERNAL_KEY}
       CATALOG_INTERNAL_KEY: ${CATALOG_INTERNAL_KEY}
       CONTRACTS_INTERNAL_KEY: ${CONTRACTS_INTERNAL_KEY}
-      NOTIFICATIONS_BASE_URL: http://ms-notifications:8085
       NOTIFICATIONS_INTERNAL_KEY: ${NOTIFICATIONS_INTERNAL_KEY}
     depends_on:
       postgres: { condition: service_healthy }

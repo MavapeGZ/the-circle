@@ -1,4 +1,6 @@
 target/
+# Runtime upload volumes (avatars, KYC docs) — bind-mounted by docker-compose
+data/
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup

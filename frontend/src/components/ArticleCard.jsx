@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { resolveAssetUrl } from '../services/api';
 import { ZONE_OPTIONS } from '../constants/zones';
 
 function zoneLabel(zone) {
@@ -64,7 +65,7 @@ export default function ArticleCard({ article, sellerProfile }) {
           <Link to={`/users/${article.authorId}`} className="flex items-center gap-3 min-w-0 group">
             <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-black overflow-hidden shrink-0">
               {sellerProfile?.avatarUrl ? (
-                <img src={sellerProfile.avatarUrl} alt={sellerName} className="h-full w-full object-cover" />
+                <img src={resolveAssetUrl(sellerProfile.avatarUrl)} alt={sellerName} className="h-full w-full object-cover" />
               ) : (
                 <span>{sellerInitials}</span>
               )}
