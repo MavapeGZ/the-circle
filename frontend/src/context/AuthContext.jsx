@@ -7,6 +7,12 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // A verified session has a full profile (i.e. an `id` from `/users/me`).
+  // The bare `{ token }` fallback below is an unverified, optimistic state used
+  // only to avoid logging users out on transient probe failures — it must not
+  // be treated as authenticated by route guards.
+  const isAuthenticated = Boolean(user?.id);
+
   useEffect(() => {
     const bootstrap = async () => {
       const token = localStorage.getItem('token');
@@ -15,7 +21,9 @@ export const AuthProvider = ({ children }) => {
         return;
       }
       try {
-        const { data } = await api.get('/users/me');
+        // Silent probe: handle an expired token here (clear it) rather than letting
+        // the global interceptor redirect a passive visitor away from a public page.
+        const { data } = await api.get('/users/me', { skipAuthRedirect: true });
         setUser({ ...data, token });
       } catch (error) {
         const status = error?.response?.status;
@@ -92,7 +100,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{
-      user, loading,
+      user, isAuthenticated, loading,
       register, verifyEmail,
       login, verifyLoginOtp,
       fetchMe, uploadKycDocuments,

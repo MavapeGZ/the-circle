@@ -1,5 +1,11 @@
 package com.thecircle.catalog.model;
 
+import com.thecircle.catalog.validation.Base64Image;
+import com.thecircle.catalog.validation.ValidationPatterns;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
@@ -18,9 +24,14 @@ public class Article {
     @Id
     private String id; // OpenSearch generates this automatically
 
+    @NotBlank(message = "Title is required")
+    @Size(max = 140, message = "Title must be at most 140 characters")
+    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Title " + ValidationPatterns.NO_ANGLE_MSG)
     @Field(type = FieldType.Text, name = "title")
     private String title;
 
+    @Size(max = 4000, message = "Description must be at most 4000 characters")
+    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Description " + ValidationPatterns.NO_ANGLE_MSG)
     @Field(type = FieldType.Text, name = "description")
     private String description;
 
@@ -39,9 +50,12 @@ public class Article {
     @Field(type = FieldType.Keyword, name = "status")
     private ArticleStatus status;
 
+    @Size(max = 60, message = "Category must be at most 60 characters")
+    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Category " + ValidationPatterns.NO_ANGLE_MSG)
     @Field(type = FieldType.Keyword, name = "category")
     private String category;
 
+    @PositiveOrZero(message = "Price cannot be negative")
     @Field(type = FieldType.Double, name = "price")
     private Double price; // Symbolic amount for SELL/RENT; 0.0 for donations/demands
 
@@ -49,6 +63,7 @@ public class Article {
     // Capped at 20€ (see ArticleService). Null for other product types. Held in
     // escrow by ms-contracts during the rental and released back to the receiver
     // on return (or claimed by the owner on damage).
+    @PositiveOrZero(message = "Guarantee amount cannot be negative")
     @Field(type = FieldType.Double, name = "guarantee_amount")
     private Double guaranteeAmount;
 
@@ -57,6 +72,9 @@ public class Article {
     @Field(type = FieldType.Long, name = "author_id")
     private Long authorId;
 
+    @Field(type = FieldType.Keyword, name = "zone")
+    private String zone;
+
     // NOTE: changing this annotation will NOT update the mapping for deployments
     // where the "articles" index already exists. createIndex = true only creates
     // missing indexes. To apply a different date mapping in production you must
@@ -64,6 +82,7 @@ public class Article {
     @Field(type = FieldType.Date, format = DateFormat.strict_date_optional_time_nanos, name = "created_at")
     private java.time.Instant createdAt;
 
+    @Base64Image
     @Field(type = FieldType.Text, name = "image_base64", index = false)
     private String imageBase64;
 }

@@ -2,6 +2,7 @@ package com.thecircle.users.controllers;
 
 import com.thecircle.users.dto.KycResponse;
 import com.thecircle.users.dto.ReviewDto;
+import com.thecircle.users.service.AvatarService;
 import com.thecircle.users.service.IbanCipher;
 import com.thecircle.users.service.IbanValidator;
 import com.thecircle.users.service.KycService;
@@ -9,10 +10,21 @@ import com.thecircle.users.repository.UserRepository;
 import com.thecircle.users.model.User;
 import com.thecircle.users.model.KycStatus;
 import com.thecircle.users.dto.UserProfileDto;
+import com.thecircle.users.dto.PublicBadgeDto;
+import com.thecircle.users.dto.PublicProfileDto;
+import com.thecircle.users.service.CatalogClient;
+import com.thecircle.users.service.ContractsClient;
 import com.thecircle.users.service.DeviceCookieService;
+import com.thecircle.users.service.GamificationClient;
+import com.thecircle.users.service.UploadValidation;
+import com.thecircle.users.validation.ValidationPatterns;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -24,8 +36,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -33,11 +48,27 @@ import java.util.Optional;
 @Slf4j
 public class UserController {
 
+    private static final Set<String> ALLOWED_ZONES = Set.of(
+            "MADRID",
+            "BARCELONA",
+            "VALENCIA",
+            "SEVILLE",
+            "BILBAO_AND_SURROUNDINGS",
+            "MALAGA",
+            "OTHER");
+
+    // Each KYC scan capped at 5 MB; aligns with spring.servlet.multipart.max-file-size.
+    private static final long MAX_KYC_BYTES = 5L * 1024 * 1024;
+
     private final KycService kycService;
+    private final AvatarService avatarService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final DeviceCookieService deviceCookieService;
     private final IbanCipher ibanCipher;
+    private final CatalogClient catalogClient;
+    private final ContractsClient contractsClient;
+    private final GamificationClient gamificationClient;
 
     @GetMapping("/health")
     public String health() {
@@ -52,10 +83,12 @@ public class UserController {
                 user.getLastName(),
                 user.getEmail(),
                 user.getAddress(),
+            user.getZone(),
                 user.getIdNumber(),
                 user.getIbanLast4(),
                 user.isMarketingEmailsOptIn(),
-                user.isSystemEmailsOptIn()));
+                user.isSystemEmailsOptIn(),
+                avatarUrl(user)));
     }
 
     /**
@@ -64,7 +97,7 @@ public class UserController {
      * UI. Sending an empty/blank value clears the IBAN.
      */
     @PatchMapping("/me/iban")
-    public ResponseEntity<IbanResponse> updateIban(@RequestBody UpdateIbanRequest request,
+    public ResponseEntity<IbanResponse> updateIban(@Valid @RequestBody UpdateIbanRequest request,
                                                    Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
         String raw = request.iban();
@@ -86,7 +119,7 @@ public class UserController {
     }
 
     @PatchMapping("/me")
-    public ResponseEntity<SettingsResponse> updateProfile(@RequestBody UpdateProfileRequest request,
+    public ResponseEntity<SettingsResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request,
             Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
 
@@ -96,6 +129,8 @@ public class UserController {
             user.setLastName(request.lastName());
         if (request.address() != null)
             user.setAddress(request.address());
+        if (request.zone() != null)
+            user.setZone(normalizeZone(request.zone()));
         if (request.idNumber() != null)
             user.setIdNumber(request.idNumber());
         if (request.marketingEmailsOptIn() != null)
@@ -110,23 +145,22 @@ public class UserController {
                 user.getLastName(),
                 user.getEmail(),
                 user.getAddress(),
+            user.getZone(),
                 user.getIdNumber(),
                 user.getIbanLast4(),
                 user.isMarketingEmailsOptIn(),
-                user.isSystemEmailsOptIn()));
+                user.isSystemEmailsOptIn(),
+                avatarUrl(user)));
     }
 
     @PostMapping("/me/change-password")
-    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest request,
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request,
             Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
 
-        // New password validation (avoid accepting weak passwords)
+        // Strength is enforced by @Valid on ChangePasswordRequest (same rule as
+        // registration). Here we only verify the current password matches.
         String newPass = request.newPassword();
-        if (newPass == null || newPass.trim().isEmpty() || newPass.length() < 6) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "New password must be at least 6 characters long and cannot be empty.");
-        }
 
         // Current password verification
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
@@ -194,6 +228,9 @@ public class UserController {
         // Revoke all existing device sessions to log out from all devices immediately
         deviceCookieService.revokeAllDevices(user.getId());
 
+        catalogClient.removeUserArticles(user.getId());
+        contractsClient.removeOwnedOpenContracts(user.getId());
+
         return ResponseEntity.ok().build();
     }
 
@@ -231,6 +268,12 @@ public class UserController {
                 return ResponseEntity.status(404).body(new KycResponse(false, "User not found", null));
             }
 
+            // Validate both documents at the upload boundary: non-empty, <=5 MB,
+            // single safe extension (jpg/jpeg/png/pdf), declared type and real
+            // magic bytes all agreeing. Rejects disguised/oversized uploads.
+            UploadValidation.validate(front, "front", UploadValidation.DOCUMENT_TYPES, MAX_KYC_BYTES);
+            UploadValidation.validate(back, "back", UploadValidation.DOCUMENT_TYPES, MAX_KYC_BYTES);
+
             String newJwt = kycService.processKyc(userId, front, back);
             if (newJwt != null) {
                 return ResponseEntity.ok(new KycResponse(true, "User verified", newJwt));
@@ -238,6 +281,9 @@ public class UserController {
                 return ResponseEntity.accepted()
                         .body(new KycResponse(false, "Document received; verification pending or rejected", null));
             }
+        } catch (IllegalArgumentException e) {
+            // File validation failure (empty / too large / wrong type / bad magic bytes).
+            return ResponseEntity.badRequest().body(new KycResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("KYC verification failed for user {}", userId, e);
             return ResponseEntity.internalServerError()
@@ -267,6 +313,75 @@ public class UserController {
         }
     }
 
+    /**
+     * Uploads or replaces the authenticated user's profile picture. The image is
+     * validated and stored by {@link AvatarService}; only the generated filename
+     * is persisted. Returns the public URL the frontend can render.
+     */
+    @PostMapping("/me/avatar")
+    public ResponseEntity<AvatarResponse> uploadAvatar(@RequestParam("file") MultipartFile file,
+            Authentication authentication) {
+        User user = getAuthenticatedUser(authentication);
+        try {
+            String filename = avatarService.store(user.getId(), file);
+            user.setProfilePicture(filename);
+            userRepository.save(user);
+            return ResponseEntity.ok(new AvatarResponse(avatarUrl(user)));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (Exception e) {
+            log.error("Avatar upload failed for user {}", user.getId(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Could not save the picture. Please try again.");
+        }
+    }
+
+    @DeleteMapping("/me/avatar")
+    public ResponseEntity<AvatarResponse> deleteAvatar(Authentication authentication) {
+        User user = getAuthenticatedUser(authentication);
+        avatarService.delete(user.getId());
+        user.setProfilePicture(null);
+        userRepository.save(user);
+        return ResponseEntity.ok(new AvatarResponse(null));
+    }
+
+    /**
+     * Serves a user's profile picture bytes. Public (no auth) so a plain
+     * {@code <img>} tag can load it — browsers cannot attach the JWT to image
+     * requests. Only the opaque image is exposed; no profile data leaks here.
+     */
+    @GetMapping("/{userId}/avatar")
+    public ResponseEntity<byte[]> getAvatar(@PathVariable Long userId) {
+        Optional<User> maybe = userRepository.findById(userId);
+        if (maybe.isEmpty() || maybe.get().getDeletedAt() != null
+                || maybe.get().getProfilePicture() == null) {
+            return ResponseEntity.notFound().build();
+        }
+        User user = maybe.get();
+        try {
+            byte[] bytes = avatarService.load(userId, user.getProfilePicture());
+            if (bytes == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok()
+                    .contentType(avatarService.mediaTypeFor(user.getProfilePicture()))
+                    .body(bytes);
+        } catch (Exception e) {
+            log.error("Failed to read avatar for user {}", userId, e);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /** Public URL for a user's avatar, or null when none is set. */
+    private String avatarUrl(User user) {
+        if (user.getProfilePicture() == null) {
+            return null;
+        }
+        // Cache-bust with the stored filename (it carries a timestamp) so a
+        // replaced picture is not masked by a stale cached image.
+        return "/api/users/" + user.getId() + "/avatar?v=" + user.getProfilePicture();
+    }
+
     private boolean isOwnerOrAdmin(Authentication authentication, Long userId) {
         if (authentication == null || !authentication.isAuthenticated())
             return false;
@@ -292,22 +407,39 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<UserProfileDto> getUserProfile(@PathVariable Long userId) {
-        var u = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        public ResponseEntity<PublicProfileDto> getUserProfile(@PathVariable Long userId) {
+        return userRepository.findById(userId)
+            .filter(user -> user.getDeletedAt() == null)
+            .map(user -> ResponseEntity.ok(buildPublicProfile(user)))
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        }
 
-        UserProfileDto profileDto = new UserProfileDto(
-                u.getId(),
-                null,
-                u.getFirstName(),
-                u.getLastName(),
-                u.getKycStatus().name());
+        @GetMapping("/public")
+        public ResponseEntity<List<PublicProfileDto>> getPublicProfiles(@RequestParam List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
 
-        return ResponseEntity.ok(profileDto);
+        List<Long> uniqueIds = ids.stream().distinct().toList();
+        List<User> users = userRepository.findAllById(uniqueIds).stream()
+            .filter(user -> user.getDeletedAt() == null)
+            .toList();
+        var usersById = users.stream().collect(Collectors.toMap(User::getId, user -> user, (left, right) -> left, LinkedHashMap::new));
+        var summariesById = gamificationClient.getSummaries(uniqueIds).stream()
+            .collect(Collectors.toMap(GamificationClient.UserSummary::userId, summary -> summary,
+                (left, right) -> left, LinkedHashMap::new));
+
+        List<PublicProfileDto> profiles = uniqueIds.stream()
+            .map(usersById::get)
+            .filter(java.util.Objects::nonNull)
+            .map(user -> buildPublicProfile(user, summariesById.get(user.getId())))
+            .toList();
+
+        return ResponseEntity.ok(profiles);
     }
 
     @PostMapping("/{userId}/reviews")
-    public ResponseEntity<ReviewDto> createReview(@PathVariable String userId, @RequestBody ReviewDto dto) {
+    public ResponseEntity<ReviewDto> createReview(@PathVariable String userId, @Valid @RequestBody ReviewDto dto) {
         return ResponseEntity.ok(new ReviewDto("r1", dto.reviewerId(), userId, dto.contractId(), dto.rating(),
                 dto.comment(), LocalDateTime.now()));
     }
@@ -323,21 +455,36 @@ public class UserController {
         try {
             User u = getAuthenticatedUser(authentication);
             return ResponseEntity.ok(new UserProfileDto(u.getId(), u.getEmail(), u.getFirstName(),
-                    u.getLastName(), u.getKycStatus().name()));
+                u.getLastName(), u.getZone(), u.getKycStatus().name(), avatarUrl(u)));
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode()).build();
         }
     }
 
-    public record SettingsResponse(String firstName, String lastName, String email, String address, String idNumber,
-            String ibanLast4, boolean marketingEmailsOptIn, boolean systemEmailsOptIn) {
+        public record SettingsResponse(String firstName, String lastName, String email, String address, String zone,
+            String idNumber, String ibanLast4, boolean marketingEmailsOptIn, boolean systemEmailsOptIn,
+            String avatarUrl) {
     }
 
-    public record UpdateProfileRequest(String firstName, String lastName, String address, String idNumber,
+        public record UpdateProfileRequest(
+            @Pattern(regexp = ValidationPatterns.NAME, message = "First name " + ValidationPatterns.NAME_MSG)
+            String firstName,
+            @Pattern(regexp = ValidationPatterns.NAME, message = "Last name " + ValidationPatterns.NAME_MSG)
+            String lastName,
+            @Size(max = 255, message = "Address must be at most 255 characters")
+            @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Address " + ValidationPatterns.NO_ANGLE_MSG)
+            String address,
+            @Size(max = 64, message = "Zone must be at most 64 characters")
+            String zone,
+            @Size(max = 50, message = "ID number must be at most 50 characters")
+            @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "ID number " + ValidationPatterns.NO_ANGLE_MSG)
+            String idNumber,
             Boolean marketingEmailsOptIn, Boolean systemEmailsOptIn) {
     }
 
-    public record UpdateIbanRequest(String iban) {
+    public record UpdateIbanRequest(
+            @Size(max = 34, message = "IBAN must be at most 34 characters")
+            String iban) {
         // Records auto-generate toString() with every component; that default
         // would dump the full IBAN if an instance is ever logged. Mask it.
         @Override
@@ -349,7 +496,12 @@ public class UserController {
     public record IbanResponse(String ibanLast4) {
     }
 
-    public record ChangePasswordRequest(String currentPassword, String newPassword) {
+    public record ChangePasswordRequest(
+            @jakarta.validation.constraints.NotBlank(message = "Current password is required")
+            String currentPassword,
+            @jakarta.validation.constraints.NotBlank(message = "New password is required")
+            @Pattern(regexp = ValidationPatterns.PASSWORD, message = "Password " + ValidationPatterns.PASSWORD_MSG)
+            String newPassword) {
         @Override
         public String toString() {
             return "ChangePasswordRequest{currentPassword=***, newPassword=***}";
@@ -357,5 +509,56 @@ public class UserController {
     }
 
     public record DeviceDto(Long id, String userAgent, LocalDateTime createdAt, LocalDateTime lastSeenAt) {
+    }
+
+    public record AvatarResponse(String avatarUrl) {
+    }
+
+    private PublicProfileDto buildPublicProfile(User user) {
+        var summary = gamificationClient.getSummaries(List.of(user.getId())).stream().findFirst().orElse(null);
+        return buildPublicProfile(user, summary);
+    }
+
+    private PublicProfileDto buildPublicProfile(User user, GamificationClient.UserSummary summary) {
+        int points = summary != null ? summary.totalPoints() : 0;
+        List<PublicBadgeDto> badges = summary != null
+                ? summary.badges().stream()
+                .map(badge -> new PublicBadgeDto(
+                        badge.code(),
+                        badge.name(),
+                        badge.description(),
+                        badge.iconUrl(),
+                        badge.tier(),
+                        badge.earnedAt()))
+                .toList()
+                : List.of();
+
+        String displayName = (List.of(user.getFirstName(), user.getLastName()).stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(" "))).trim();
+        if (displayName.isBlank()) {
+            displayName = "User " + user.getId();
+        }
+
+        return new PublicProfileDto(
+                user.getId(),
+                displayName,
+                avatarUrl(user),
+                user.getZone(),
+                user.getCreatedAt(),
+                points,
+                badges);
+    }
+
+    private String normalizeZone(String zone) {
+        String normalized = zone.trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        if (!ALLOWED_ZONES.contains(normalized)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid zone.");
+        }
+        return normalized;
     }
 }

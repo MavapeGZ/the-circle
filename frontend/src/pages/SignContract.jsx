@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import api from '../services/api';
+import api, { extractApiError } from '../services/api';
+import BadgeToast from '../components/BadgeToast';
 import { contractTypeLabel } from '../utils/contractType';
 import { contractStatusLabel } from '../utils/contractStatus';
 
@@ -101,7 +102,7 @@ function SignContract() {
       if (status === 502) {
         setBanner({ type: 'error', text: 'We could not send the code, please try again.' });
       } else if (status === 400) {
-        setBanner({ type: 'error', text: err.response?.data?.message || 'Invalid signature data.' });
+        setBanner({ type: 'error', text: extractApiError(err, 'Invalid signature data.') });
       } else {
         setBanner({ type: 'error', text: 'Error requesting the code. Please try again.' });
       }
@@ -146,7 +147,7 @@ function SignContract() {
         setSessionId(null);
         setStep(STEP.REQUEST);
       } else {
-        setBanner({ type: 'error', text: 'Could not confirm the signature. Please try again.' });
+        setBanner({ type: 'error', text: extractApiError(err, 'Could not confirm the signature. Please try again.') });
       }
     } finally {
       setSubmitting(false);
@@ -177,6 +178,7 @@ function SignContract() {
 
   return (
     <div className="max-w-5xl mx-auto mt-8 p-4">
+      {result?.earnedBadges?.length > 0 && <BadgeToast badges={result.earnedBadges} to="/profile" />}
       <button
         type="button"
         onClick={() => navigate(backTo)}

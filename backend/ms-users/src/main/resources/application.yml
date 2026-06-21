@@ -27,13 +27,27 @@ spring:
 # Secret key for JWT token generation and validation
 jwt:
   secret: ${JWT_SECRET}
-  expiration: 86400000 # 1 day in milliseconds
+  # Token lifetime in ms. No refresh-token flow exists, so this also caps the
+  # active session length. Kept short (1h default) so a token leaked or used
+  # after logout expires quickly; the expiry is embedded in the JWT, so both
+  # ms-users and ms-contracts reject it once elapsed. Override per deployment.
+  expiration: ${JWT_EXPIRATION:3600000} # 1 hour in milliseconds
 
 kyc:
   upload-dir: ${KYC_UPLOAD_DIR:${user.home}/the-circle/uploads/users}
 
 # Shared key guarding service-to-service endpoints under /internal/**.
 # Blank disables the guard (local dev). Set USERS_INTERNAL_KEY in shared envs.
+catalog:
+  base-url: ${CATALOG_BASE_URL:http://localhost:8082}
+  internal:
+    api-key: ${CATALOG_INTERNAL_KEY:}
+
+contracts:
+  base-url: ${CONTRACTS_BASE_URL:http://localhost:8083}
+  internal:
+    api-key: ${CONTRACTS_INTERNAL_KEY:}
+    
 users:
   internal:
     api-key: ${USERS_INTERNAL_KEY:}
@@ -45,6 +59,9 @@ notifications:
   client:
     connect-timeout-ms: ${NOTIFICATIONS_CONNECT_TIMEOUT_MS:5000}
     read-timeout-ms: ${NOTIFICATIONS_READ_TIMEOUT_MS:30000}
+
+gamification:
+  base-url: ${GAMIFICATION_BASE_URL:http://localhost:8084}
 
 signature:
   otp:

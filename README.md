@@ -86,6 +86,10 @@ OpenSearch requires a high virtual memory map limit. If the `opensearch` contain
    DB_USER=thecircle
    DB_PASSWORD=change-me
    JWT_SECRET=replace-with-a-long-random-secret
+  USERS_INTERNAL_KEY=replace-with-a-shared-internal-key
+  CATALOG_INTERNAL_KEY=replace-with-a-shared-internal-key
+  CONTRACTS_INTERNAL_KEY=replace-with-a-shared-internal-key
+  NOTIFICATIONS_INTERNAL_KEY=replace-with-a-shared-internal-key
    ```
 
    Then start the containers:
@@ -103,3 +107,9 @@ OpenSearch requires a high virtual memory map limit. If the `opensearch` contain
 3. Contributors:
     - [MavapeGZ](https://github.com/MavapeGZ)
     - [grodriguez1722](https://github.com/grodriguez1722)
+
+## Account deletion policy
+
+When a user deletes their account, ms-users anonymizes the profile, revokes sessions, deletes their published articles, and asks ms-contracts to remove that user's open owner-side contracts together with their payments and generated PDF/signature artifacts.
+
+Completed and cancelled contracts are kept as historical records. Receiver-side contracts are not removed by this flow, because they belong to the other party's product lifecycle.

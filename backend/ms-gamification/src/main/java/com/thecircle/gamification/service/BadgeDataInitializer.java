@@ -23,13 +23,16 @@ public class BadgeDataInitializer {
     @Transactional
     public void seed() {
         List<Badge> defaults = List.of(
-            new Badge("FIRST_STEPS",     "Primeros pasos",          "Ganaste tus primeros 10 puntos",     "🌱", 10,   null,                          null),
-            new Badge("HELPER",          "Colaborador",             "Alcanzaste 100 puntos solidarios",   "🤝", 100,  null,                          null),
-            new Badge("CHAMPION",        "Campeón solidario",       "Alcanzaste 500 puntos solidarios",   "🏆", 500,  null,                          null),
-            new Badge("FIRST_DONATION",  "Primera donación",        "Donaste tu primer artículo",         "🎁", null, EventType.ITEM_DONATED,         1),
-            new Badge("SERIAL_DONOR",    "Donador habitual",        "Donaste 5 artículos",                "💝", null, EventType.ITEM_DONATED,         5),
-            new Badge("FIRST_RENTAL",    "Primer alquiler solidario","Tu primer alquiler solidario",      "🏠", null, EventType.ITEM_RENTED_SOLIDARITY,1)
-        );
+                new Badge("FIRST_STEPS", "First Steps", "Earned your first 10 points", "🌱", "bronze", 10, null,
+                        null),
+                new Badge("HELPER", "Helper", "Reached 100 solidarity points", "🤝", "silver", 100, null, null),
+                new Badge("CHAMPION", "Champion", "Reached 500 solidarity points", "🏆", "gold", 500, null, null),
+                new Badge("FIRST_DONATION", "First Donation", "Donated your first item", "🎁", "bronze", null,
+                        EventType.ITEM_DONATED, 1),
+                new Badge("SERIAL_DONOR", "Serial Donor", "Donated 5 items", "💝", "silver", null,
+                        EventType.ITEM_DONATED, 5),
+                new Badge("FIRST_RENTAL", "First Rental", "Rented your first solidarity item", "🏠", "bronze", null,
+                        EventType.ITEM_RENTED_SOLIDARITY, 1));
 
         for (Badge badge : defaults) {
             badgeRepo.findByCode(badge.getCode()).ifPresentOrElse(
@@ -37,6 +40,7 @@ public class BadgeDataInitializer {
                         existing.setName(badge.getName());
                         existing.setDescription(badge.getDescription());
                         existing.setIconUrl(badge.getIconUrl());
+                        existing.setTier(badge.getTier());
                         existing.setRequiredPoints(badge.getRequiredPoints());
                         existing.setRequiredEventType(badge.getRequiredEventType());
                         existing.setRequiredEventCount(badge.getRequiredEventCount());

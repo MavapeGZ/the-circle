@@ -4,6 +4,7 @@ import com.thecircle.contracts.dto.PaymentDto;
 import com.thecircle.contracts.dto.PaymentRequestDto;
 import com.thecircle.contracts.security.JwtAuthService;
 import com.thecircle.contracts.service.PaymentService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +30,7 @@ public class PaymentController {
 
     @PostMapping
     public ResponseEntity<PaymentDto> pay(@PathVariable String contractId,
-                                          @RequestBody PaymentRequestDto request,
+                                          @Valid @RequestBody PaymentRequestDto request,
                                           @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader) {
         String callerId = jwtAuthService.requireUserId(authHeader);
         PaymentDto dto = paymentService.pay(contractId, callerId, request);

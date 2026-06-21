@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import api from '../services/api';
+import api, { extractApiError } from '../services/api';
 import { contractTypeLabel } from '../utils/contractType';
 
 const luhn = (raw) => {
@@ -85,7 +85,10 @@ function Checkout() {
       // Spring returns `message` when include-message=always; falls back to `error` (reason
       // phrase) otherwise. The reason phrase ("Bad Request") is useless on its own, so we
       // only surface it when it actually carries explanatory text.
-      const raw = (data.message || '').trim();
+      const fieldMsg = Array.isArray(data.fields)
+        ? data.fields.map((f) => f?.message).filter(Boolean).join(' ')
+        : '';
+      const raw = (data.message || fieldMsg || '').trim();
       const reason = (data.error || '').trim();
       const detail = raw || (reason && reason !== 'Bad Request' && reason !== 'Internal Server Error' ? reason : '');
 

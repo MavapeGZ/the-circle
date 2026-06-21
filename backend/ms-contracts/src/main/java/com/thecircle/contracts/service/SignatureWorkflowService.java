@@ -45,6 +45,7 @@ public class SignatureWorkflowService {
     private final ContractStorageService storageService;
     private final ContractService contractService;
     private final OtpDeliveryChannel otpDelivery;
+    private final com.thecircle.contracts.client.GamificationClient gamificationClient;
 
     @Value("${signature.otp.length:6}")
     private int otpLength;
@@ -62,12 +63,14 @@ public class SignatureWorkflowService {
                                     SignatureService signatureService,
                                     ContractStorageService storageService,
                                     ContractService contractService,
-                                    OtpDeliveryChannel otpDelivery) {
+                                    OtpDeliveryChannel otpDelivery,
+                                    com.thecircle.contracts.client.GamificationClient gamificationClient) {
         this.pdfService = pdfService;
         this.signatureService = signatureService;
         this.storageService = storageService;
         this.contractService = contractService;
         this.otpDelivery = otpDelivery;
+        this.gamificationClient = gamificationClient;
     }
 
     public SignRequestResponseDto requestOtp(SignRequestDto req) {
@@ -186,13 +189,21 @@ public class SignatureWorkflowService {
         SignerRole role = session.signerRole != null ? session.signerRole : SignerRole.RECEIVER;
         ContractDto updated = contractService.markSigned(session.contract.getContractId(), sc.getId(), role);
 
+        boolean fullySigned = updated != null && updated.getStatus() == ContractStatus.ACTIVE;
+
         SignConfirmResponseDto resp = new SignConfirmResponseDto();
         resp.setSuccess(true);
-        resp.setFullySigned(updated != null && updated.getStatus() == ContractStatus.ACTIVE);
+        resp.setFullySigned(fullySigned);
         resp.setStoredContractId(sc.getId());
         resp.setDownloadUrl(DOWNLOAD_PATH + sc.getId());
         resp.setSignedAt(LocalDateTime.now());
         resp.setMessage("Contract signed successfully");
+        // The deal just closed: award the gamification event (donation/rental/sale)
+        // and, when this signer is the rewarded party, return the unlocked badges so
+        // the UI can toast them. Best-effort — never lets gamification break signing.
+        if (fullySigned) {
+            resp.setEarnedBadges(gamificationClient.awardForActivation(updated, role));
+        }
         return resp;
     }
 

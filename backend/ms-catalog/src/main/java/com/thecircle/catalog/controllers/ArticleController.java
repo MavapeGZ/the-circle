@@ -4,6 +4,7 @@ import com.thecircle.catalog.client.UsersClient;
 import com.thecircle.catalog.model.Article;
 import com.thecircle.catalog.model.ProductType;
 import com.thecircle.catalog.service.ArticleService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.Page;
@@ -40,7 +41,7 @@ public class ArticleController {
     // Create (Register)
     @PostMapping
     public ResponseEntity<Article> create(
-            @RequestBody Article article,
+            @Valid @RequestBody Article article,
             @RequestHeader("Authorization") String authHeader) {
 
         try {
@@ -52,7 +53,10 @@ public class ArticleController {
                     .parseSignedClaims(token)
                     .getPayload();
 
-            Long userId = Long.valueOf(claims.get("userId").toString());
+Long userId = Long.valueOf(claims.get("userId").toString());
+UsersClient.PayoutAccount payout = usersClient.getPayoutAccount(userId);
+// Always overwrite any client-provided zone to prevent spoofing.
+article.setZone(payout != null ? payout.zone() : null);
             if (article.getProductType() == ProductType.DONATION
                     || article.getProductType() == ProductType.DEMAND) {
                 if (article.getPrice() != null && article.getPrice() > 0) {
@@ -70,7 +74,6 @@ public class ArticleController {
             // exactly what is missing so it can redirect to settings.
             if (article.getProductType() == ProductType.SYMBOLIC_SALE
                     || article.getProductType() == ProductType.SYMBOLIC_RENTAL) {
-                UsersClient.PayoutAccount payout = usersClient.getPayoutAccount(userId);
                 if (payout == null) {
                     throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                             "Could not verify your payout account right now. Please try again in a moment.");
@@ -111,6 +114,7 @@ public class ArticleController {
     public ResponseEntity<Page<Article>> search(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) ProductType productType,
+            @RequestParam(required = false) String zone,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
@@ -120,12 +124,12 @@ public class ArticleController {
             return ResponseEntity.badRequest().build();
         }
         Pageable pageable = PageRequest.of(page, maxSize);
-        return ResponseEntity.ok(service.searchArticles(q, productType, pageable));
+        return ResponseEntity.ok(service.searchArticles(q, productType, zone, pageable));
     }
 
     // Update
     @PutMapping("/{id}")
-    public ResponseEntity<Article> update(@PathVariable String id, @RequestBody Article article) {
+    public ResponseEntity<Article> update(@PathVariable String id, @Valid @RequestBody Article article) {
         if (service.getArticleById(id).isEmpty()) {
             return ResponseEntity.notFound().build();
         }

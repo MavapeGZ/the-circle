@@ -1,6 +1,7 @@
 import { useState, useContext } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { extractApiError } from '../services/api';
 
 const STEP_CREDENTIALS = 'credentials';
 const STEP_OTP = 'otp';
@@ -8,9 +9,28 @@ const STEP_OTP = 'otp';
 const FLOW_LOGIN_OTP = 'login-otp';
 const FLOW_EMAIL_VERIFICATION = 'email-verification';
 
+// Message shown when the user was redirected here from a guarded action.
+const AUTH_REQUIRED_MESSAGES = {
+  'publish-article': 'You must be logged in to publish an article.',
+  'edit-article': 'You must be logged in to edit an article.',
+  'view-contracts': 'You must be logged in to view your contracts.',
+  settings: 'You must be logged in to access your settings.',
+};
+
 function Login() {
   const { login, verifyLoginOtp, verifyEmail } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionExpired = searchParams.get('expired') === '1';
+  const authRequired = searchParams.get('authRequired');
+  // Where to land after a successful sign-in (set by ProtectedRoute). Restricted
+  // to internal paths so the param can't be used as an open redirect.
+  const nextParam = searchParams.get('next');
+  const redirectTo = nextParam && nextParam.startsWith('/') ? nextParam : '/';
+
+  const authRequiredMessage = authRequired
+    ? AUTH_REQUIRED_MESSAGES[authRequired] || 'You must be logged in to continue.'
+    : '';
 
   const [step, setStep] = useState(STEP_CREDENTIALS);
   const [submitting, setSubmitting] = useState(false);
@@ -32,7 +52,7 @@ function Login() {
     try {
       const data = await login(email, password);
       if (data.token) {
-        navigate('/');
+        navigate(redirectTo);
       } else if (data.requiresOtp && data.sessionId) {
         setFlow(FLOW_LOGIN_OTP);
         setSessionId(data.sessionId);
@@ -50,8 +70,16 @@ function Login() {
     } catch (err) {
       const status = err?.response?.status;
 
-      if (status === 404 || status === 401) {
-        setError('Could not sign in. Account or password is incorrect.');
+      // Keep a single combined message for both "no such account" and "wrong
+      // password". Splitting them would let anyone probe which emails are
+      // registered (user enumeration) — the backend deliberately returns one
+      // 401 for both cases, and forgot-password hides existence the same way.
+      if (status === 400) {
+        // Format-level validation (blank/invalid email, missing password). Safe to
+        // surface — it says nothing about whether the account exists.
+        setError(extractApiError(err, 'Please check your email and password.'));
+      } else if (status === 404 || status === 401) {
+        setError('The account does not exist or the credentials are incorrect.');
       } else {
         setError('Could not sign in. Please try again.');
       }
@@ -70,7 +98,7 @@ function Login() {
       } else {
         await verifyLoginOtp(sessionId, otp);
       }
-      navigate('/');
+      navigate(redirectTo);
     } catch (err) {
       setError('Invalid or expired code. Try again.');
     } finally {
@@ -84,6 +112,18 @@ function Login() {
         <h2 className="text-3xl font-bold text-center text-blue-600 mb-6">
           {step === STEP_CREDENTIALS ? 'Sign In' : 'Verify Sign-in'}
         </h2>
+
+        {sessionExpired && !error && (
+          <p className="bg-amber-100 text-amber-700 p-3 rounded mb-4 text-center">
+            Your session has expired. Please sign in again to continue.
+          </p>
+        )}
+
+        {authRequiredMessage && !error && !sessionExpired && (
+          <p className="bg-amber-100 text-amber-700 p-3 rounded mb-4 text-center">
+            {authRequiredMessage}
+          </p>
+        )}
 
         {error && <p className="bg-red-100 text-red-600 p-3 rounded mb-4 text-center">{error}</p>}
 

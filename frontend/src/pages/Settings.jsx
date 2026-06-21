@@ -1,14 +1,17 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import api, { resolveAssetUrl, extractApiError } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import { ZONE_OPTIONS } from '../constants/zones';
+
+const TABS = ['profile', 'security', 'payments', 'verification', 'notifications', 'account'];
 
 function Settings() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, uploadKycDocuments } = useContext(AuthContext);
 
-  const initialTab = location.state?.tab && ['profile', 'security', 'payments', 'notifications', 'account'].includes(location.state.tab)
+  const initialTab = location.state?.tab && TABS.includes(location.state.tab)
     ? location.state.tab
     : 'profile';
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -20,8 +23,10 @@ function Settings() {
     lastName: '',
     email: '',
     address: '',
+    zone: '',
     idNumber: '',
     ibanLast4: null,
+    avatarUrl: null,
     marketingEmailsOptIn: true,
     systemEmailsOptIn: true
   });
@@ -29,6 +34,14 @@ function Settings() {
   const [passwords, setPasswords] = useState({ current: '', new: '' });
   const [devices, setDevices] = useState([]);
   const [ibanInput, setIbanInput] = useState('');
+  const avatarInputRef = useRef(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // KYC (identity verification) state for the verification tab.
+  const [kycStatus, setKycStatus] = useState('UNVERIFIED');
+  const [kycFront, setKycFront] = useState(null);
+  const [kycBack, setKycBack] = useState(null);
+  const [kycSubmitting, setKycSubmitting] = useState(false);
 
   // Mirror the card-number UX: strip non-alphanumerics, uppercase, regroup in 4s.
   // IBANs are at most 34 chars so the cap leaves room for the spaces.
@@ -42,7 +55,19 @@ function Settings() {
   useEffect(() => {
     fetchSettings();
     fetchDevices();
+    fetchKycStatus();
   }, []);
+
+  const fetchKycStatus = async () => {
+    if (!user?.id) return;
+    try {
+      const res = await api.get(`/users/${user.id}/kyc/status`);
+      // The endpoint reports the status string in `message`.
+      if (res.data?.message) setKycStatus(res.data.message);
+    } catch (err) {
+      console.error('Error fetching KYC status:', err);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -78,11 +103,12 @@ function Settings() {
         firstName: settings.firstName,
         lastName: settings.lastName,
         address: settings.address,
+        zone: settings.zone,
         idNumber: settings.idNumber
       });
       showMessage('Profile updated successfully!');
     } catch (err) {
-      showMessage('Failed to update profile.', 'error');
+      showMessage(extractApiError(err, 'Failed to update profile.'), 'error');
     }
   };
 
@@ -95,7 +121,7 @@ function Settings() {
       });
       showMessage('Notification preferences saved!');
     } catch (err) {
-      showMessage('Failed to update notifications.', 'error');
+      showMessage(extractApiError(err, 'Failed to update notifications.'), 'error');
     }
   };
 
@@ -109,7 +135,7 @@ function Settings() {
       setPasswords({ current: '', new: '' });
       showMessage('Password changed successfully!');
     } catch (err) {
-      showMessage(err.response?.data?.message || 'Incorrect current password.', 'error');
+      showMessage(extractApiError(err, 'Incorrect current password.'), 'error');
     }
   };
 
@@ -121,7 +147,56 @@ function Settings() {
       setIbanInput('');
       showMessage(res.data.ibanLast4 ? 'Payout IBAN saved.' : 'Payout IBAN cleared.');
     } catch (err) {
-      showMessage(err.response?.data?.message || 'Invalid IBAN. Please double-check the digits.', 'error');
+      showMessage(extractApiError(err, 'Invalid IBAN. Please double-check the digits.'), 'error');
+    }
+  };
+
+  const handleAvatarSelected = async (file) => {
+    if (!file) return;
+    setAvatarUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await api.post('/users/me/avatar', fd);
+      setSettings((prev) => ({ ...prev, avatarUrl: res.data.avatarUrl }));
+      showMessage('Profile picture updated!');
+    } catch (err) {
+      showMessage(extractApiError(err, 'Could not upload the picture.'), 'error');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    setAvatarUploading(true);
+    try {
+      await api.delete('/users/me/avatar');
+      setSettings((prev) => ({ ...prev, avatarUrl: null }));
+      showMessage('Profile picture removed.');
+    } catch (err) {
+      showMessage('Could not remove the picture.', 'error');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleKycSubmit = async (e) => {
+    e.preventDefault();
+    if (!kycFront || !kycBack) {
+      showMessage('Both front and back of your ID are required.', 'error');
+      return;
+    }
+    setKycSubmitting(true);
+    try {
+      const result = await uploadKycDocuments(user.id, kycFront, kycBack);
+      setKycFront(null);
+      setKycBack(null);
+      showMessage(result?.message || 'Documents received.');
+      await fetchKycStatus();
+    } catch (err) {
+      showMessage(err.response?.data?.message || 'Could not upload your documents. Try again.', 'error');
+    } finally {
+      setKycSubmitting(false);
     }
   };
 
@@ -166,7 +241,7 @@ function Settings() {
         
         {/* TABS SIDEBAR */}
         <div className="w-full md:w-64 flex flex-col gap-2">
-          {['profile', 'security', 'payments', 'notifications', 'account'].map((tab) => (
+          {TABS.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -186,6 +261,53 @@ function Settings() {
           {activeTab === 'profile' && (
             <form onSubmit={handleProfileUpdate} className="space-y-6">
               <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">Profile Information</h2>
+
+              {/* PROFILE PICTURE */}
+              <div className="flex items-center gap-5">
+                <div className="h-20 w-20 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
+                  {settings.avatarUrl ? (
+                    <img src={resolveAssetUrl(settings.avatarUrl)} alt="Profile" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-black text-gray-400">
+                      {(settings.firstName?.[0] || '').toUpperCase() || 'U'}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      handleAvatarSelected(e.target.files?.[0] || null);
+                      e.target.value = '';
+                    }}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={avatarUploading}
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition disabled:opacity-60"
+                    >
+                      {avatarUploading ? 'Uploading…' : settings.avatarUrl ? 'Change picture' : 'Upload picture'}
+                    </button>
+                    {settings.avatarUrl && (
+                      <button
+                        type="button"
+                        disabled={avatarUploading}
+                        onClick={handleAvatarRemove}
+                        className="bg-gray-100 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-200 transition disabled:opacity-60"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500">JPEG, PNG, WEBP or GIF. Max 5 MB.</p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">First Name</label>
@@ -239,6 +361,22 @@ function Settings() {
                   placeholder="Street, number, city, postal code"
                 />
                 <p className="text-xs text-gray-500 mt-1">Required on signed contracts.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Approximate Area</label>
+                <select
+                  value={settings.zone || ''}
+                  onChange={(e) => setSettings({ ...settings, zone: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="">Select your area</option>
+                  {ZONE_OPTIONS.map((zone) => (
+                    <option key={zone.value} value={zone.value}>
+                      {zone.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">This is a broad area used for catalog search filtering, not an exact location.</p>
               </div>
               <button type="submit" className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition">
                 Save Profile
@@ -344,6 +482,65 @@ function Settings() {
             </form>
           )}
 
+          {/* VERIFICATION (KYC) TAB */}
+          {activeTab === 'verification' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">Identity Verification</h2>
+
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-bold text-gray-700">Current status:</span>
+                <KycStatusBadge status={kycStatus} />
+              </div>
+
+              {kycStatus === 'VERIFIED' && (
+                <div className="p-4 bg-green-50 border border-green-100 rounded-lg text-sm text-green-800">
+                  Your identity has been verified. Nothing more to do here.
+                </div>
+              )}
+
+              {kycStatus === 'PENDING_REVIEW' && (
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800">
+                  Your documents have been received and are under review. You can keep using The Circle
+                  in the meantime.
+                </div>
+              )}
+
+              {(kycStatus === 'UNVERIFIED' || kycStatus === 'REJECTED') && (
+                <form onSubmit={handleKycSubmit} className="space-y-4">
+                  {kycStatus === 'REJECTED' && (
+                    <div className="p-4 bg-red-50 border border-red-100 rounded-lg text-sm text-red-800">
+                      Your previous submission was rejected. Please upload clear photos of your ID and try again.
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-600">
+                    If you skipped identity verification at sign-up, you can complete it now. Upload the
+                    front and back of your government-issued ID.
+                  </p>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">ID — Front</label>
+                    <input
+                      type="file" accept="image/*,application/pdf"
+                      onChange={(e) => setKycFront(e.target.files?.[0] || null)}
+                      className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white file:font-bold hover:file:bg-blue-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">ID — Back</label>
+                    <input
+                      type="file" accept="image/*,application/pdf"
+                      onChange={(e) => setKycBack(e.target.files?.[0] || null)}
+                      className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white file:font-bold hover:file:bg-blue-700"
+                    />
+                  </div>
+                  <button type="submit" disabled={kycSubmitting}
+                    className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition disabled:opacity-60">
+                    {kycSubmitting ? 'Uploading…' : 'Submit Documents'}
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
+
           {/* NOTIFICATIONS TAB */}
           {activeTab === 'notifications' && (
             <form onSubmit={handleNotificationsUpdate} className="space-y-6">
@@ -410,6 +607,17 @@ function Settings() {
       </div>
     </div>
   );
+}
+
+function KycStatusBadge({ status }) {
+  const map = {
+    VERIFIED: { label: 'Verified', cls: 'bg-green-100 text-green-700' },
+    PENDING_REVIEW: { label: 'Pending review', cls: 'bg-blue-100 text-blue-700' },
+    REJECTED: { label: 'Rejected', cls: 'bg-red-100 text-red-700' },
+    UNVERIFIED: { label: 'Not verified', cls: 'bg-gray-100 text-gray-600' },
+  };
+  const { label, cls } = map[status] || map.UNVERIFIED;
+  return <span className={`px-3 py-1 rounded-full text-xs font-bold ${cls}`}>{label}</span>;
 }
 
 export default Settings;

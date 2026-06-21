@@ -1,6 +1,7 @@
 package com.thecircle.contracts.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class SignConfirmResponseDto {
 
@@ -10,6 +11,10 @@ public class SignConfirmResponseDto {
     private String downloadUrl;
     private LocalDateTime signedAt;
     private String message;
+    // Badges the signer unlocked by completing this signature, so the UI can toast
+    // them. Empty unless this signature both activated the contract and the signer
+    // is the rewarded party.
+    private List<EarnedBadgeDto> earnedBadges = List.of();
 
     public boolean isSuccess() { return success; }
     public void setSuccess(boolean success) { this.success = success; }
@@ -23,4 +28,8 @@ public class SignConfirmResponseDto {
     public void setSignedAt(LocalDateTime signedAt) { this.signedAt = signedAt; }
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
+    public List<EarnedBadgeDto> getEarnedBadges() { return earnedBadges; }
+    public void setEarnedBadges(List<EarnedBadgeDto> earnedBadges) {
+        this.earnedBadges = earnedBadges != null ? earnedBadges : List.of();
+    }
 }

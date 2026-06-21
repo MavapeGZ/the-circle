@@ -1,5 +1,7 @@
 package com.thecircle.users.security;
 
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,20 +25,34 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable);
-        http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
+                // Internal ERROR re-dispatch (e.g. when a controller throws
+                // ResponseStatusException) must not be re-authenticated. In a
+                // stateless chain the SecurityContext is already cleared by the
+                // time the container forwards to /error, so without this the real
+                // 4xx (400 invalid IBAN/zone, 409, etc.) is masked as a 401 and
+                // the frontend wrongly treats it as an expired session.
+                .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 // Not gateway-routed; guarded by a shared internal API key in the controller.
                 .requestMatchers("/internal/**").permitAll()
                 .requestMatchers("/api/users/health").permitAll()
                 .requestMatchers("/api/users/me").authenticated()
+                // Avatars load from plain <img> tags that cannot carry the JWT.
+                .requestMatchers(HttpMethod.GET, "/api/users/*/avatar").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
                 .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                 .anyRequest().authenticated()
             )
+            // Without an explicit entry point Spring defaults to Http403ForbiddenEntryPoint,
+            // so an expired/missing JWT surfaced as 403 (indistinguishable from a real
+            // permission denial). Return 401 instead so the frontend can detect an expired
+            // session and redirect to login. See issue #72.
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(
+                    (request, response, authException) ->
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")))
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(authenticationProvider)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

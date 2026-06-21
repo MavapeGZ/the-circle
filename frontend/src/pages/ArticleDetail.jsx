@@ -1,7 +1,21 @@
 import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import api from '../services/api';
+import api, { resolveAssetUrl, extractApiError } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import BadgeList from '../components/BadgeList';
+import { ZONE_OPTIONS } from '../constants/zones';
+
+function zoneLabel(zone) {
+  return ZONE_OPTIONS.find((option) => option.value === zone)?.label || zone || 'Not shared';
+}
+
+// Strip angle brackets when embedding a (possibly legacy) article title into the
+// contract conditions, so a title saved before input validation — e.g.
+// "<strong>hola</strong>" — does not trip the server-side NO_ANGLE check and
+// block the deal. New titles can no longer contain markup anyway.
+function cleanTitle(title) {
+  return (title || '').replace(/[<>]/g, '');
+}
 
 function ArticleDetail() {
   const { id } = useParams();
@@ -31,7 +45,7 @@ function ArticleDetail() {
             setOwner(ownerRes.data);
           } catch (ownerErr) {
             console.error('Error fetching owner profile:', ownerErr);
-            setOwner({ firstName: 'Unknown', lastName: '', kycStatus: 'UNKNOWN' });
+            setOwner(null);
           }
         }
       } catch (err) {
@@ -46,7 +60,7 @@ function ArticleDetail() {
   }, [id]);
 
   const handleDelete = async () => {
-    const confirmed = window.confirm('Are you sure you want to delete this article? This action cannot be undone.');
+    const confirmed = globalThis.confirm('Are you sure you want to delete this article? This action cannot be undone.');
     if (confirmed) {
       setIsDeleting(true);
       try {
@@ -103,7 +117,7 @@ function ArticleDetail() {
         type: cfg.contractType,
         price: article.price ?? 0,
         guaranteeAmount,
-        conditions: `${cfg.label}: ${article.title}`
+        conditions: `${cfg.label}: ${cleanTitle(article.title)}`
           + (isRent ? ` (${rentDays} days, deposit ${guaranteeAmount} €)` : '')
           + (article.price ? ` - ${article.price} €` : ''),
         returnDate,
@@ -113,7 +127,7 @@ function ArticleDetail() {
       });
     } catch (err) {
       console.error('Error creating contract:', err);
-      alert('Could not start the deal. Please try again.');
+      alert(extractApiError(err, 'Could not start the deal. Please try again.'));
       setAcquiring(false);
     }
   };
@@ -136,7 +150,7 @@ function ArticleDetail() {
         type: 'CESSION_PERMANENT',
         price: article.price ?? 0,
         guaranteeAmount: null,
-        conditions: `Fulfill demand: ${article.title}`,
+        conditions: `Fulfill demand: ${cleanTitle(article.title)}`,
         returnDate: null,
       });
       navigate(`/contracts/${res.data.id}/sign`, {
@@ -144,7 +158,7 @@ function ArticleDetail() {
       });
     } catch (err) {
       console.error('Error creating contract:', err);
-      alert('Could not start the deal. Please try again.');
+      alert(extractApiError(err, 'Could not start the deal. Please try again.'));
       setAcquiring(false);
     }
   };
@@ -219,6 +233,9 @@ function ArticleDetail() {
             <div className="flex justify-between items-center mb-4">
               <div className="flex gap-2">
                 {renderBadge()}
+                <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">
+                  {zoneLabel(article.zone)}
+                </span>
                 <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">
                   {article.category}
                 </span>
@@ -258,24 +275,40 @@ function ArticleDetail() {
           <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">About the owner</h3>
 
           {owner ? (
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xl">
-                {(owner.firstName?.[0] ?? '?')}{(owner.lastName?.[0] ?? '')}
-              </div>
-              <div>
-                <h4 className="text-lg font-bold text-gray-900">
-                  {owner.firstName} {owner.lastName}
-                </h4>
-                <div className="flex items-center mt-1">
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${owner.kycStatus === 'VERIFIED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                    {owner.kycStatus}
-                  </span>
+            <Link to={`/users/${owner.id}`} className="block mb-6 group">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xl overflow-hidden shrink-0">
+                  {owner.avatarUrl ? (
+                    <img src={resolveAssetUrl(owner.avatarUrl)} alt={owner.displayName} className="h-full w-full object-cover" />
+                  ) : (
+                    <span>{(owner.displayName || 'User').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('')}</span>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
+                    {owner.displayName}
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-2 mt-1 text-xs font-semibold text-gray-500">
+                    <span className="px-2 py-1 rounded-full bg-gray-100">{zoneLabel(owner.approximateZone)}</span>
+                    <span className="px-2 py-1 rounded-full bg-gray-100">{owner.points} points</span>
+                    <span className="px-2 py-1 rounded-full bg-gray-100">
+                      Joined {owner.memberSince ? new Date(owner.memberSince).toLocaleDateString() : 'Unknown'}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </Link>
           ) : (
             <div className="text-gray-500 text-sm mb-6 animate-pulse">Loading owner profile...</div>
           )}
+
+          {owner?.badges?.length ? (
+            <div className="mb-6">
+              <BadgeList badges={owner.badges} emptyMessage="This seller has no badges yet." />
+            </div>
+          ) : owner ? (
+            <p className="text-sm text-gray-500 mb-6">This seller has not earned any badges yet.</p>
+          ) : null}
 
           <hr className="border-gray-100 mb-6" />
 

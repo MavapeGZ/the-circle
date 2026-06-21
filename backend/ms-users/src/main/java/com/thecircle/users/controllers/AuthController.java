@@ -52,7 +52,7 @@ public class AuthController {
     private boolean deviceCookieSecure;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthenticationResponse> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthenticationResponse> register(@Valid @RequestBody RegisterRequest request) {
         try {
             return ResponseEntity.ok(service.register(request));
         } catch (IllegalArgumentException e) {
@@ -73,9 +73,18 @@ public class AuthController {
     }
 
     @PostMapping("/verify-email")
-    public ResponseEntity<AuthenticationResponse> verifyEmail(@RequestBody VerifyOtpRequest request) {
+    public ResponseEntity<AuthenticationResponse> verifyEmail(
+            @Valid @RequestBody VerifyOtpRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
         try {
-            return ResponseEntity.ok(service.verifyEmail(request));
+            AuthService.OtpVerificationResult result =
+                    service.verifyEmail(request, httpRequest.getHeader("User-Agent"));
+            attachDeviceCookie(httpResponse, result.deviceToken);
+            return ResponseEntity.ok(AuthenticationResponse.builder()
+                    .token(result.token)
+                    .message("Email verified")
+                    .build());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(AuthenticationResponse.builder().message(e.getMessage()).build());
@@ -84,7 +93,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthenticationResponse> authenticate(
-            @RequestBody AuthenticationRequest request,
+            @Valid @RequestBody AuthenticationRequest request,
             HttpServletRequest httpRequest) {
         String deviceCookie = readDeviceCookie(httpRequest);
         try {
@@ -102,11 +111,11 @@ public class AuthController {
 
     @PostMapping("/login-otp")
     public ResponseEntity<AuthenticationResponse> verifyLoginOtp(
-            @RequestBody VerifyOtpRequest request,
+            @Valid @RequestBody VerifyOtpRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         try {
-            AuthService.LoginOtpResult result = service.verifyLoginOtp(request, httpRequest.getHeader("User-Agent"));
+            AuthService.OtpVerificationResult result = service.verifyLoginOtp(request, httpRequest.getHeader("User-Agent"));
             attachDeviceCookie(httpResponse, result.deviceToken);
             return ResponseEntity.ok(AuthenticationResponse.builder().token(result.token).build());
         } catch (IllegalArgumentException e) {
@@ -140,7 +149,7 @@ public class AuthController {
     }
 
     @PostMapping("/verify-reset-otp")
-    public ResponseEntity<AuthenticationResponse> verifyResetOtp(@RequestBody VerifyOtpRequest request,
+    public ResponseEntity<AuthenticationResponse> verifyResetOtp(@Valid @RequestBody VerifyOtpRequest request,
                                                                  HttpServletRequest httpRequest) {
         try {
             String sourceIp = resolveClientIp(httpRequest);
@@ -162,7 +171,7 @@ public class AuthController {
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<AuthenticationResponse> resetPassword(@RequestBody ResetPasswordRequest request,
+    public ResponseEntity<AuthenticationResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request,
                                                                 HttpServletRequest httpRequest) {
         try {
             String sourceIp = resolveClientIp(httpRequest);
