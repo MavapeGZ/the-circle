@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Authentication + registration with OTP email verification (signup) and
@@ -37,6 +38,7 @@ public class AuthService {
     private final NotificationsClient notificationsClient;
     private final DeviceCookieService deviceCookieService;
     private final PasswordResetTokenStore passwordResetTokenStore;
+    private final RefreshTokenService refreshTokenService;
 
     @Value("${signature.mail.verify-subject:The Circle - Verify your account}")
     private String verifySubject;
@@ -105,10 +107,10 @@ public class AuthService {
         repository.save(user);
 
         String deviceToken = deviceCookieService.issueDeviceCookie(user.getId(), userAgent);
-        return new OtpVerificationResult(buildJwt(user), deviceToken);
+        return new OtpVerificationResult(buildJwt(user), deviceToken, refreshTokenService.issue(user.getId()));
     }
 
-    public AuthenticationResponse authenticate(AuthenticationRequest request, String deviceCookie) {
+    public LoginOutcome authenticate(AuthenticationRequest request, String deviceCookie) {
         // Spring Security will throw BadCredentialsException for unknown email or wrong password.
         User user = (User) authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()))
@@ -117,25 +119,29 @@ public class AuthService {
             AuthOtpService.Issued issued = otpService.issue(user.getId(), user.getEmail(),
                     AuthOtpService.Purpose.EMAIL_VERIFICATION);
             sendOtpEmail(user, issued, verifySubject, "account-verification");
-            return AuthenticationResponse.builder()
+            return LoginOutcome.intermediate(AuthenticationResponse.builder()
                     .sessionId(issued.sessionId)
                     .requiresEmailVerification(true)
                     .message("Email not verified. Verification code re-sent.")
-                    .build();
+                    .build());
         }
 
         if (deviceCookieService.isKnownDevice(user.getId(), deviceCookie)) {
-            return AuthenticationResponse.builder().token(buildJwt(user)).build();
+            // Trusted device: skip the login OTP and mint the session directly.
+            // A refresh token rides back so the controller sets the cookie.
+            return LoginOutcome.authenticated(
+                    AuthenticationResponse.builder().token(buildJwt(user)).build(),
+                    refreshTokenService.issue(user.getId()));
         }
 
         AuthOtpService.Issued issued = otpService.issue(user.getId(), user.getEmail(),
                 AuthOtpService.Purpose.LOGIN);
         sendOtpEmail(user, issued, loginSubject, "login-otp");
-        return AuthenticationResponse.builder()
+        return LoginOutcome.intermediate(AuthenticationResponse.builder()
                 .sessionId(issued.sessionId)
                 .requiresOtp(true)
                 .message("Sign-in code sent to " + user.getEmail())
-                .build();
+                .build());
     }
 
     /**
@@ -153,7 +159,26 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalStateException("User not found for sign-in session"));
 
         String deviceToken = deviceCookieService.issueDeviceCookie(user.getId(), userAgent);
-        return new OtpVerificationResult(buildJwt(user), deviceToken);
+        return new OtpVerificationResult(buildJwt(user), deviceToken, refreshTokenService.issue(user.getId()));
+    }
+
+    /**
+     * Exchanges a valid refresh token for a fresh access JWT, rotating the
+     * refresh token in the process. Returns empty when the presented token is
+     * unknown, expired or already rotated; the controller maps that to a 401 so
+     * the client falls back to a full login.
+     */
+    public Optional<RefreshResult> refresh(String rawRefreshToken) {
+        return refreshTokenService.rotate(rawRefreshToken).map(rotation -> {
+            User user = repository.findById(rotation.userId)
+                    .orElseThrow(() -> new IllegalStateException("User not found for refresh token"));
+            return new RefreshResult(buildJwt(user), rotation.rawToken);
+        });
+    }
+
+    /** Logout: revoke the presented refresh token so it cannot be reused. */
+    public void logout(String rawRefreshToken) {
+        refreshTokenService.revoke(rawRefreshToken);
     }
 
     private String buildJwt(User user) {
@@ -182,10 +207,46 @@ public class AuthService {
     public static final class OtpVerificationResult {
         public final String token;
         public final String deviceToken;
+        public final String refreshToken;
 
-        public OtpVerificationResult(String token, String deviceToken) {
+        public OtpVerificationResult(String token, String deviceToken, String refreshToken) {
             this.token = token;
             this.deviceToken = deviceToken;
+            this.refreshToken = refreshToken;
+        }
+    }
+
+    /**
+     * Result of {@link #authenticate}. {@code refreshToken} is non-null only on
+     * the fully-authenticated trusted-device path; the email-verification and
+     * login-OTP branches return an intermediate response with no session yet.
+     */
+    public static final class LoginOutcome {
+        public final AuthenticationResponse response;
+        public final String refreshToken;
+
+        private LoginOutcome(AuthenticationResponse response, String refreshToken) {
+            this.response = response;
+            this.refreshToken = refreshToken;
+        }
+
+        static LoginOutcome authenticated(AuthenticationResponse response, String refreshToken) {
+            return new LoginOutcome(response, refreshToken);
+        }
+
+        static LoginOutcome intermediate(AuthenticationResponse response) {
+            return new LoginOutcome(response, null);
+        }
+    }
+
+    /** Result of a refresh: the new access JWT plus the rotated refresh token. */
+    public static final class RefreshResult {
+        public final String token;
+        public final String refreshToken;
+
+        public RefreshResult(String token, String refreshToken) {
+            this.token = token;
+            this.refreshToken = refreshToken;
         }
     }
 
@@ -275,7 +336,10 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(newPassword));
         repository.save(user);
         deviceCookieService.revokeAllDevices(user.getId());
-        log.info("Password reset completed for user {} ({}); all trusted devices revoked",
+        // Kill every active session: refresh tokens outlive the access JWT, so
+        // without this a pre-reset refresh token could still mint new sessions.
+        refreshTokenService.revokeAllForUser(user.getId());
+        log.info("Password reset completed for user {} ({}); all trusted devices and refresh tokens revoked",
                 user.getId(), user.getEmail());
     }
 

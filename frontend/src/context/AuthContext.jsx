@@ -93,7 +93,15 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Revoke the refresh token server-side and clear its httpOnly cookie so it
+    // cannot mint new sessions. Best-effort: the local session is cleared even
+    // if the call fails (offline, expired cookie, etc.).
+    try {
+      await api.post('/auth/logout', null, { skipAuthRedirect: true });
+    } catch {
+      // ignore — clearing local state below is what matters for the user.
+    }
     localStorage.removeItem('token');
     setUser(null);
   };

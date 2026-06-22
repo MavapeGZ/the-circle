@@ -15,6 +15,7 @@ import com.thecircle.users.dto.PublicProfileDto;
 import com.thecircle.users.service.CatalogClient;
 import com.thecircle.users.service.ContractsClient;
 import com.thecircle.users.service.DeviceCookieService;
+import com.thecircle.users.service.RefreshTokenService;
 import com.thecircle.users.service.GamificationClient;
 import com.thecircle.users.service.UploadValidation;
 import com.thecircle.users.validation.ValidationPatterns;
@@ -65,6 +66,7 @@ public class UserController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final DeviceCookieService deviceCookieService;
+    private final RefreshTokenService refreshTokenService;
     private final IbanCipher ibanCipher;
     private final CatalogClient catalogClient;
     private final ContractsClient contractsClient;
@@ -227,6 +229,9 @@ public class UserController {
 
         // Revoke all existing device sessions to log out from all devices immediately
         deviceCookieService.revokeAllDevices(user.getId());
+        // Refresh tokens outlive the access JWT, so revoke them too — otherwise a
+        // held refresh cookie could keep minting sessions for the deleted account.
+        refreshTokenService.revokeAllForUser(user.getId());
 
         catalogClient.removeUserArticles(user.getId());
         contractsClient.removeOwnedOpenContracts(user.getId());
