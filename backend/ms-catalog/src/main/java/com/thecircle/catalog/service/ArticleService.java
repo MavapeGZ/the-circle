@@ -158,9 +158,9 @@ public class ArticleService {
 
         // Prove if fronend is sending real query or just empty string with spaces, if
         // so, treat it as no query
-boolean hasQuery = query != null && !query.trim().isEmpty();
-boolean hasZone = zone != null && !zone.trim().isEmpty();
-String normalizedZone = hasZone ? zone.trim().toUpperCase() : null;
+        boolean hasQuery = query != null && !query.trim().isEmpty();
+        boolean hasZone = zone != null && !zone.trim().isEmpty();
+        String normalizedZone = hasZone ? zone.trim().toUpperCase() : null;
         if (!hasQuery && type == null && !hasZone) {
             // Case 1: Initial empty search, return all non-sold articles
             return repository.findAllNotSold(pageable);
