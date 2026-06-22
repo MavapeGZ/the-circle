@@ -19,6 +19,7 @@ import Checkout from './Checkout';
 import PaymentReceipt from './PaymentReceipt';
 import Settings from './Settings';
 import ProfilePage from './ProfilePage';
+import NotFound from './NotFound';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 // Navigation lives inside BrowserRouter so it can use useNavigate to redirect.
@@ -285,6 +286,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Catch-all: any unmatched path renders the 404 page instead of blank. */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
     </BrowserRouter>
