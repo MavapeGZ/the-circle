@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api, { extractApiError } from '../services/api';
+import { AuthContext } from '../context/AuthContext';
 import BadgeToast from '../components/BadgeToast';
 import { contractTypeLabel } from '../utils/contractType';
 import { contractStatusLabel } from '../utils/contractStatus';
@@ -11,6 +12,7 @@ function SignContract() {
   const { contractId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { refreshContracts } = useContext(AuthContext);
 
   // When reached from the catalog "Buy/Rent/Request" flow, the contract and the
   // buyer email arrive in router state, so we skip the lookups below.
@@ -119,6 +121,8 @@ function SignContract() {
       const res = await api.post('/contracts/joint-rental/sign/confirm', { sessionId, otp });
       setResult(res.data);
       setStep(STEP.SUCCESS);
+      // My signature is done → navbar pending-action count should drop now.
+      refreshContracts();
 
       // Buyer signing a rental locks the security deposit right after signing.
       if (role === 'RECEIVER' && contract?.type === 'RENT' && Number(contract?.guaranteeAmount) > 0) {

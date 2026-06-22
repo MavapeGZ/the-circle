@@ -8,7 +8,7 @@ import ReviewForm from '../components/ReviewForm';
 function ContractDetail() {
   const { contractId } = useParams();
   const navigate = useNavigate();
-  const { user: currentUser } = useContext(AuthContext);
+  const { user: currentUser, refreshContracts } = useContext(AuthContext);
 
   const [contract, setContract] = useState(null);
   const [ownerName, setOwnerName] = useState('');
@@ -163,6 +163,7 @@ function ContractDetail() {
     try {
       const res = await api.post(`/contracts/${contract.id}/delivery/confirm`);
       setContract(res.data);
+      refreshContracts();
     } catch (err) {
       setError(extractApiError(err, 'Could not confirm delivery.'));
     } finally {

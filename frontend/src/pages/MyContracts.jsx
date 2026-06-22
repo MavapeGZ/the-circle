@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { AuthContext } from '../context/AuthContext';
 import { contractTypeLabel } from '../utils/contractType';
+import { contractActionRequired } from '../utils/contractAction';
 
 function MyContracts() {
   const navigate = useNavigate();
+  const { refreshContracts } = useContext(AuthContext);
 
   const [me, setMe] = useState(null);
   const [contracts, setContracts] = useState([]);
@@ -81,6 +84,7 @@ function MyContracts() {
     try {
       await api.post(`/contracts/${c.id}/guarantee/${action}`);
       await loadContracts(me.id);
+      refreshContracts();
     } catch {
       setError('Could not update the deposit.');
     } finally {
@@ -131,11 +135,19 @@ function MyContracts() {
             const canSign = iNeedToSign(c);
             const counterpartId = mineAsOwner ? c.receiverId : c.ownerId;
             const canSettle = mineAsOwner && c.status === 'ACTIVE' && c.guaranteeStatus === 'DEPOSITED';
+            const needsAction = contractActionRequired(c, me?.id);
             return (
               <li key={c.id} className="bg-white p-5 rounded-2xl shadow border border-gray-100">
                 <div className="flex justify-between items-start gap-4">
                   <div className="text-sm text-gray-600 space-y-1">
-                    <p className="font-bold text-gray-900 text-base">{contractTypeLabel(c.type)} · {mineAsOwner ? 'You are the owner' : 'You are the receiver'}</p>
+                    <p className="font-bold text-gray-900 text-base flex items-center gap-2">
+                      {needsAction && (
+                        <span className="bg-red-500 text-white text-[10px] font-bold rounded-full px-2 py-0.5 leading-none uppercase tracking-wide">
+                          Action required
+                        </span>
+                      )}
+                      <span>{contractTypeLabel(c.type)} · {mineAsOwner ? 'You are the owner' : 'You are the receiver'}</span>
+                    </p>
                     <p>Item: {itemTitles[c.itemId] || c.itemId}</p>
                     <p>With: {userNames[counterpartId] || counterpartId}</p>
                     <p>Created: {c.createdAt ? new Date(c.createdAt).toLocaleString() : '—'}</p>

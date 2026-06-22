@@ -112,6 +112,12 @@ export const AuthProvider = ({ children }) => {
     setUser((prev) => (prev ? { ...prev, ...partial } : prev));
   };
 
+  // Bumped whenever a contract action completes (sign / confirm delivery /
+  // settle deposit) so the navbar's pending-action badge re-counts immediately
+  // instead of waiting for its poll interval.
+  const [contractsRefreshNonce, setContractsRefreshNonce] = useState(0);
+  const refreshContracts = () => setContractsRefreshNonce((n) => n + 1);
+
   return (
     <AuthContext.Provider value={{
       user, isAuthenticated, loading,
@@ -119,6 +125,7 @@ export const AuthProvider = ({ children }) => {
       login, verifyLoginOtp,
       fetchMe, uploadKycDocuments,
       updateUser,
+      contractsRefreshNonce, refreshContracts,
       logout,
     }}>
       {!loading && children}

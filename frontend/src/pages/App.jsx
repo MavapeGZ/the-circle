@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-do
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import api, { resolveAssetUrl } from '../services/api';
+import { countContractsNeedingAction } from '../utils/contractAction';
 import Login from './Login';
 import Register from './Register';
 import ForgotPassword from './ForgotPassword';
@@ -22,7 +23,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 
 // Navigation lives inside BrowserRouter so it can use useNavigate to redirect.
 function NavBar() {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, contractsRefreshNonce } = useContext(AuthContext);
   const navigate = useNavigate();
   // Mobile menu toggle. On small screens the inline links would crowd into each
   // other (e.g. "Catalog" colliding with "Login"), so they collapse behind a
@@ -46,6 +47,24 @@ function NavBar() {
     const t = setInterval(load, 15000);
     return () => { active = false; clearInterval(t); };
   }, [user?.id]);
+
+  // Contracts that need my action (sign / confirm delivery / settle deposit).
+  // Same red pill as the chat badge; new or changed contracts surface here.
+  const [contractsPending, setContractsPending] = useState(0);
+  useEffect(() => {
+    if (!user?.id) { setContractsPending(0); return undefined; }
+    let active = true;
+    const load = async () => {
+      try {
+        const { data } = await api.get(`/contracts/user/${user.id}`);
+        if (!active) return;
+        setContractsPending(countContractsNeedingAction(data || [], user.id));
+      } catch { /* keep the previous count on transient errors */ }
+    };
+    load();
+    const t = setInterval(load, 15000);
+    return () => { active = false; clearInterval(t); };
+  }, [user?.id, contractsRefreshNonce]);
 
   const closeMenu = () => setMenuOpen(false);
 
@@ -73,7 +92,16 @@ function NavBar() {
       <Link to="/" onClick={closeMenu} className={navLinkClass}>Home</Link>
       <Link to="/catalog" onClick={closeMenu} className={navLinkClass}>Catalog</Link>
       {user && <Link to="/create" onClick={closeMenu} className={navLinkClass}>Publish</Link>}
-      {user && <Link to="/contracts" onClick={closeMenu} className={navLinkClass}>Contracts</Link>}
+      {user && (
+        <Link to="/contracts" onClick={closeMenu} className={`${navLinkClass} inline-flex items-center gap-1.5`}>
+          Contracts
+          {contractsPending > 0 && (
+            <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 leading-none">
+              {contractsPending > 99 ? '99+' : contractsPending}
+            </span>
+          )}
+        </Link>
+      )}
       {user && (
         <Link to="/messages" onClick={closeMenu} className={`${navLinkClass} inline-flex items-center gap-1.5`}>
           Messages
