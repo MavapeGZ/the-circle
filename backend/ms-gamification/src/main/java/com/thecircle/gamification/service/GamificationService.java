@@ -110,33 +110,33 @@ public class GamificationService {
 
     @Transactional(readOnly = true)
     public UserPointsDto getUserPoints(Long userId) {
-    int totalPoints = userPointsRepo.findByUserId(userId)
-        .map(UserPoints::getTotalPoints)
-        .orElse(0);
-    return new UserPointsDto(userId, totalPoints);
+        int totalPoints = userPointsRepo.findByUserId(userId)
+                .map(UserPoints::getTotalPoints)
+                .orElse(0);
+        return new UserPointsDto(userId, totalPoints);
     }
 
     @Transactional(readOnly = true)
     public List<UserSummaryDto> getUserSummaries(List<Long> userIds) {
-    if (userIds == null || userIds.isEmpty()) {
-        return List.of();
-    }
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
 
-    List<Long> uniqueUserIds = userIds.stream().distinct().toList();
-    var pointsByUserId = userPointsRepo.findByUserIdIn(uniqueUserIds).stream()
-        .collect(Collectors.toMap(UserPoints::getUserId, UserPoints::getTotalPoints));
+        List<Long> uniqueUserIds = userIds.stream().distinct().toList();
+        var pointsByUserId = userPointsRepo.findByUserIdIn(uniqueUserIds).stream()
+                .collect(Collectors.toMap(UserPoints::getUserId, UserPoints::getTotalPoints));
 
-    var badgesByUserId = userBadgeRepo.findByUserIdIn(uniqueUserIds).stream()
-        .collect(Collectors.groupingBy(UserBadge::getUserId,
-            Collectors.mapping(BadgeDto::from, Collectors.toList())));
+        var badgesByUserId = userBadgeRepo.findByUserIdIn(uniqueUserIds).stream()
+                .collect(Collectors.groupingBy(UserBadge::getUserId,
+                        Collectors.mapping(BadgeDto::from, Collectors.toList())));
 
-    return uniqueUserIds.stream()
-        .map(userId -> new UserSummaryDto(
-            userId,
-            pointsByUserId.getOrDefault(userId, 0),
-            badgesByUserId.getOrDefault(userId, List.of()),
-            List.of()))
-        .collect(Collectors.toList());
+        return uniqueUserIds.stream()
+                .map(userId -> new UserSummaryDto(
+                        userId,
+                        pointsByUserId.getOrDefault(userId, 0),
+                        badgesByUserId.getOrDefault(userId, List.of()),
+                        List.of()))
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

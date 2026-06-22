@@ -85,7 +85,7 @@ public class UserController {
                 user.getLastName(),
                 user.getEmail(),
                 user.getAddress(),
-            user.getZone(),
+                user.getZone(),
                 user.getIdNumber(),
                 user.getIbanLast4(),
                 user.isMarketingEmailsOptIn(),
@@ -147,7 +147,7 @@ public class UserController {
                 user.getLastName(),
                 user.getEmail(),
                 user.getAddress(),
-            user.getZone(),
+                user.getZone(),
                 user.getIdNumber(),
                 user.getIbanLast4(),
                 user.isMarketingEmailsOptIn(),
@@ -412,33 +412,33 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-        public ResponseEntity<PublicProfileDto> getUserProfile(@PathVariable Long userId) {
+    public ResponseEntity<PublicProfileDto> getUserProfile(@PathVariable Long userId) {
         return userRepository.findById(userId)
-            .filter(user -> user.getDeletedAt() == null)
-            .map(user -> ResponseEntity.ok(buildPublicProfile(user)))
-            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
-        }
+                .filter(user -> user.getDeletedAt() == null)
+                .map(user -> ResponseEntity.ok(buildPublicProfile(user)))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
 
-        @GetMapping("/public")
-        public ResponseEntity<List<PublicProfileDto>> getPublicProfiles(@RequestParam List<Long> ids) {
+    @GetMapping("/public")
+    public ResponseEntity<List<PublicProfileDto>> getPublicProfiles(@RequestParam List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return ResponseEntity.ok(List.of());
         }
 
         List<Long> uniqueIds = ids.stream().distinct().toList();
         List<User> users = userRepository.findAllById(uniqueIds).stream()
-            .filter(user -> user.getDeletedAt() == null)
-            .toList();
+                .filter(user -> user.getDeletedAt() == null)
+                .toList();
         var usersById = users.stream().collect(Collectors.toMap(User::getId, user -> user, (left, right) -> left, LinkedHashMap::new));
         var summariesById = gamificationClient.getSummaries(uniqueIds).stream()
-            .collect(Collectors.toMap(GamificationClient.UserSummary::userId, summary -> summary,
-                (left, right) -> left, LinkedHashMap::new));
+                .collect(Collectors.toMap(GamificationClient.UserSummary::userId, summary -> summary,
+                        (left, right) -> left, LinkedHashMap::new));
 
         List<PublicProfileDto> profiles = uniqueIds.stream()
-            .map(usersById::get)
-            .filter(java.util.Objects::nonNull)
-            .map(user -> buildPublicProfile(user, summariesById.get(user.getId())))
-            .toList();
+                .map(usersById::get)
+                .filter(java.util.Objects::nonNull)
+                .map(user -> buildPublicProfile(user, summariesById.get(user.getId())))
+                .toList();
 
         return ResponseEntity.ok(profiles);
     }
@@ -460,18 +460,18 @@ public class UserController {
         try {
             User u = getAuthenticatedUser(authentication);
             return ResponseEntity.ok(new UserProfileDto(u.getId(), u.getEmail(), u.getFirstName(),
-                u.getLastName(), u.getZone(), u.getKycStatus().name(), avatarUrl(u)));
+                    u.getLastName(), u.getZone(), u.getKycStatus().name(), avatarUrl(u)));
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode()).build();
         }
     }
 
-        public record SettingsResponse(String firstName, String lastName, String email, String address, String zone,
+    public record SettingsResponse(String firstName, String lastName, String email, String address, String zone,
             String idNumber, String ibanLast4, boolean marketingEmailsOptIn, boolean systemEmailsOptIn,
             String avatarUrl) {
     }
 
-        public record UpdateProfileRequest(
+    public record UpdateProfileRequest(
             @Pattern(regexp = ValidationPatterns.NAME, message = "First name " + ValidationPatterns.NAME_MSG)
             String firstName,
             @Pattern(regexp = ValidationPatterns.NAME, message = "Last name " + ValidationPatterns.NAME_MSG)
