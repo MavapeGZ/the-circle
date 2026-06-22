@@ -67,6 +67,8 @@ services:
     environment:
       <<: *app-env
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/users_db
+      SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: 20MB
+      SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: 25MB
       JWT_SECRET: ${JWT_SECRET}
       KYC_UPLOAD_DIR: /data/kyc
       AVATAR_UPLOAD_DIR: /data/avatars
