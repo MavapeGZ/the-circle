@@ -416,6 +416,20 @@ public class UserController {
         return auths.stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }
 
+    /**
+     * Public profile by opaque public id. This is the only profile route exposed
+     * to anonymous callers (see SecurityConfig); the numeric {@code /{userId}}
+     * variant is authenticated and used internally, so profiles can no longer be
+     * enumerated by walking sequential primary keys.
+     */
+    @GetMapping("/by-public-id/{publicId}")
+    public ResponseEntity<PublicProfileDto> getUserProfileByPublicId(@PathVariable String publicId) {
+        return userRepository.findByPublicId(publicId)
+                .filter(user -> user.getDeletedAt() == null)
+                .map(user -> ResponseEntity.ok(buildPublicProfile(user)))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
+
     @GetMapping("/{userId}")
     public ResponseEntity<PublicProfileDto> getUserProfile(@PathVariable Long userId) {
         return userRepository.findById(userId)
@@ -468,7 +482,7 @@ public class UserController {
     public ResponseEntity<UserProfileDto> me(Authentication authentication) {
         try {
             User u = getAuthenticatedUser(authentication);
-            return ResponseEntity.ok(new UserProfileDto(u.getId(), u.getEmail(), u.getFirstName(),
+            return ResponseEntity.ok(new UserProfileDto(u.getId(), u.getPublicId(), u.getEmail(), u.getFirstName(),
                     u.getLastName(), u.getZone(), u.getKycStatus().name(), avatarUrl(u)));
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode()).build();
@@ -561,6 +575,7 @@ public class UserController {
 
         return new PublicProfileDto(
                 user.getId(),
+                user.getPublicId(),
                 displayName,
                 avatarUrl(user),
                 user.getZone(),

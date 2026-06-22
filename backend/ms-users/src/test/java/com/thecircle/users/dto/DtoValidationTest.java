@@ -106,12 +106,12 @@ class DtoValidationTest {
 
     @Test
     void reviewDto_rejects_ratingOutOfRange() {
-        assertFalse(valid(new ReviewDto(null, 2L, null, null, "c1", 6.0, "Nice", null)));
-        assertTrue(valid(new ReviewDto(null, 2L, null, null, "c1", 5.0, "Nice", null)));
+        assertFalse(valid(new ReviewDto(null, 2L, null, null, null, "c1", 6.0, "Nice", null)));
+        assertTrue(valid(new ReviewDto(null, 2L, null, null, null, "c1", 5.0, "Nice", null)));
     }
 
     @Test
     void reviewDto_rejects_commentWithAngleBrackets() {
-        assertFalse(valid(new ReviewDto(null, 2L, null, null, "c1", 5.0, "<img src=x>", null)));
+        assertFalse(valid(new ReviewDto(null, 2L, null, null, null, "c1", 5.0, "<img src=x>", null)));
     }
 }

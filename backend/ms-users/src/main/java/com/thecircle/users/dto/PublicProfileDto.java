@@ -5,6 +5,8 @@ import java.util.List;
 
 public record PublicProfileDto(
         Long id,
+        // Opaque public identifier used to address the profile (non-enumerable).
+        String publicId,
         String displayName,
         String avatarUrl,
         String approximateZone,

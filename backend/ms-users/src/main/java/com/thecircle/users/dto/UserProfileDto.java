@@ -2,6 +2,7 @@ package com.thecircle.users.dto;
 
 public record UserProfileDto(
     Long id,
+    String publicId,
     String email,
     String firstName,
     String lastName,

@@ -23,6 +23,13 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Opaque, non-sequential public identifier. Profiles are addressed by this
+    // (not the sequential primary key) so they cannot be enumerated by walking
+    // /api/users/1, 2, 3… Generated server-side on first persist; existing rows
+    // are backfilled at boot (see PublicIdBackfill).
+    @Column(name = "public_id", unique = true, length = 36)
+    private String publicId;
+
     @Column(nullable = false, unique = true)
     private String email;
 
@@ -98,6 +105,9 @@ public class User implements UserDetails {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        if (this.publicId == null) {
+            this.publicId = java.util.UUID.randomUUID().toString();
+        }
         syncLegacyKycVerified();
     }
 

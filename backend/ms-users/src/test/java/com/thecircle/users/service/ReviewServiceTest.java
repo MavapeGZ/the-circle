@@ -32,7 +32,7 @@ class ReviewServiceTest {
     @InjectMocks ReviewService reviewService;
 
     private ReviewDto input(String contractId, Double rating) {
-        return new ReviewDto(null, null, null, null, contractId, rating, "Good", null);
+        return new ReviewDto(null, null, null, null, null, contractId, rating, "Good", null);
     }
 
     private ContractsClient.ContractSummary summary(boolean reviewable) {

@@ -44,9 +44,13 @@ export default function ReviewsSection({ userId, average, count }) {
           {reviews.map((r) => (
             <li key={r.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
               <div className="flex items-center justify-between gap-3">
-                <Link to={`/users/${r.reviewerId}`} className="font-bold text-gray-800 hover:text-blue-700">
-                  {r.reviewerName || `User ${r.reviewerId}`}
-                </Link>
+                {r.reviewerPublicId ? (
+                  <Link to={`/users/${r.reviewerPublicId}`} className="font-bold text-gray-800 hover:text-blue-700">
+                    {r.reviewerName || `User ${r.reviewerId}`}
+                  </Link>
+                ) : (
+                  <span className="font-bold text-gray-800">{r.reviewerName || `User ${r.reviewerId}`}</span>
+                )}
                 <StarRating value={r.rating} size={16} />
               </div>
               {r.comment && <p className="mt-1 text-gray-600 text-sm whitespace-pre-wrap">{r.comment}</p>}

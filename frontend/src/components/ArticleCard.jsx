@@ -61,8 +61,8 @@ export default function ArticleCard({ article, sellerProfile }) {
   return (
     <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 border border-gray-100 overflow-hidden flex flex-col h-full">
       <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-3">
-        {article.authorId ? (
-          <Link to={`/users/${article.authorId}`} className="flex items-center gap-3 min-w-0 group">
+        {article.authorId && sellerProfile?.publicId ? (
+          <Link to={`/users/${sellerProfile.publicId}`} className="flex items-center gap-3 min-w-0 group">
             <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-black overflow-hidden shrink-0">
               {sellerProfile?.avatarUrl ? (
                 <img src={resolveAssetUrl(sellerProfile.avatarUrl)} alt={sellerName} className="h-full w-full object-cover" />

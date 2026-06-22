@@ -21,6 +21,10 @@ public record ReviewDto(
 
         Long reviewerId,
 
+        // Opaque id of the reviewer so the UI can link to their profile without
+        // exposing the sequential primary key. Server-assigned.
+        String reviewerPublicId,
+
         String reviewerName,
 
         Long targetUserId,

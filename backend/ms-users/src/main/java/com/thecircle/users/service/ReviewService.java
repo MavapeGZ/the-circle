@@ -89,7 +89,7 @@ public class ReviewService {
         review.setComment(dto.comment());
         review.setCreatedAt(LocalDateTime.now());
         Review saved = reviewRepository.save(review);
-        return toDto(saved, displayName(userRepository.findById(reviewerId).orElse(null)));
+        return toDto(saved, userRepository.findById(reviewerId).orElse(null));
     }
 
     @Transactional(readOnly = true)
@@ -100,7 +100,7 @@ public class ReviewService {
                         reviews.stream().map(Review::getReviewerId).distinct().toList())
                 .stream().collect(Collectors.toMap(User::getId, Function.identity()));
         return reviews.stream()
-                .map(r -> toDto(r, displayName(reviewers.get(r.getReviewerId()))))
+                .map(r -> toDto(r, reviewers.get(r.getReviewerId())))
                 .toList();
     }
 
@@ -135,8 +135,10 @@ public class ReviewService {
         reviewRepository.deleteByReviewerIdOrTargetUserId(userId, userId);
     }
 
-    private ReviewDto toDto(Review r, String reviewerName) {
-        return new ReviewDto(r.getId(), r.getReviewerId(), reviewerName, r.getTargetUserId(),
+    private ReviewDto toDto(Review r, User reviewer) {
+        return new ReviewDto(r.getId(), r.getReviewerId(),
+                reviewer != null ? reviewer.getPublicId() : null,
+                displayName(reviewer), r.getTargetUserId(),
                 r.getContractId(), r.getRating(), r.getComment(), r.getCreatedAt());
     }
 

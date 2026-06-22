@@ -42,8 +42,11 @@ function ArticleDetail() {
 
         if (articleData.authorId) {
           try {
-            const ownerRes = await api.get(`/users/${articleData.authorId}`);
-            setOwner(ownerRes.data);
+            // Use the public batch lookup (not the numeric profile endpoint, which
+            // is now authenticated): this page is viewable while logged out, and the
+            // result carries the owner's opaque publicId for the profile link.
+            const ownerRes = await api.get('/users/public', { params: { ids: String(articleData.authorId) } });
+            setOwner(ownerRes.data?.[0] || null);
           } catch (ownerErr) {
             console.error('Error fetching owner profile:', ownerErr);
             setOwner(null);
@@ -296,7 +299,7 @@ function ArticleDetail() {
           <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">About the owner</h3>
 
           {owner ? (
-            <Link to={`/users/${owner.id}`} className="block mb-6 group">
+            <Link to={`/users/${owner.publicId}`} className="block mb-6 group">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xl overflow-hidden shrink-0">
                   {owner.avatarUrl ? (
