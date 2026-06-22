@@ -98,12 +98,19 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  // Patch the in-memory user so chrome that reads the context (e.g. the navbar
+  // avatar) reflects a change instantly, without a full re-fetch or reload.
+  const updateUser = (partial) => {
+    setUser((prev) => (prev ? { ...prev, ...partial } : prev));
+  };
+
   return (
     <AuthContext.Provider value={{
       user, isAuthenticated, loading,
       register, verifyEmail,
       login, verifyLoginOtp,
       fetchMe, uploadKycDocuments,
+      updateUser,
       logout,
     }}>
       {!loading && children}

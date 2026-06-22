@@ -65,6 +65,16 @@ class UploadValidationTest {
     }
 
     @Test
+    void acceptsFilenamesWithSpacesAndParentheses() {
+        // Real-world uploads ("Captura 2024.png", "my photo (1).png") carry
+        // spaces and parentheses; only the extension and bytes must check out.
+        MockMultipartFile png = new MockMultipartFile("file", "my photo (1).png", "image/png", PNG);
+        MockMultipartFile jpg = new MockMultipartFile("file", "Captura de pantalla 2024.jpg", "image/jpeg", JPEG);
+        assertDoesNotThrow(() -> UploadValidation.validate(png, "image", UploadValidation.IMAGE_TYPES, MAX));
+        assertDoesNotThrow(() -> UploadValidation.validate(jpg, "image", UploadValidation.IMAGE_TYPES, MAX));
+    }
+
+    @Test
     void acceptsValidJpegPngAndPdf() {
         MockMultipartFile jpg = new MockMultipartFile("front", "front.jpg", "image/jpeg", JPEG);
         MockMultipartFile png = new MockMultipartFile("back", "back.png", "image/png", PNG);
