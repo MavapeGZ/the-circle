@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { resolveAssetUrl } from '../services/api';
+import api, { resolveAssetUrl } from '../services/api';
 import Login from './Login';
 import Register from './Register';
 import ForgotPassword from './ForgotPassword';
@@ -28,6 +28,24 @@ function NavBar() {
   // other (e.g. "Catalog" colliding with "Login"), so they collapse behind a
   // hamburger and stack vertically when opened.
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Total unread chat messages, polled so the navbar badge stays current while the
+  // user is on any page. Same red pill as an unread conversation in the inbox.
+  const [unreadTotal, setUnreadTotal] = useState(0);
+  useEffect(() => {
+    if (!user?.id) { setUnreadTotal(0); return undefined; }
+    let active = true;
+    const load = async () => {
+      try {
+        const { data } = await api.get('/chat/conversations');
+        if (!active) return;
+        setUnreadTotal((data || []).reduce((sum, c) => sum + (c.unreadCount || 0), 0));
+      } catch { /* keep the previous count on transient errors */ }
+    };
+    load();
+    const t = setInterval(load, 15000);
+    return () => { active = false; clearInterval(t); };
+  }, [user?.id]);
 
   const closeMenu = () => setMenuOpen(false);
 
@@ -56,7 +74,16 @@ function NavBar() {
       <Link to="/catalog" onClick={closeMenu} className={navLinkClass}>Catalog</Link>
       {user && <Link to="/create" onClick={closeMenu} className={navLinkClass}>Publish</Link>}
       {user && <Link to="/contracts" onClick={closeMenu} className={navLinkClass}>Contracts</Link>}
-      {user && <Link to="/messages" onClick={closeMenu} className={navLinkClass}>Messages</Link>}
+      {user && (
+        <Link to="/messages" onClick={closeMenu} className={`${navLinkClass} inline-flex items-center gap-1.5`}>
+          Messages
+          {unreadTotal > 0 && (
+            <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 leading-none">
+              {unreadTotal > 99 ? '99+' : unreadTotal}
+            </span>
+          )}
+        </Link>
+      )}
     </>
   );
 

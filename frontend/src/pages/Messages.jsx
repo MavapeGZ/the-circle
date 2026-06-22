@@ -5,6 +5,28 @@ import { AuthContext } from '../context/AuthContext';
 
 const POLL_MS = 5000;
 
+// Transaction-type chip styling, mirroring the catalog badges.
+const TYPE_BADGE = {
+  DONATION: { label: 'Donation', cls: 'bg-purple-100 text-purple-800 border-purple-300' },
+  DEMAND: { label: 'Demand', cls: 'bg-blue-100 text-blue-800 border-blue-300' },
+  SYMBOLIC_SALE: { label: 'Sale', cls: 'bg-green-100 text-green-800 border-green-300' },
+  SYMBOLIC_RENTAL: { label: 'Rental', cls: 'bg-green-100 text-green-800 border-green-300' },
+};
+
+// Small image placeholder (same icon as the catalog cards) for articles with no photo.
+function ArticleThumb({ image, title }) {
+  if (image) {
+    return <img src={image} alt={title || 'Article'} className="h-12 w-12 rounded-lg object-cover border border-gray-100" />;
+  }
+  return (
+    <div className="h-12 w-12 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-300">
+      <svg className="w-6 h-6 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    </div>
+  );
+}
+
 // Inbox + thread chat view. Conversations are about a catalog article and stay
 // open before, during and after a deal. Real-time is approximated with polling.
 export default function Messages() {
@@ -30,7 +52,14 @@ export default function Messages() {
         setMeta((prev) => {
           if (prev[c.id]) return prev;
           api.get(`/catalog/articles/${c.articleId}`).then((r) => {
-            setMeta((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), title: r.data?.title || 'Article' } }));
+            const a = r.data || {};
+            setMeta((p) => ({ ...p, [c.id]: {
+              ...(p[c.id] || {}),
+              title: a.title || 'Article',
+              image: a.imageBase64 || null,
+              productType: a.productType || null,
+              price: a.price,
+            } }));
           }).catch(() => {});
           api.get(`/users/${c.otherUserId}`).then((r) => {
             setMeta((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), otherName: r.data?.displayName || `User ${c.otherUserId}` } }));
@@ -143,7 +172,7 @@ export default function Messages() {
             <div className="flex-1 flex items-center justify-center text-gray-400">Select a conversation</div>
           ) : (
             <>
-              <header className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+              <header className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-bold text-gray-800 truncate">{meta[conversationId]?.otherName || 'Conversation'}</p>
                   {active && (
@@ -152,6 +181,22 @@ export default function Messages() {
                     </Link>
                   )}
                 </div>
+                {active && (() => {
+                  const m = meta[conversationId] || {};
+                  const badge = TYPE_BADGE[m.productType];
+                  const hasPrice = m.price != null && Number(m.price) > 0;
+                  return (
+                    <Link to={`/catalog/${active.articleId}`} className="flex items-center gap-3 shrink-0">
+                      <div className="flex flex-col items-end gap-1">
+                        {badge && (
+                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${badge.cls}`}>{badge.label}</span>
+                        )}
+                        {hasPrice && <span className="text-sm font-extrabold text-gray-800">{m.price} €</span>}
+                      </div>
+                      <ArticleThumb image={m.image} title={m.title} />
+                    </Link>
+                  );
+                })()}
               </header>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
