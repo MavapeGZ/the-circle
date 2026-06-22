@@ -21,6 +21,7 @@ function ContractDetail() {
   const [confirming, setConfirming] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewDone, setReviewDone] = useState(false);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
 
   useEffect(() => {
     let objectUrl;
@@ -56,6 +57,22 @@ function ContractDetail() {
           .then((r) => setPayments(r.data || []))
           .catch(() => setPayments([])),
       ]);
+
+      // Reflect a review I already left for the other party on this contract, so the
+      // form isn't offered again (the backend would reject the duplicate with a 409).
+      const myId = currentUser?.id;
+      if (myId) {
+        const otherId = String(myId) === String(data.ownerId) ? data.receiverId : data.ownerId;
+        if (otherId) {
+          api.get(`/users/${otherId}/reviews`)
+            .then((r) => {
+              const mine = (r.data || []).some(
+                (rv) => String(rv.reviewerId) === String(myId) && rv.contractId === contractId);
+              if (mine) setAlreadyReviewed(true);
+            })
+            .catch(() => {});
+        }
+      }
 
       // Prefer the signed artifact; fall back to a freshly rendered preview.
       try {
@@ -125,14 +142,18 @@ function ContractDetail() {
   // reception; both → DELIVERED. Rentals don't use this handshake — they are
   // reviewable on devolution (the deposit is settled → COMPLETED).
   const isRental = contract.type === 'RENT';
-  const canConfirmDelivery = myRole && !isRental
+  // A deposit rental is reviewable on devolution (deposit settled → COMPLETED).
+  // Everything else — goods and deposit-less rentals — uses the hand-over handshake.
+  const rentalHasDeposit = isRental && Number(contract.guaranteeAmount) > 0;
+  const usesHandshake = !isRental || !rentalHasDeposit;
+  const canConfirmDelivery = myRole && usesHandshake
     && (contract.status === 'ACTIVE' || contract.status === 'DELIVERED');
   const myConfirmedAt = isOwner ? contract.ownerDeliveredAt : contract.receiverReceivedAt;
   const bothConfirmed = contract.ownerDeliveredAt && contract.receiverReceivedAt;
-  // When each party may leave a review: hand-over done (non-rentals) or the rental
+  // When each party may leave a review: hand-over confirmed, or the deposit rental
   // has been returned (COMPLETED).
   const canReview = myRole && (
-    (!isRental && bothConfirmed) || (isRental && contract.status === 'COMPLETED')
+    (usesHandshake && bothConfirmed) || (rentalHasDeposit && contract.status === 'COMPLETED')
   );
   const otherPartyId = isOwner ? contract.receiverId : contract.ownerId;
 
@@ -277,7 +298,7 @@ function ContractDetail() {
             </div>
           )}
 
-          {canReview && !reviewDone && (
+          {canReview && !reviewDone && !alreadyReviewed && (
             showReviewForm ? (
               <ReviewForm
                 targetUserId={otherPartyId}
@@ -297,6 +318,10 @@ function ContractDetail() {
 
           {reviewDone && (
             <p className="mt-3 text-sm font-semibold text-emerald-700">Thanks! Your review was submitted.</p>
+          )}
+
+          {canReview && alreadyReviewed && !reviewDone && (
+            <p className="mt-3 text-sm font-semibold text-gray-500">You already reviewed this transaction.</p>
           )}
         </div>
 
