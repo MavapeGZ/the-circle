@@ -57,8 +57,9 @@ public final class UploadValidation {
         FileType byExtension = extensionType(file.getOriginalFilename());
         if (byExtension == null || !allowed.contains(byExtension)) {
             throw new IllegalArgumentException(
-                    "The " + partName + " file must be a single " + describe(allowed)
-                            + " file with no extra or double extensions.");
+                    "The " + partName + " file name may only contain letters, numbers, spaces and the"
+                            + " characters _ - ( ), and must end in a single " + describe(allowed)
+                            + " extension (no extra or double extensions).");
         }
 
         FileType byContentType = contentTypeType(file.getContentType());
@@ -79,9 +80,13 @@ public final class UploadValidation {
             return null;
         }
         String name = filename.trim().toLowerCase(Locale.ROOT);
-        // Exactly one dot, a clean base name, then an allowed extension. This
-        // rejects "a.b.jpg" (double extension) and "..jpg" / path tricks.
-        if (!name.matches("^[a-z0-9_-]+\\.(jpg|jpeg|png|pdf)$")) {
+        // Base name = letters, numbers, spaces and _ - ( ), then a single dot and
+        // an allowed extension. Real filenames like "my photo (1).png" or
+        // "Captura 2024.png" pass; a dot in the base ("evil.php.jpg" double
+        // extension), path separators ("..jpg" / "a/b.png"), and other symbols
+        // are all rejected. Keep this charset in sync with the error message
+        // built in validate().
+        if (!name.matches("^[\\p{L}\\p{N} _()\\-]+\\.(jpg|jpeg|png|pdf)$")) {
             return null;
         }
         String ext = name.substring(name.lastIndexOf('.') + 1);

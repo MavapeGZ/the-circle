@@ -9,7 +9,7 @@ const TABS = ['profile', 'security', 'payments', 'verification', 'notifications'
 function Settings() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, uploadKycDocuments } = useContext(AuthContext);
+  const { user, logout, uploadKycDocuments, updateUser } = useContext(AuthContext);
 
   const initialTab = location.state?.tab && TABS.includes(location.state.tab)
     ? location.state.tab
@@ -94,6 +94,20 @@ function Settings() {
     setTimeout(() => setMessage({ text: '', type: '' }), 4000);
   };
 
+  // Switching section discards any edits that were never saved: reload the
+  // server's canonical settings and clear the transient inputs (password,
+  // IBAN, KYC files) so a half-filled form never bleeds across tabs.
+  const handleTabChange = (tab) => {
+    if (tab === activeTab) return;
+    fetchSettings();
+    setPasswords({ current: '', new: '' });
+    setIbanInput('');
+    setKycFront(null);
+    setKycBack(null);
+    setMessage({ text: '', type: '' });
+    setActiveTab(tab);
+  };
+
   // --- HANDLERS ---
 
   const handleProfileUpdate = async (e) => {
@@ -159,6 +173,7 @@ function Settings() {
       fd.append('file', file);
       const res = await api.post('/users/me/avatar', fd);
       setSettings((prev) => ({ ...prev, avatarUrl: res.data.avatarUrl }));
+      updateUser({ avatarUrl: res.data.avatarUrl });
       showMessage('Profile picture updated!');
     } catch (err) {
       showMessage(extractApiError(err, 'Could not upload the picture.'), 'error');
@@ -172,6 +187,7 @@ function Settings() {
     try {
       await api.delete('/users/me/avatar');
       setSettings((prev) => ({ ...prev, avatarUrl: null }));
+      updateUser({ avatarUrl: null });
       showMessage('Profile picture removed.');
     } catch (err) {
       showMessage('Could not remove the picture.', 'error');
@@ -244,7 +260,7 @@ function Settings() {
           {TABS.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleTabChange(tab)}
               className={`text-left px-4 py-3 rounded-lg font-bold capitalize transition-colors ${
                 activeTab === tab ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
@@ -277,7 +293,7 @@ function Settings() {
                   <input
                     ref={avatarInputRef}
                     type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    accept="image/png,image/jpeg"
                     className="hidden"
                     onChange={(e) => {
                       handleAvatarSelected(e.target.files?.[0] || null);
@@ -304,7 +320,7 @@ function Settings() {
                       </button>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500">JPEG, PNG, WEBP or GIF. Max 5 MB.</p>
+                  <p className="text-xs text-gray-500">JPEG, JPG or PNG. Max 5 MB.</p>
                 </div>
               </div>
 
