@@ -131,9 +131,11 @@ export default function ArticleCard({ article, sellerProfile }) {
       </Link>
 
       <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center mt-auto">
-        <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-2 py-1 rounded">
-          {article.category}
-        </span>
+        {article.category ? (
+          <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-2 py-1 rounded">
+            {article.category}
+          </span>
+        ) : <span />}
         <span className="font-extrabold text-lg text-gray-800">
           {priceDisplay}
         </span>

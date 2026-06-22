@@ -255,9 +255,11 @@ function ArticleDetail() {
                 <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">
                   {zoneLabel(article.zone)}
                 </span>
-                <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">
-                  {article.category}
-                </span>
+                {article.category && (
+                  <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">
+                    {article.category}
+                  </span>
+                )}
                 {article.status === 'RESERVED' && (
                   <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full border border-yellow-300">
                     Reserved
