@@ -72,6 +72,19 @@ public class ContractService {
 
     @Transactional
     public ContractDto create(ContractCreateRequest request) {
+        // Idempotency guard: a contract is created merely by opening the signing
+        // screen, so a buyer who clicks "acquire" again — e.g. after being sent to
+        // add a payout IBAN — would otherwise spawn a second identical PENDING row
+        // for the same deal. Reuse the existing open, un-signed contract instead.
+        Contract existing = repository
+                .findFirstByItemIdAndOwnerIdAndReceiverIdAndTypeAndStatusAndOwnerSignedAtIsNullAndReceiverSignedAtIsNullOrderByCreatedAtDesc(
+                        request.itemId(), request.ownerId(), request.receiverId(), request.type(),
+                        ContractStatus.PENDING_SIGNATURES)
+                .orElse(null);
+        if (existing != null) {
+            return toDto(existing);
+        }
+
         Contract contract = new Contract();
         contract.setId(UUID.randomUUID().toString());
         contract.setItemId(request.itemId());

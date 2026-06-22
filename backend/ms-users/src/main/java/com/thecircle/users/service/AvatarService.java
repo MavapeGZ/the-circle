@@ -80,11 +80,9 @@ public class AvatarService {
     }
 
     public MediaType mediaTypeFor(String filename) {
-        if (filename != null) {
-            String lower = filename.toLowerCase(Locale.ROOT);
-            if (lower.endsWith(".png")) return MediaType.IMAGE_PNG;
-            if (lower.endsWith(".gif")) return MediaType.IMAGE_GIF;
-            if (lower.endsWith(".webp")) return MediaType.parseMediaType("image/webp");
+        // Avatars are validated to JPEG or PNG only (see UploadValidation.IMAGE_TYPES).
+        if (filename != null && filename.toLowerCase(Locale.ROOT).endsWith(".png")) {
+            return MediaType.IMAGE_PNG;
         }
         return MediaType.IMAGE_JPEG;
     }
@@ -115,11 +113,7 @@ public class AvatarService {
     }
 
     private String extensionFor(String contentType) {
-        return switch (contentType.toLowerCase(Locale.ROOT)) {
-            case "image/png" -> ".png";
-            case "image/webp" -> ".webp";
-            case "image/gif" -> ".gif";
-            default -> ".jpg";
-        };
+        // Only JPEG/PNG reach here; PNG keeps its extension, everything else is JPEG.
+        return "image/png".equalsIgnoreCase(contentType) ? ".png" : ".jpg";
     }
 }

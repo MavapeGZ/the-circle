@@ -336,7 +336,9 @@ public class UserController {
             userRepository.save(user);
             return ResponseEntity.ok(new AvatarResponse(avatarUrl(user)));
         } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+            // Surface the precise validation reason (bad name, type, size) in the
+            // body so the frontend can show it instead of a generic fallback.
+            return ResponseEntity.badRequest().body(new AvatarResponse(null, e.getMessage()));
         } catch (Exception e) {
             log.error("Avatar upload failed for user {}", user.getId(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
@@ -523,7 +525,10 @@ public class UserController {
     public record DeviceDto(Long id, String userAgent, LocalDateTime createdAt, LocalDateTime lastSeenAt) {
     }
 
-    public record AvatarResponse(String avatarUrl) {
+    public record AvatarResponse(String avatarUrl, String message) {
+        public AvatarResponse(String avatarUrl) {
+            this(avatarUrl, null);
+        }
     }
 
     private PublicProfileDto buildPublicProfile(User user) {
