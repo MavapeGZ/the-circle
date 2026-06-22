@@ -12,6 +12,16 @@ import java.util.Optional;
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
+    /**
+     * Atomic single-statement delete returning the number of rows removed (0 or
+     * 1). Used by rotation to win-or-lose the race when two concurrent requests
+     * present the same token: the DB serialises the DELETEs, so exactly one
+     * caller sees a count of 1 and is allowed to issue the next token.
+     */
+    @Modifying
+    @Query("delete from RefreshToken t where t.tokenHash = :hash")
+    int deleteByTokenHash(@Param("hash") String hash);
+
     @Modifying
     void deleteByUserId(Long userId);
 

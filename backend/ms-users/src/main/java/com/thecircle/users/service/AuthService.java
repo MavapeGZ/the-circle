@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Authentication + registration with OTP email verification (signup) and
@@ -167,7 +168,7 @@ public class AuthService {
      * unknown, expired or already rotated; the controller maps that to a 401 so
      * the client falls back to a full login.
      */
-    public java.util.Optional<RefreshResult> refresh(String rawRefreshToken) {
+    public Optional<RefreshResult> refresh(String rawRefreshToken) {
         return refreshTokenService.rotate(rawRefreshToken).map(rotation -> {
             User user = repository.findById(rotation.userId)
                     .orElseThrow(() -> new IllegalStateException("User not found for refresh token"));

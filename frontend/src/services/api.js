@@ -51,7 +51,7 @@ const refreshAccessToken = () => {
 // replay the original request; only if that fails do we clear the session and
 // bounce to login. Skipped for:
 //  - /auth/* requests, where 401 is a normal "bad credentials/OTP" form error
-//    (the refresh call itself carries _isRefreshCall so it never recurses);
+//    (this also covers the refresh call itself, so it never recurses);
 //  - requests opting out via { skipAuthRedirect: true } (e.g. the silent session
 //    probe on app bootstrap, so anonymous visitors on public pages aren't kicked).
 api.interceptors.response.use(

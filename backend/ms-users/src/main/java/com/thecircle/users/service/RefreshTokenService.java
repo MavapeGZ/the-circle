@@ -4,12 +4,14 @@ import com.thecircle.users.model.RefreshToken;
 import com.thecircle.users.repository.RefreshTokenRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -57,7 +59,7 @@ public class RefreshTokenService {
         RefreshToken entity = RefreshToken.builder()
                 .userId(userId)
                 .tokenHash(hash(rawToken))
-                .expiresAt(LocalDateTime.now().plusNanos(refreshExpiration * 1_000_000))
+                .expiresAt(LocalDateTime.now().plus(Duration.ofMillis(refreshExpiration)))
                 .build();
         repository.save(entity);
         return rawToken;
@@ -79,8 +81,13 @@ public class RefreshTokenService {
             return Optional.empty();
         }
         RefreshToken token = match.get();
-        // Single-use: delete first so a replay of the same value finds nothing.
-        repository.delete(token);
+        // Single-use, race-safe: the atomic delete returns 1 only for the caller
+        // that actually removed the row. A concurrent request presenting the same
+        // token (e.g. two tabs refreshing at once) sees 0 and is rejected, so the
+        // token cannot be rotated twice into two valid successors.
+        if (repository.deleteByTokenHash(token.getTokenHash()) == 0) {
+            return Optional.empty();
+        }
         if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
             return Optional.empty();
         }
@@ -94,13 +101,28 @@ public class RefreshTokenService {
         if (rawToken == null || rawToken.isBlank()) {
             return;
         }
-        repository.findByTokenHash(hash(rawToken)).ifPresent(repository::delete);
+        repository.deleteByTokenHash(hash(rawToken));
     }
 
     /** Revokes every refresh token for a user (e.g. after a password reset). */
     @Transactional
     public void revokeAllForUser(Long userId) {
         repository.deleteByUserId(userId);
+    }
+
+    /**
+     * Periodically purges expired (and any orphaned) refresh tokens so the table
+     * does not grow unbounded — rotation deletes the consumed row, but tokens
+     * whose owner never refreshes again would otherwise linger until pruned here.
+     * Defaults to a daily run at 03:00; override with {@code jwt.refresh-cleanup-cron}.
+     */
+    @Scheduled(cron = "${jwt.refresh-cleanup-cron:0 0 3 * * *}")
+    @Transactional
+    public void purgeExpired() {
+        int removed = repository.deleteExpired(LocalDateTime.now());
+        if (removed > 0) {
+            log.info("Purged {} expired refresh token(s)", removed);
+        }
     }
 
     private String hash(String rawToken) {
