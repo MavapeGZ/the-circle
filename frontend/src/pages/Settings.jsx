@@ -217,7 +217,7 @@ function Settings() {
     if (confirmed) {
       try {
         await api.delete('/users/me');
-        logout();
+        await logout();
         navigate('/login');
       } catch (err) {
         showMessage('Failed to delete account.', 'error');

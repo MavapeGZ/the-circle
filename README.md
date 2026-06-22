@@ -108,6 +108,29 @@ OpenSearch requires a high virtual memory map limit. If the `opensearch` contain
     - [MavapeGZ](https://github.com/MavapeGZ)
     - [grodriguez1722](https://github.com/grodriguez1722)
 
+## Sessions & authentication
+
+Authentication uses a short-lived **access JWT** plus a long-lived **refresh token**:
+
+- **Access token** — a JWT returned to the client and sent as `Authorization: Bearer`. Default TTL **1 hour** (`JWT_EXPIRATION`, ms). The expiry is embedded in the token, so both ms-users and ms-contracts reject it once elapsed. Kept short so a leaked or post-logout token expires quickly.
+- **Refresh token** — an opaque token stored only as a SHA-256 hash in the `refresh_tokens` table and handed to the browser in an **httpOnly cookie** (`tc_refresh`, scoped to `/api/auth`). Default TTL **30 days** (`JWT_REFRESH_EXPIRATION`, ms). It is **rotated on every use**: each refresh deletes the presented token and issues a new one.
+
+The access token's 1-hour TTL no longer caps the session: when a request gets a `401`, the frontend silently calls `POST /api/auth/refresh` once to mint a fresh access token and replays the request. The user is only sent back to login when the refresh token itself is missing, expired or already used. The effective session length is therefore the refresh-token TTL (30 days by default).
+
+Refresh tokens are revoked on `POST /api/auth/logout`, on password reset, and on account deletion, so any of those immediately ends every active session.
+
+**Deployment notes**
+- Set `REFRESH_COOKIE_SECURE=true` (and `DEVICE_COOKIE_SECURE=true`) behind HTTPS so the cookies are only sent over TLS.
+- Override `JWT_EXPIRATION` / `JWT_REFRESH_EXPIRATION` per environment if the defaults (1h / 30d) do not fit; keep `REFRESH_COOKIE_MAX_AGE_DAYS` aligned with `JWT_REFRESH_EXPIRATION`.
+
+Optional auth-related variables (sensible defaults exist for local dev):
+```env
+# JWT_EXPIRATION=3600000          # access token TTL in ms (default 1 hour)
+# JWT_REFRESH_EXPIRATION=2592000000  # refresh token TTL in ms (default 30 days)
+# REFRESH_COOKIE_MAX_AGE_DAYS=30  # keep aligned with JWT_REFRESH_EXPIRATION
+# REFRESH_COOKIE_SECURE=true      # set true behind HTTPS
+```
+
 ## Account deletion policy
 
 When a user deletes their account, ms-users anonymizes the profile, revokes sessions, deletes their published articles, and asks ms-contracts to remove that user's open owner-side contracts together with their payments and generated PDF/signature artifacts.

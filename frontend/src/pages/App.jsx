@@ -30,9 +30,9 @@ function NavBar() {
 
   const closeMenu = () => setMenuOpen(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     closeMenu();
-    logout();
+    await logout();
     navigate('/');
   };
 

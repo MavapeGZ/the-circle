@@ -51,6 +51,21 @@ public class AuthController {
     @Value("${auth.device.cookie.secure:false}")
     private boolean deviceCookieSecure;
 
+    /**
+     * Refresh-token cookie lifetime in days. Defaults to 30 to match the
+     * server-side {@code jwt.refresh-expiration} default; keep the two aligned
+     * so the cookie does not outlive (or under-live) the stored token.
+     */
+    @Value("${auth.refresh.cookie.max-age-days:30}")
+    private int refreshCookieMaxAgeDays;
+
+    @Value("${auth.refresh.cookie.secure:false}")
+    private boolean refreshCookieSecure;
+
+    /** Cookie carrying the refresh token. Scoped to the auth endpoints only. */
+    private static final String REFRESH_COOKIE_NAME = "tc_refresh";
+    private static final String REFRESH_COOKIE_PATH = "/api/auth";
+
     @PostMapping("/register")
     public ResponseEntity<AuthenticationResponse> register(@Valid @RequestBody RegisterRequest request) {
         try {
@@ -81,6 +96,7 @@ public class AuthController {
             AuthService.OtpVerificationResult result =
                     service.verifyEmail(request, httpRequest.getHeader("User-Agent"));
             attachDeviceCookie(httpResponse, result.deviceToken);
+            attachRefreshCookie(httpResponse, result.refreshToken);
             return ResponseEntity.ok(AuthenticationResponse.builder()
                     .token(result.token)
                     .message("Email verified")
@@ -94,10 +110,16 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthenticationResponse> authenticate(
             @Valid @RequestBody AuthenticationRequest request,
-            HttpServletRequest httpRequest) {
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
         String deviceCookie = readDeviceCookie(httpRequest);
         try {
-            return ResponseEntity.ok(service.authenticate(request, deviceCookie));
+            AuthService.LoginOutcome outcome = service.authenticate(request, deviceCookie);
+            // Only the trusted-device path returns a session (token + refresh).
+            if (outcome.refreshToken != null) {
+                attachRefreshCookie(httpResponse, outcome.refreshToken);
+            }
+            return ResponseEntity.ok(outcome.response);
         } catch (AccountNotFoundException | BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(AuthenticationResponse.builder().message("Incorrect email or password.").build());
@@ -117,11 +139,50 @@ public class AuthController {
         try {
             AuthService.OtpVerificationResult result = service.verifyLoginOtp(request, httpRequest.getHeader("User-Agent"));
             attachDeviceCookie(httpResponse, result.deviceToken);
+            attachRefreshCookie(httpResponse, result.refreshToken);
             return ResponseEntity.ok(AuthenticationResponse.builder().token(result.token).build());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(AuthenticationResponse.builder().message(e.getMessage()).build());
         }
+    }
+
+    /**
+     * Exchanges the httpOnly {@code tc_refresh} cookie for a fresh access JWT,
+     * rotating the refresh token. Returns 401 (and clears the cookie) when the
+     * refresh token is missing, expired or already used, so the frontend falls
+     * back to a full login. See issue #89.
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthenticationResponse> refresh(
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+        String refreshCookie = readRefreshCookie(httpRequest);
+        return service.refresh(refreshCookie)
+                .map(result -> {
+                    attachRefreshCookie(httpResponse, result.refreshToken);
+                    return ResponseEntity.ok(AuthenticationResponse.builder().token(result.token).build());
+                })
+                .orElseGet(() -> {
+                    clearRefreshCookie(httpResponse);
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(AuthenticationResponse.builder()
+                                    .message("Your session has expired. Please sign in again.")
+                                    .build());
+                });
+    }
+
+    /**
+     * Revokes the current refresh token and clears its cookie. Always 200 so a
+     * client can log out cleanly even with a missing/stale cookie.
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<AuthenticationResponse> logout(
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+        service.logout(readRefreshCookie(httpRequest));
+        clearRefreshCookie(httpResponse);
+        return ResponseEntity.ok(AuthenticationResponse.builder().message("Logged out").build());
     }
 
     @PostMapping("/forgot-password")
@@ -221,6 +282,35 @@ public class AuthController {
         cookie.setPath("/");
         cookie.setMaxAge((int) java.time.Duration.ofDays(deviceCookieMaxAgeDays).getSeconds());
         cookie.setSecure(deviceCookieSecure);
+        response.addCookie(cookie);
+    }
+
+    private String readRefreshCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) return null;
+        for (Cookie c : cookies) {
+            if (REFRESH_COOKIE_NAME.equals(c.getName())) {
+                return c.getValue();
+            }
+        }
+        return null;
+    }
+
+    private void attachRefreshCookie(HttpServletResponse response, String token) {
+        Cookie cookie = new Cookie(REFRESH_COOKIE_NAME, token);
+        cookie.setHttpOnly(true);
+        cookie.setPath(REFRESH_COOKIE_PATH);
+        cookie.setMaxAge((int) java.time.Duration.ofDays(refreshCookieMaxAgeDays).getSeconds());
+        cookie.setSecure(refreshCookieSecure);
+        response.addCookie(cookie);
+    }
+
+    private void clearRefreshCookie(HttpServletResponse response) {
+        Cookie cookie = new Cookie(REFRESH_COOKIE_NAME, "");
+        cookie.setHttpOnly(true);
+        cookie.setPath(REFRESH_COOKIE_PATH);
+        cookie.setMaxAge(0);
+        cookie.setSecure(refreshCookieSecure);
         response.addCookie(cookie);
     }
 }

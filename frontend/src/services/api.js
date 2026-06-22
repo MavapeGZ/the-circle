@@ -22,23 +22,58 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor: a 401 means the session is missing or expired (JWT TTL is short and
-// there is no refresh flow). Clear the stale token and bounce to login with an
-// "expired" hint, instead of letting callers surface a cryptic error. Skipped for:
-//  - /auth/* requests, where 401 is a normal "bad credentials/OTP" form error;
+// Single-use refresh: exchanges the httpOnly tc_refresh cookie for a fresh
+// access token. Concurrent 401s share one in-flight call so we don't fire N
+// parallel rotations (each rotation invalidates the previous token). Returns
+// the new token, or null when the refresh token is gone/expired.
+let refreshPromise = null;
+const refreshAccessToken = () => {
+  if (!refreshPromise) {
+    // The refresh call hits /auth/*, so the response interceptor's auth-endpoint
+    // guard already stops it from recursing on its own 401.
+    refreshPromise = api
+      .post('/auth/refresh', null, { skipAuthRedirect: true })
+      .then(({ data }) => {
+        const token = data?.token || null;
+        if (token) localStorage.setItem('token', token);
+        return token;
+      })
+      .catch(() => null)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+};
+
+// Interceptor: a 401 on a normal request means the short-lived access token
+// expired. Try one silent refresh (rotating the httpOnly refresh cookie) and
+// replay the original request; only if that fails do we clear the session and
+// bounce to login. Skipped for:
+//  - /auth/* requests, where 401 is a normal "bad credentials/OTP" form error
+//    (the refresh call itself carries _isRefreshCall so it never recurses);
 //  - requests opting out via { skipAuthRedirect: true } (e.g. the silent session
 //    probe on app bootstrap, so anonymous visitors on public pages aren't kicked).
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const status = error?.response?.status;
     const config = error?.config || {};
     const isAuthEndpoint = (config.url || '').includes('/auth/');
     const hadToken = !!localStorage.getItem('token');
 
-    if (status === 401 && hadToken && !isAuthEndpoint && !config.skipAuthRedirect) {
+    if (status === 401 && hadToken && !isAuthEndpoint && !config._retried) {
+      // One refresh attempt, then replay the original request once.
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        config._retried = true;
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${newToken}`;
+        return api(config);
+      }
+      // Refresh failed: session is truly gone.
       localStorage.removeItem('token');
-      if (window.location.pathname !== '/login') {
+      if (!config.skipAuthRedirect && window.location.pathname !== '/login') {
         window.location.assign('/login?expired=1');
       }
     }

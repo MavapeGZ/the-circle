@@ -11,6 +11,7 @@ import com.thecircle.users.repository.UserRepository;
 import com.thecircle.users.service.CatalogClient;
 import com.thecircle.users.service.ContractsClient;
 import com.thecircle.users.service.DeviceCookieService;
+import com.thecircle.users.service.RefreshTokenService;
 import com.thecircle.users.service.IbanCipher;
 import com.thecircle.users.service.KycService;
 import com.thecircle.users.service.GamificationClient;
@@ -52,6 +53,9 @@ class UserControllerTest {
 
     @Mock
     private DeviceCookieService deviceCookieService;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;
 
     @Mock
     private IbanCipher ibanCipher;
@@ -193,6 +197,7 @@ class UserControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         org.mockito.Mockito.verify(deviceCookieService).revokeAllDevices(userId);
+        org.mockito.Mockito.verify(refreshTokenService).revokeAllForUser(userId);
         org.mockito.Mockito.verify(catalogClient).removeUserArticles(userId);
         org.mockito.Mockito.verify(contractsClient).removeOwnedOpenContracts(userId);
     }
