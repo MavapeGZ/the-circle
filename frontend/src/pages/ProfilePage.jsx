@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import api, { resolveAssetUrl } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import BadgeList from '../components/BadgeList';
+import ReviewsSection from '../components/ReviewsSection';
 import { ZONE_OPTIONS } from '../constants/zones';
 
 function zoneLabel(zone) {
@@ -180,6 +181,8 @@ export default function ProfilePage() {
           )}
         </aside>
       </section>
+
+      <ReviewsSection userId={profile.id} average={profile.reviewAverage} count={profile.reviewCount} />
     </div>
   );
 }

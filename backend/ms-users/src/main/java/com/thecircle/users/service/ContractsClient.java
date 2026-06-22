@@ -31,6 +31,30 @@ public ContractsClient(RestTemplateBuilder builder) {
                 .build();
     }
 
+    /** Minimal contract view used to authorize reviews. */
+    public record ContractSummary(String id, String ownerId, String receiverId, boolean delivered) {}
+
+    /**
+     * Fetches a contract summary from ms-contracts to gate a review. Returns
+     * {@code null} when the contract is unknown or ms-contracts is unreachable, so
+     * the caller fails closed (review rejected) rather than trusting unverified input.
+     */
+    public ContractSummary getContract(String contractId) {
+        if (contractId == null || contractId.isBlank()) return null;
+
+        HttpHeaders headers = new HttpHeaders();
+        if (apiKey != null && !apiKey.isBlank()) {
+            headers.set(INTERNAL_KEY_HEADER, apiKey);
+        }
+        try {
+            return restTemplate.exchange(baseUrl + "/internal/contracts/{contractId}", HttpMethod.GET,
+                    new HttpEntity<>(headers), ContractSummary.class, contractId).getBody();
+        } catch (RestClientException e) {
+            log.warn("Could not fetch contract {} from ms-contracts: {}", contractId, e.getMessage());
+            return null;
+        }
+    }
+
     public void removeOwnedOpenContracts(Long userId) {
         if (userId == null) return;
 

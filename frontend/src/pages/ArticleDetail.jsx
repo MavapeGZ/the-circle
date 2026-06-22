@@ -31,6 +31,7 @@ function ArticleDetail() {
   const [rentDays, setRentDays] = useState(7);
   const [deposit, setDeposit] = useState('');
   const [acquiring, setAcquiring] = useState(false);
+  const [contacting, setContacting] = useState(false);
 
   useEffect(() => {
     const fetchArticleAndOwner = async () => {
@@ -160,6 +161,24 @@ function ArticleDetail() {
       console.error('Error creating contract:', err);
       alert(extractApiError(err, 'Could not start the deal. Please try again.'));
       setAcquiring(false);
+    }
+  };
+
+  // Opens (or reuses) a chat with the article owner about this item. A contract is
+  // not required: users can ask questions before any deal.
+  const handleContact = async () => {
+    if (!currentUser?.id) {
+      navigate('/login');
+      return;
+    }
+    setContacting(true);
+    try {
+      const res = await api.post('/chat/conversations', { articleId: article.id });
+      navigate(`/messages/${res.data.id}`);
+    } catch (err) {
+      console.error('Error starting conversation:', err);
+      alert(extractApiError(err, 'Could not start the conversation. Please try again.'));
+      setContacting(false);
     }
   };
 
@@ -311,6 +330,16 @@ function ArticleDetail() {
           ) : null}
 
           <hr className="border-gray-100 mb-6" />
+
+          {!isOwner && (
+            <button
+              onClick={handleContact}
+              disabled={contacting}
+              className={`w-full mb-3 py-3 font-bold rounded-lg shadow-sm transition border ${contacting ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'}`}
+            >
+              {contacting ? 'Opening chat…' : '💬 Contact'}
+            </button>
+          )}
 
           {isOwner ? (
             <div className="flex flex-col gap-3">

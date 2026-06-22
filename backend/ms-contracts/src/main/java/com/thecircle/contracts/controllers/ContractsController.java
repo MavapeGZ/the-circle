@@ -85,6 +85,19 @@ public class ContractsController {
                 .body(pdf);
     }
 
+    /**
+     * The authenticated caller confirms their side of the hand-over: the owner that
+     * the item was delivered, the receiver that it was received. Once both confirm,
+     * the contract becomes DELIVERED and reviews open.
+     */
+    @PostMapping("/{contractId}/delivery/confirm")
+    public ResponseEntity<ContractDto> confirmDelivery(
+            @PathVariable String contractId,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader) {
+        String callerId = jwtAuthService.requireUserId(authHeader);
+        return ResponseEntity.ok(contractService.confirmDelivery(contractId, callerId));
+    }
+
     @PostMapping("/{contractId}/guarantee/deposit")
     public ResponseEntity<ContractDto> depositGuarantee(@PathVariable String contractId) {
         return ResponseEntity.ok(contractService.depositGuarantee(contractId));

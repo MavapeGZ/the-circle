@@ -10,5 +10,8 @@ public record PublicProfileDto(
         String approximateZone,
         LocalDateTime memberSince,
         int points,
-        List<PublicBadgeDto> badges) {
+        List<PublicBadgeDto> badges,
+        // Average of received reviews (null when the user has none) and how many.
+        Double reviewAverage,
+        long reviewCount) {
 }

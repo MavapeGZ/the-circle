@@ -326,6 +326,48 @@ public class ContractService {
         return toDto(repository.save(contract));
     }
 
+    // --- Delivery confirmation ---
+
+    /**
+     * Records the caller's hand-over confirmation. The owner confirms the item was
+     * delivered, the receiver confirms it was received. Both confirmations are only
+     * accepted once the contract is fully signed (ACTIVE/DELIVERED). When both sides
+     * have confirmed the contract moves to DELIVERED, which opens reviews. Idempotent
+     * per party: re-confirming is a no-op that returns the current state.
+     */
+    @Transactional
+    public ContractDto confirmDelivery(String contractId, String callerId) {
+        Contract contract = require(contractId);
+        if (callerId == null
+                || (!callerId.equals(contract.getOwnerId()) && !callerId.equals(contract.getReceiverId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a party to this contract");
+        }
+        if (contract.getStatus() != ContractStatus.ACTIVE && contract.getStatus() != ContractStatus.DELIVERED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Delivery can only be confirmed on a fully signed (ACTIVE) contract.");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (callerId.equals(contract.getOwnerId())) {
+            if (contract.getOwnerDeliveredAt() == null) contract.setOwnerDeliveredAt(now);
+        } else {
+            if (contract.getReceiverReceivedAt() == null) contract.setReceiverReceivedAt(now);
+        }
+        if (contract.getOwnerDeliveredAt() != null && contract.getReceiverReceivedAt() != null) {
+            contract.setStatus(ContractStatus.DELIVERED);
+        }
+        return toDto(repository.save(contract));
+    }
+
+    /** True once both parties confirmed hand-over. Used to gate reviews in ms-users. */
+    public boolean isDelivered(Contract contract) {
+        return contract.getOwnerDeliveredAt() != null && contract.getReceiverReceivedAt() != null;
+    }
+
+    @Transactional(readOnly = true)
+    public Contract getEntity(String contractId) {
+        return repository.findById(contractId).orElse(null);
+    }
+
     private Contract require(String contractId) {
         return repository.findById(contractId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contract not found"));
@@ -378,6 +420,8 @@ public class ContractService {
         dto.setGuaranteeStatus(c.getGuaranteeStatus());
         dto.setReceiverSignedAt(c.getReceiverSignedAt());
         dto.setOwnerSignedAt(c.getOwnerSignedAt());
+        dto.setOwnerDeliveredAt(c.getOwnerDeliveredAt());
+        dto.setReceiverReceivedAt(c.getReceiverReceivedAt());
         dto.setStoredContractId(c.getStoredContractId());
         return dto;
     }

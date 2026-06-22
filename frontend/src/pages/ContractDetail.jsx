@@ -1,8 +1,9 @@
 import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import api from '../services/api';
+import api, { extractApiError } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { contractTypeLabel } from '../utils/contractType';
+import ReviewForm from '../components/ReviewForm';
 
 function ContractDetail() {
   const { contractId } = useParams();
@@ -17,6 +18,9 @@ function ContractDetail() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewDone, setReviewDone] = useState(false);
 
   useEffect(() => {
     let objectUrl;
@@ -88,6 +92,7 @@ function ContractDetail() {
 
   const statusLabel = (c) => {
     if (c.status === 'ACTIVE') return { text: 'Active (signed by both)', cls: 'bg-green-100 text-green-800' };
+    if (c.status === 'DELIVERED') return { text: 'Delivered', cls: 'bg-emerald-100 text-emerald-800' };
     if (c.status === 'AWAITING_COUNTERPARTY') return { text: 'Awaiting counterparty', cls: 'bg-yellow-100 text-yellow-800' };
     if (c.status === 'COMPLETED') return { text: `Completed (deposit ${c.guaranteeStatus?.toLowerCase()})`, cls: 'bg-gray-200 text-gray-700' };
     if (c.status === 'CANCELLED') return { text: 'Cancelled', cls: 'bg-red-100 text-red-700' };
@@ -113,6 +118,27 @@ function ContractDetail() {
     navigate(`/contracts/${contract.id}/sign`, {
       state: { contract, signerEmail: currentUser?.email, role: myRole, from: `/contracts/${contract.id}` },
     });
+  };
+
+  // Delivery hand-over: available once both parties have signed (ACTIVE/DELIVERED).
+  // Owner confirms delivery, receiver confirms reception; both → DELIVERED → reviews.
+  const canConfirmDelivery = myRole
+    && (contract.status === 'ACTIVE' || contract.status === 'DELIVERED');
+  const myConfirmedAt = isOwner ? contract.ownerDeliveredAt : contract.receiverReceivedAt;
+  const bothConfirmed = contract.ownerDeliveredAt && contract.receiverReceivedAt;
+  const otherPartyId = isOwner ? contract.receiverId : contract.ownerId;
+
+  const confirmDelivery = async () => {
+    setConfirming(true);
+    setError('');
+    try {
+      const res = await api.post(`/contracts/${contract.id}/delivery/confirm`);
+      setContract(res.data);
+    } catch (err) {
+      setError(extractApiError(err, 'Could not confirm delivery.'));
+    } finally {
+      setConfirming(false);
+    }
   };
 
   const escrowed = payments.find((p) => p.status === 'ESCROWED') || null;
@@ -217,6 +243,52 @@ function ContractDetail() {
             >
               Download signed PDF
             </button>
+          )}
+
+          {canConfirmDelivery && (
+            <div className="mt-6 p-4 bg-emerald-50 border border-emerald-100 rounded-lg text-sm text-emerald-900">
+              <p className="font-bold mb-2">Hand-over</p>
+              <ul className="space-y-1 mb-3">
+                <li>Owner delivered: {contract.ownerDeliveredAt ? new Date(contract.ownerDeliveredAt).toLocaleString() : 'Not yet'}</li>
+                <li>Receiver received: {contract.receiverReceivedAt ? new Date(contract.receiverReceivedAt).toLocaleString() : 'Not yet'}</li>
+              </ul>
+              {myConfirmedAt ? (
+                <p className="text-emerald-700">
+                  You confirmed {isOwner ? 'delivery' : 'reception'}.
+                  {!bothConfirmed && ' Waiting for the other party.'}
+                </p>
+              ) : (
+                <button
+                  onClick={confirmDelivery}
+                  disabled={confirming}
+                  className={`w-full font-bold py-2.5 px-6 rounded-lg text-white ${confirming ? 'bg-emerald-400' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                >
+                  {confirming ? 'Saving…' : isOwner ? 'Mark as delivered' : 'Mark as received'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {bothConfirmed && myRole && !reviewDone && (
+            showReviewForm ? (
+              <ReviewForm
+                targetUserId={otherPartyId}
+                contractId={contract.id}
+                onSubmitted={() => { setReviewDone(true); setShowReviewForm(false); }}
+                onCancel={() => setShowReviewForm(false)}
+              />
+            ) : (
+              <button
+                onClick={() => setShowReviewForm(true)}
+                className="mt-3 w-full bg-yellow-500 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-yellow-600 transition"
+              >
+                Leave a review
+              </button>
+            )
+          )}
+
+          {reviewDone && (
+            <p className="mt-3 text-sm font-semibold text-emerald-700">Thanks! Your review was submitted.</p>
           )}
         </div>
 

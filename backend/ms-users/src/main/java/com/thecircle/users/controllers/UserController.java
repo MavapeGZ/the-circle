@@ -71,6 +71,7 @@ public class UserController {
     private final CatalogClient catalogClient;
     private final ContractsClient contractsClient;
     private final GamificationClient gamificationClient;
+    private final com.thecircle.users.service.ReviewService reviewService;
 
     @GetMapping("/health")
     public String health() {
@@ -444,15 +445,15 @@ public class UserController {
     }
 
     @PostMapping("/{userId}/reviews")
-    public ResponseEntity<ReviewDto> createReview(@PathVariable String userId, @Valid @RequestBody ReviewDto dto) {
-        return ResponseEntity.ok(new ReviewDto("r1", dto.reviewerId(), userId, dto.contractId(), dto.rating(),
-                dto.comment(), LocalDateTime.now()));
+    public ResponseEntity<ReviewDto> createReview(@PathVariable Long userId, @Valid @RequestBody ReviewDto dto,
+            Authentication authentication) {
+        User reviewer = getAuthenticatedUser(authentication);
+        return ResponseEntity.status(HttpStatus.CREATED).body(reviewService.create(reviewer.getId(), userId, dto));
     }
 
     @GetMapping("/{userId}/reviews")
-    public ResponseEntity<List<ReviewDto>> getUserReviews(@PathVariable String userId) {
-        return ResponseEntity.ok(List.of(
-                new ReviewDto("r1", "u2", userId, "c1", 5, "Great user", LocalDateTime.now())));
+    public ResponseEntity<List<ReviewDto>> getUserReviews(@PathVariable Long userId) {
+        return ResponseEntity.ok(reviewService.listForTarget(userId));
     }
 
     @GetMapping("/me")
@@ -546,6 +547,8 @@ public class UserController {
             displayName = "User " + user.getId();
         }
 
+        var reviewStats = reviewService.statsForTarget(user.getId());
+
         return new PublicProfileDto(
                 user.getId(),
                 displayName,
@@ -553,7 +556,9 @@ public class UserController {
                 user.getZone(),
                 user.getCreatedAt(),
                 points,
-                badges);
+                badges,
+                reviewStats.average(),
+                reviewStats.count());
     }
 
     private String normalizeZone(String zone) {
