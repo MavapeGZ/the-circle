@@ -2,6 +2,9 @@ package com.thecircle.catalog.controllers;
 
 import com.thecircle.catalog.service.ArticleService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.core.env.Environment;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -17,6 +20,7 @@ import static org.mockito.Mockito.when;
  * profile); in any other profile startup must fail so the guarded endpoints
  * — including the destructive DELETE /users/{authorId} — never run unguarded.
  */
+@ExtendWith(OutputCaptureExtension.class)
 class InternalArticleControllerGuardTest {
 
     private InternalArticleController newController(String key, String... activeProfiles) {
@@ -29,9 +33,10 @@ class InternalArticleControllerGuardTest {
     }
 
     @Test
-    void blankKeyWithNoActiveProfileStartsUp() {
+    void blankKeyWithNoActiveProfileStartsUpAndWarns(CapturedOutput output) {
         InternalArticleController controller = newController("");
         assertThatCode(controller::verifyKeyConfigured).doesNotThrowAnyException();
+        assertThat(output).contains("guard is DISABLED");
     }
 
     @Test
@@ -70,7 +75,6 @@ class InternalArticleControllerGuardTest {
     @Test
     void devProfileIsCaseInsensitive() {
         InternalArticleController controller = newController("", "DEV");
-        assertThat(controller).isNotNull();
         assertThatCode(controller::verifyKeyConfigured).doesNotThrowAnyException();
     }
 }
