@@ -71,6 +71,7 @@ public class UserController {
     private final CatalogClient catalogClient;
     private final ContractsClient contractsClient;
     private final GamificationClient gamificationClient;
+    private final com.thecircle.users.service.ReviewService reviewService;
 
     @GetMapping("/health")
     public String health() {
@@ -235,6 +236,8 @@ public class UserController {
 
         catalogClient.removeUserArticles(user.getId());
         contractsClient.removeOwnedOpenContracts(user.getId());
+        // Drop reviews written by or about the user so none outlive the account.
+        reviewService.deleteAllForUser(user.getId());
 
         return ResponseEntity.ok().build();
     }
@@ -433,26 +436,30 @@ public class UserController {
         var summariesById = gamificationClient.getSummaries(uniqueIds).stream()
                 .collect(Collectors.toMap(GamificationClient.UserSummary::userId, summary -> summary,
                         (left, right) -> left, LinkedHashMap::new));
+        // One aggregate query for all requested users instead of two per user.
+        var reviewStatsById = reviewService.statsForTargets(uniqueIds);
+        var emptyStats = new com.thecircle.users.service.ReviewService.ReviewStats(null, 0);
 
         List<PublicProfileDto> profiles = uniqueIds.stream()
                 .map(usersById::get)
                 .filter(java.util.Objects::nonNull)
-                .map(user -> buildPublicProfile(user, summariesById.get(user.getId())))
+                .map(user -> buildPublicProfile(user, summariesById.get(user.getId()),
+                        reviewStatsById.getOrDefault(user.getId(), emptyStats)))
                 .toList();
 
         return ResponseEntity.ok(profiles);
     }
 
     @PostMapping("/{userId}/reviews")
-    public ResponseEntity<ReviewDto> createReview(@PathVariable String userId, @Valid @RequestBody ReviewDto dto) {
-        return ResponseEntity.ok(new ReviewDto("r1", dto.reviewerId(), userId, dto.contractId(), dto.rating(),
-                dto.comment(), LocalDateTime.now()));
+    public ResponseEntity<ReviewDto> createReview(@PathVariable Long userId, @Valid @RequestBody ReviewDto dto,
+            Authentication authentication) {
+        User reviewer = getAuthenticatedUser(authentication);
+        return ResponseEntity.status(HttpStatus.CREATED).body(reviewService.create(reviewer.getId(), userId, dto));
     }
 
     @GetMapping("/{userId}/reviews")
-    public ResponseEntity<List<ReviewDto>> getUserReviews(@PathVariable String userId) {
-        return ResponseEntity.ok(List.of(
-                new ReviewDto("r1", "u2", userId, "c1", 5, "Great user", LocalDateTime.now())));
+    public ResponseEntity<List<ReviewDto>> getUserReviews(@PathVariable Long userId) {
+        return ResponseEntity.ok(reviewService.listForTarget(userId));
     }
 
     @GetMapping("/me")
@@ -521,10 +528,11 @@ public class UserController {
 
     private PublicProfileDto buildPublicProfile(User user) {
         var summary = gamificationClient.getSummaries(List.of(user.getId())).stream().findFirst().orElse(null);
-        return buildPublicProfile(user, summary);
+        return buildPublicProfile(user, summary, reviewService.statsForTarget(user.getId()));
     }
 
-    private PublicProfileDto buildPublicProfile(User user, GamificationClient.UserSummary summary) {
+    private PublicProfileDto buildPublicProfile(User user, GamificationClient.UserSummary summary,
+            com.thecircle.users.service.ReviewService.ReviewStats reviewStats) {
         int points = summary != null ? summary.totalPoints() : 0;
         List<PublicBadgeDto> badges = summary != null
                 ? summary.badges().stream()
@@ -553,7 +561,9 @@ public class UserController {
                 user.getZone(),
                 user.getCreatedAt(),
                 points,
-                badges);
+                badges,
+                reviewStats.average(),
+                reviewStats.count());
     }
 
     private String normalizeZone(String zone) {

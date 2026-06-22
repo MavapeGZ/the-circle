@@ -13,6 +13,7 @@ import Home from './Home';
 import SignContract from './SignContract';
 import MyContracts from './MyContracts';
 import ContractDetail from './ContractDetail';
+import Messages from './Messages';
 import Checkout from './Checkout';
 import PaymentReceipt from './PaymentReceipt';
 import Settings from './Settings';
@@ -55,6 +56,7 @@ function NavBar() {
       <Link to="/catalog" onClick={closeMenu} className={navLinkClass}>Catalog</Link>
       {user && <Link to="/create" onClick={closeMenu} className={navLinkClass}>Publish</Link>}
       {user && <Link to="/contracts" onClick={closeMenu} className={navLinkClass}>Contracts</Link>}
+      {user && <Link to="/messages" onClick={closeMenu} className={navLinkClass}>Messages</Link>}
     </>
   );
 
@@ -161,6 +163,22 @@ function App() {
             element={
               <ProtectedRoute reason="view-contracts">
                 <MyContracts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/messages"
+            element={
+              <ProtectedRoute reason="view-messages">
+                <Messages />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/messages/:conversationId"
+            element={
+              <ProtectedRoute reason="view-messages">
+                <Messages />
               </ProtectedRoute>
             }
           />

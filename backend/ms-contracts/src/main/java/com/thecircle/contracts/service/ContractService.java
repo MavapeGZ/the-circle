@@ -186,6 +186,8 @@ public class ContractService {
                 .filter(contract -> userId.equals(contract.getOwnerId()))
                 .filter(contract -> contract.getStatus() != ContractStatus.COMPLETED)
                 .filter(contract -> contract.getStatus() != ContractStatus.CANCELLED)
+                // DELIVERED is a finished deal; keep it as history like COMPLETED.
+                .filter(contract -> contract.getStatus() != ContractStatus.DELIVERED)
                 .toList();
 
         if (openOwnerContracts.isEmpty()) {
@@ -326,6 +328,56 @@ public class ContractService {
         return toDto(repository.save(contract));
     }
 
+    // --- Delivery confirmation ---
+
+    /**
+     * Records the caller's hand-over confirmation. The owner confirms the item was
+     * delivered, the receiver confirms it was received. Both confirmations are only
+     * accepted once the contract is fully signed (ACTIVE/DELIVERED). When both sides
+     * have confirmed the contract moves to DELIVERED, which opens reviews. Idempotent
+     * per party: re-confirming is a no-op that returns the current state.
+     */
+    @Transactional
+    public ContractDto confirmDelivery(String contractId, String callerId) {
+        Contract contract = require(contractId);
+        if (callerId == null
+                || (!callerId.equals(contract.getOwnerId()) && !callerId.equals(contract.getReceiverId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a party to this contract");
+        }
+        if (contract.getStatus() != ContractStatus.ACTIVE && contract.getStatus() != ContractStatus.DELIVERED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Delivery can only be confirmed on a fully signed (ACTIVE) contract.");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (callerId.equals(contract.getOwnerId())) {
+            if (contract.getOwnerDeliveredAt() == null) contract.setOwnerDeliveredAt(now);
+        } else {
+            if (contract.getReceiverReceivedAt() == null) contract.setReceiverReceivedAt(now);
+        }
+        if (contract.getOwnerDeliveredAt() != null && contract.getReceiverReceivedAt() != null) {
+            contract.setStatus(ContractStatus.DELIVERED);
+        }
+        return toDto(repository.save(contract));
+    }
+
+    /**
+     * Whether the deal has reached the point where the two parties may review each
+     * other. For sales/donations/cessions that is a confirmed hand-over (DELIVERED);
+     * for rentals it is the devolution of the item (guarantee settled → COMPLETED).
+     * Used to gate reviews in ms-users.
+     */
+    public boolean isReviewable(Contract contract) {
+        boolean handedOver = contract.getOwnerDeliveredAt() != null && contract.getReceiverReceivedAt() != null;
+        boolean rentalReturned = contract.getType() == com.thecircle.contracts.dto.ContractType.RENT
+                && contract.getStatus() == ContractStatus.COMPLETED;
+        return handedOver || rentalReturned;
+    }
+
+    @Transactional(readOnly = true)
+    public Contract getEntity(String contractId) {
+        return repository.findById(contractId).orElse(null);
+    }
+
     private Contract require(String contractId) {
         return repository.findById(contractId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contract not found"));
@@ -378,6 +430,8 @@ public class ContractService {
         dto.setGuaranteeStatus(c.getGuaranteeStatus());
         dto.setReceiverSignedAt(c.getReceiverSignedAt());
         dto.setOwnerSignedAt(c.getOwnerSignedAt());
+        dto.setOwnerDeliveredAt(c.getOwnerDeliveredAt());
+        dto.setReceiverReceivedAt(c.getReceiverReceivedAt());
         dto.setStoredContractId(c.getStoredContractId());
         return dto;
     }

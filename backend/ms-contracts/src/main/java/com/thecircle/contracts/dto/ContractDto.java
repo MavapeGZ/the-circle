@@ -47,6 +47,8 @@ public class ContractDto {
     private LocalDateTime signedAt;
     private LocalDateTime receiverSignedAt;
     private LocalDateTime ownerSignedAt;
+    private LocalDateTime ownerDeliveredAt;
+    private LocalDateTime receiverReceivedAt;
     private String storedContractId;
 
     public ContractDto() {}
@@ -112,6 +114,10 @@ public class ContractDto {
     public void setReceiverSignedAt(LocalDateTime receiverSignedAt) { this.receiverSignedAt = receiverSignedAt; }
     public LocalDateTime getOwnerSignedAt() { return ownerSignedAt; }
     public void setOwnerSignedAt(LocalDateTime ownerSignedAt) { this.ownerSignedAt = ownerSignedAt; }
+    public LocalDateTime getOwnerDeliveredAt() { return ownerDeliveredAt; }
+    public void setOwnerDeliveredAt(LocalDateTime ownerDeliveredAt) { this.ownerDeliveredAt = ownerDeliveredAt; }
+    public LocalDateTime getReceiverReceivedAt() { return receiverReceivedAt; }
+    public void setReceiverReceivedAt(LocalDateTime receiverReceivedAt) { this.receiverReceivedAt = receiverReceivedAt; }
     public String getStoredContractId() { return storedContractId; }
     public void setStoredContractId(String storedContractId) { this.storedContractId = storedContractId; }
 }

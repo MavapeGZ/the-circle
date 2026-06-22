@@ -71,6 +71,8 @@ class SecurityErrorDispatchTest {
     private ContractsClient contractsClient;
     @MockBean
     private GamificationClient gamificationClient;
+    @MockBean
+    private com.thecircle.users.service.ReviewService reviewService;
 
     @Test
     @WithMockUser(username = "owner@example.com")

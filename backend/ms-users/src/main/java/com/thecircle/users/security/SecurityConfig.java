@@ -42,6 +42,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/users/me").authenticated()
                 // Avatars load from plain <img> tags that cannot carry the JWT.
                 .requestMatchers(HttpMethod.GET, "/api/users/*/avatar").permitAll()
+                // Reviews are shown on public profiles, so reading them is public too.
+                .requestMatchers(HttpMethod.GET, "/api/users/*/reviews").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
                 .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                 .anyRequest().authenticated()
