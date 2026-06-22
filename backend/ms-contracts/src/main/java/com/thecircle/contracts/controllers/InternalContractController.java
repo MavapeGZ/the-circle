@@ -1,5 +1,6 @@
 package com.thecircle.contracts.controllers;
 
+import com.thecircle.contracts.service.ChatService;
 import com.thecircle.contracts.service.ContractService;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,6 +35,7 @@ public class InternalContractController {
     private static final Logger log = LoggerFactory.getLogger(InternalContractController.class);
 
     private final ContractService contractService;
+    private final ChatService chatService;
     private final Environment environment;
 
     @Value("${contracts.internal.api-key:}")
@@ -56,6 +58,8 @@ public class InternalContractController {
     public ResponseEntity<Void> deleteOpenOwnerContracts(@PathVariable String userId, HttpServletRequest request) {
         assertInternalCaller(request);
         contractService.deleteOpenOwnerContracts(userId);
+        // No chat history should outlive a deleted account.
+        chatService.deleteAllForUser(userId);
         return ResponseEntity.ok().build();
     }
 
@@ -74,10 +78,10 @@ public class InternalContractController {
                 contract.getId(),
                 contract.getOwnerId(),
                 contract.getReceiverId(),
-                contractService.isDelivered(contract)));
+                contractService.isReviewable(contract)));
     }
 
-    public record ContractSummary(String id, String ownerId, String receiverId, boolean delivered) {}
+    public record ContractSummary(String id, String ownerId, String receiverId, boolean reviewable) {}
 
     private void assertInternalCaller(HttpServletRequest request) {
         if (internalApiKey == null || internalApiKey.isBlank()) {

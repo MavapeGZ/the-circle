@@ -7,6 +7,7 @@ import com.thecircle.contracts.model.Conversation;
 import com.thecircle.contracts.model.Message;
 import com.thecircle.contracts.repository.ConversationRepository;
 import com.thecircle.contracts.repository.MessageRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,7 +64,14 @@ public class ChatService {
                     c.setOwnerId(ownerId);
                     c.setInitiatorId(callerId);
                     c.setCreatedAt(LocalDateTime.now());
-                    return conversationRepository.save(c);
+                    try {
+                        return conversationRepository.save(c);
+                    } catch (DataIntegrityViolationException race) {
+                        // A concurrent request (e.g. a double click) just created it; the
+                        // unique (article_id, initiator_id) constraint rejected this one.
+                        return conversationRepository.findByArticleIdAndInitiatorId(articleId, callerId)
+                                .orElseThrow(() -> race);
+                    }
                 });
         return toDto(conversation, callerId);
     }
@@ -114,14 +122,28 @@ public class ChatService {
         return conversation;
     }
 
+    /**
+     * Deletes every conversation the user takes part in, with its messages. Called
+     * when an account is removed so no chat history outlives the user.
+     */
+    @Transactional
+    public void deleteAllForUser(String userId) {
+        if (userId == null || userId.isBlank()) return;
+        List<Conversation> conversations = conversationRepository
+                .findByOwnerIdOrInitiatorIdOrderByLastMessageAtDesc(userId, userId);
+        if (conversations.isEmpty()) return;
+        List<String> ids = conversations.stream().map(Conversation::getId).toList();
+        messageRepository.deleteByConversationIdIn(ids);
+        conversationRepository.deleteAll(conversations);
+    }
+
     private ConversationDto toDto(Conversation c, String callerId) {
         String otherUserId = callerId.equals(c.getOwnerId()) ? c.getInitiatorId() : c.getOwnerId();
-        List<Message> messages = messageRepository.findByConversationIdOrderByCreatedAtAsc(c.getId());
-        String lastMessage = messages.isEmpty() ? null : messages.get(messages.size() - 1).getBody();
+        Message last = messageRepository.findFirstByConversationIdOrderByCreatedAtDesc(c.getId());
         long unread = messageRepository
                 .countByConversationIdAndSenderIdNotAndReadAtIsNull(c.getId(), callerId);
         return new ConversationDto(c.getId(), c.getArticleId(), c.getOwnerId(), c.getInitiatorId(),
-                otherUserId, c.getCreatedAt(), c.getLastMessageAt(), lastMessage, unread);
+                otherUserId, c.getCreatedAt(), c.getLastMessageAt(), last == null ? null : last.getBody(), unread);
     }
 
     private MessageDto toDto(Message m) {

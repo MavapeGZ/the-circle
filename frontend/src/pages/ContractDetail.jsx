@@ -120,12 +120,20 @@ function ContractDetail() {
     });
   };
 
-  // Delivery hand-over: available once both parties have signed (ACTIVE/DELIVERED).
-  // Owner confirms delivery, receiver confirms reception; both → DELIVERED → reviews.
-  const canConfirmDelivery = myRole
+  // Delivery hand-over for sales/donations/cessions: available once both parties
+  // have signed (ACTIVE/DELIVERED). Owner confirms delivery, receiver confirms
+  // reception; both → DELIVERED. Rentals don't use this handshake — they are
+  // reviewable on devolution (the deposit is settled → COMPLETED).
+  const isRental = contract.type === 'RENT';
+  const canConfirmDelivery = myRole && !isRental
     && (contract.status === 'ACTIVE' || contract.status === 'DELIVERED');
   const myConfirmedAt = isOwner ? contract.ownerDeliveredAt : contract.receiverReceivedAt;
   const bothConfirmed = contract.ownerDeliveredAt && contract.receiverReceivedAt;
+  // When each party may leave a review: hand-over done (non-rentals) or the rental
+  // has been returned (COMPLETED).
+  const canReview = myRole && (
+    (!isRental && bothConfirmed) || (isRental && contract.status === 'COMPLETED')
+  );
   const otherPartyId = isOwner ? contract.receiverId : contract.ownerId;
 
   const confirmDelivery = async () => {
@@ -269,7 +277,7 @@ function ContractDetail() {
             </div>
           )}
 
-          {bothConfirmed && myRole && !reviewDone && (
+          {canReview && !reviewDone && (
             showReviewForm ? (
               <ReviewForm
                 targetUserId={otherPartyId}

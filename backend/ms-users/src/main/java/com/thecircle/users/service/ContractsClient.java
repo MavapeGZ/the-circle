@@ -32,7 +32,7 @@ public ContractsClient(RestTemplateBuilder builder) {
     }
 
     /** Minimal contract view used to authorize reviews. */
-    public record ContractSummary(String id, String ownerId, String receiverId, boolean delivered) {}
+    public record ContractSummary(String id, String ownerId, String receiverId, boolean reviewable) {}
 
     /**
      * Fetches a contract summary from ms-contracts to gate a review. Returns

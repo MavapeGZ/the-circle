@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -58,9 +59,9 @@ public class ReviewService {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "We could not verify the transaction for this review. Please try again later.");
         }
-        if (!contract.delivered()) {
+        if (!contract.reviewable()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "You can only review once the item has been delivered and received.");
+                    "You can only review once the item has been delivered (or, for rentals, returned).");
         }
         String reviewer = String.valueOf(reviewerId);
         String target = String.valueOf(targetUserId);
@@ -111,7 +112,28 @@ public class ReviewService {
         return new ReviewStats(avg, count);
     }
 
+    /** Batched stats keyed by target user id, for building many public profiles at once. */
+    @Transactional(readOnly = true)
+    public Map<Long, ReviewStats> statsForTargets(Collection<Long> targetUserIds) {
+        if (targetUserIds == null || targetUserIds.isEmpty()) return Map.of();
+        Map<Long, ReviewStats> out = new java.util.HashMap<>();
+        for (Object[] row : reviewRepository.aggregateForTargets(targetUserIds)) {
+            Long id = (Long) row[0];
+            Double avg = row[1] == null ? null : ((Number) row[1]).doubleValue();
+            long count = ((Number) row[2]).longValue();
+            out.put(id, new ReviewStats(avg, count));
+        }
+        return out;
+    }
+
     public record ReviewStats(Double average, long count) {}
+
+    /** Removes every review written by or about a user (account deletion cleanup). */
+    @Transactional
+    public void deleteAllForUser(Long userId) {
+        if (userId == null) return;
+        reviewRepository.deleteByReviewerIdOrTargetUserId(userId, userId);
+    }
 
     private ReviewDto toDto(Review r, String reviewerName) {
         return new ReviewDto(r.getId(), r.getReviewerId(), reviewerName, r.getTargetUserId(),

@@ -63,7 +63,7 @@ function MyContracts() {
   const myRole = (c) => (isOwner(c) ? 'OWNER' : isReceiver(c) ? 'RECEIVER' : null);
   // True when it is still my turn to sign (regardless of who signed first).
   const iNeedToSign = (c) => {
-    if (c.status === 'ACTIVE' || c.status === 'COMPLETED') return false;
+    if (c.status === 'ACTIVE' || c.status === 'DELIVERED' || c.status === 'COMPLETED') return false;
     if (isOwner(c)) return !c.ownerSignedAt;
     if (isReceiver(c)) return !c.receiverSignedAt;
     return false;
@@ -105,6 +105,7 @@ function MyContracts() {
 
   const statusLabel = (c) => {
     if (c.status === 'ACTIVE') return { text: 'Active (signed by both)', cls: 'bg-green-100 text-green-800' };
+    if (c.status === 'DELIVERED') return { text: 'Delivered', cls: 'bg-emerald-100 text-emerald-800' };
     if (c.status === 'COMPLETED') return { text: `Completed (deposit ${c.guaranteeStatus?.toLowerCase()})`, cls: 'bg-gray-200 text-gray-700' };
     if (iNeedToSign(c)) return { text: 'Awaiting your signature', cls: 'bg-yellow-100 text-yellow-800' };
     return { text: 'Awaiting other party', cls: 'bg-blue-100 text-blue-800' };

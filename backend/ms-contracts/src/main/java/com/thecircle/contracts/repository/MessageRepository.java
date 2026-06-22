@@ -15,6 +15,9 @@ public interface MessageRepository extends JpaRepository<Message, String> {
 
     List<Message> findByConversationIdOrderByCreatedAtAsc(String conversationId);
 
+    // Last message of a thread, for the inbox preview (avoids loading the whole thread).
+    Message findFirstByConversationIdOrderByCreatedAtDesc(String conversationId);
+
     // Unread messages addressed to the caller (i.e. not sent by them) in a thread.
     long countByConversationIdAndSenderIdNotAndReadAtIsNull(String conversationId, String senderId);
 

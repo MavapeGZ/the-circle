@@ -186,6 +186,8 @@ public class ContractService {
                 .filter(contract -> userId.equals(contract.getOwnerId()))
                 .filter(contract -> contract.getStatus() != ContractStatus.COMPLETED)
                 .filter(contract -> contract.getStatus() != ContractStatus.CANCELLED)
+                // DELIVERED is a finished deal; keep it as history like COMPLETED.
+                .filter(contract -> contract.getStatus() != ContractStatus.DELIVERED)
                 .toList();
 
         if (openOwnerContracts.isEmpty()) {
@@ -358,9 +360,17 @@ public class ContractService {
         return toDto(repository.save(contract));
     }
 
-    /** True once both parties confirmed hand-over. Used to gate reviews in ms-users. */
-    public boolean isDelivered(Contract contract) {
-        return contract.getOwnerDeliveredAt() != null && contract.getReceiverReceivedAt() != null;
+    /**
+     * Whether the deal has reached the point where the two parties may review each
+     * other. For sales/donations/cessions that is a confirmed hand-over (DELIVERED);
+     * for rentals it is the devolution of the item (guarantee settled → COMPLETED).
+     * Used to gate reviews in ms-users.
+     */
+    public boolean isReviewable(Contract contract) {
+        boolean handedOver = contract.getOwnerDeliveredAt() != null && contract.getReceiverReceivedAt() != null;
+        boolean rentalReturned = contract.getType() == com.thecircle.contracts.dto.ContractType.RENT
+                && contract.getStatus() == ContractStatus.COMPLETED;
+        return handedOver || rentalReturned;
     }
 
     @Transactional(readOnly = true)

@@ -236,6 +236,8 @@ public class UserController {
 
         catalogClient.removeUserArticles(user.getId());
         contractsClient.removeOwnedOpenContracts(user.getId());
+        // Drop reviews written by or about the user so none outlive the account.
+        reviewService.deleteAllForUser(user.getId());
 
         return ResponseEntity.ok().build();
     }
@@ -434,11 +436,15 @@ public class UserController {
         var summariesById = gamificationClient.getSummaries(uniqueIds).stream()
                 .collect(Collectors.toMap(GamificationClient.UserSummary::userId, summary -> summary,
                         (left, right) -> left, LinkedHashMap::new));
+        // One aggregate query for all requested users instead of two per user.
+        var reviewStatsById = reviewService.statsForTargets(uniqueIds);
+        var emptyStats = new com.thecircle.users.service.ReviewService.ReviewStats(null, 0);
 
         List<PublicProfileDto> profiles = uniqueIds.stream()
                 .map(usersById::get)
                 .filter(java.util.Objects::nonNull)
-                .map(user -> buildPublicProfile(user, summariesById.get(user.getId())))
+                .map(user -> buildPublicProfile(user, summariesById.get(user.getId()),
+                        reviewStatsById.getOrDefault(user.getId(), emptyStats)))
                 .toList();
 
         return ResponseEntity.ok(profiles);
@@ -522,10 +528,11 @@ public class UserController {
 
     private PublicProfileDto buildPublicProfile(User user) {
         var summary = gamificationClient.getSummaries(List.of(user.getId())).stream().findFirst().orElse(null);
-        return buildPublicProfile(user, summary);
+        return buildPublicProfile(user, summary, reviewService.statsForTarget(user.getId()));
     }
 
-    private PublicProfileDto buildPublicProfile(User user, GamificationClient.UserSummary summary) {
+    private PublicProfileDto buildPublicProfile(User user, GamificationClient.UserSummary summary,
+            com.thecircle.users.service.ReviewService.ReviewStats reviewStats) {
         int points = summary != null ? summary.totalPoints() : 0;
         List<PublicBadgeDto> badges = summary != null
                 ? summary.badges().stream()
@@ -546,8 +553,6 @@ public class UserController {
         if (displayName.isBlank()) {
             displayName = "User " + user.getId();
         }
-
-        var reviewStats = reviewService.statsForTarget(user.getId());
 
         return new PublicProfileDto(
                 user.getId(),
