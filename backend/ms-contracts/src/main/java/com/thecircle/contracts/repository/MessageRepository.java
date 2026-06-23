@@ -21,6 +21,16 @@ public interface MessageRepository extends JpaRepository<Message, String> {
     // Unread messages addressed to the caller (i.e. not sent by them) in a thread.
     long countByConversationIdAndSenderIdNotAndReadAtIsNull(String conversationId, String senderId);
 
+    // Batched inbox helpers: resolve preview + unread for many threads in one query
+    // each, instead of two queries per conversation (avoids an N+1 on the inbox).
+    @Query("select m from Message m where m.conversationId in :ids "
+            + "and m.createdAt = (select max(m2.createdAt) from Message m2 where m2.conversationId = m.conversationId)")
+    List<Message> findLatestPerConversation(@Param("ids") List<String> ids);
+
+    @Query("select m.conversationId, count(m) from Message m where m.conversationId in :ids "
+            + "and m.senderId <> :callerId and m.readAt is null group by m.conversationId")
+    List<Object[]> countUnreadByConversation(@Param("ids") List<String> ids, @Param("callerId") String callerId);
+
     @Modifying
     @Query("update Message m set m.readAt = :now "
             + "where m.conversationId = :conversationId and m.senderId <> :readerId and m.readAt is null")

@@ -361,16 +361,23 @@ public class ContractService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Delivery can only be confirmed on a fully signed (ACTIVE) contract.");
         }
+        // Deposit rentals settle via the guarantee return flow (→ COMPLETED), not
+        // the hand-over handshake; reject so they can't be flipped to DELIVERED.
+        if (contract.getType() == com.thecircle.contracts.dto.ContractType.RENT
+                && contract.getGuaranteeAmount() != null && contract.getGuaranteeAmount().signum() > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This rental is settled by returning the deposit, not by confirming delivery.");
+        }
+        // Atomic per-column updates so concurrent confirmations by the two parties
+        // cannot overwrite each other; then flip to DELIVERED once both are set.
         LocalDateTime now = LocalDateTime.now();
         if (callerId.equals(contract.getOwnerId())) {
-            if (contract.getOwnerDeliveredAt() == null) contract.setOwnerDeliveredAt(now);
+            repository.markOwnerDelivered(contractId, now);
         } else {
-            if (contract.getReceiverReceivedAt() == null) contract.setReceiverReceivedAt(now);
+            repository.markReceiverReceived(contractId, now);
         }
-        if (contract.getOwnerDeliveredAt() != null && contract.getReceiverReceivedAt() != null) {
-            contract.setStatus(ContractStatus.DELIVERED);
-        }
-        return toDto(repository.save(contract));
+        repository.markDeliveredIfBothConfirmed(contractId, ContractStatus.ACTIVE, ContractStatus.DELIVERED);
+        return toDto(require(contractId));
     }
 
     /**

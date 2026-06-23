@@ -6,6 +6,9 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.UUID;
+
 /**
  * Assigns a public_id to any user row that predates the column.
  *
@@ -29,10 +32,18 @@ public class PublicIdBackfill implements CommandLineRunner {
     @Override
     public void run(String... args) {
         try {
-            int updated = jdbc.update(
-                    "UPDATE users SET public_id = gen_random_uuid()::text WHERE public_id IS NULL");
-            if (updated > 0) {
-                log.info("Backfilled public_id for {} existing user(s)", updated);
+            // UUIDs are generated in Java rather than via a DB function so the
+            // backfill does not depend on a Postgres version / extension being
+            // present (e.g. gen_random_uuid). One UPDATE per missing row; the set
+            // is empty after the first run, so steady-state cost is a single SELECT.
+            List<Long> ids = jdbc.queryForList(
+                    "SELECT id FROM users WHERE public_id IS NULL", Long.class);
+            for (Long id : ids) {
+                jdbc.update("UPDATE users SET public_id = ? WHERE id = ?",
+                        UUID.randomUUID().toString(), id);
+            }
+            if (!ids.isEmpty()) {
+                log.info("Backfilled public_id for {} existing user(s)", ids.size());
             }
         } catch (Exception e) {
             // Non-fatal: a fresh DB has no rows to backfill, and new users get a

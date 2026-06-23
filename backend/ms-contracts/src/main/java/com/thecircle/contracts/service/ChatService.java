@@ -14,8 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Chat between an article's owner and an interested user. A conversation always
@@ -44,7 +47,10 @@ public class ChatService {
      * is no second party to talk to), and an article that cannot be resolved is a
      * 404.
      */
-    @Transactional
+    // Not @Transactional: the catalog lookup is a synchronous cross-service HTTP
+    // call and must not hold a DB connection/transaction across the round-trip.
+    // The individual repository operations are transactional on their own, and the
+    // unique-constraint race is handled explicitly below.
     public ConversationDto startOrGet(String callerId, String articleId) {
         CatalogClient.ArticleSnapshot article = catalogClient.getArticle(articleId);
         if (article == null || article.authorId() == null) {
@@ -63,7 +69,11 @@ public class ChatService {
                     c.setArticleId(articleId);
                     c.setOwnerId(ownerId);
                     c.setInitiatorId(callerId);
-                    c.setCreatedAt(LocalDateTime.now());
+                    LocalDateTime now = LocalDateTime.now();
+                    c.setCreatedAt(now);
+                    // Seed lastMessageAt so an empty conversation sorts by its creation
+                    // time instead of as a NULL (which Postgres orders FIRST in DESC).
+                    c.setLastMessageAt(now);
                     try {
                         return conversationRepository.save(c);
                     } catch (DataIntegrityViolationException race) {
@@ -78,10 +88,24 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public List<ConversationDto> listForUser(String callerId) {
-        return conversationRepository
-                .findByOwnerIdOrInitiatorIdOrderByLastMessageAtDesc(callerId, callerId)
-                .stream()
-                .map(c -> toDto(c, callerId))
+        List<Conversation> conversations = conversationRepository
+                .findByOwnerIdOrInitiatorIdOrderByLastMessageAtDesc(callerId, callerId);
+        if (conversations.isEmpty()) return List.of();
+
+        // Batch the last-message preview and unread counts in two queries instead
+        // of two per conversation (avoids an N+1 on the inbox).
+        List<String> ids = conversations.stream().map(Conversation::getId).toList();
+        Map<String, String> lastBodyById = messageRepository.findLatestPerConversation(ids).stream()
+                .collect(Collectors.toMap(Message::getConversationId, Message::getBody, (a, b) -> a));
+        Map<String, Long> unreadById = new HashMap<>();
+        for (Object[] row : messageRepository.countUnreadByConversation(ids, callerId)) {
+            unreadById.put((String) row[0], ((Number) row[1]).longValue());
+        }
+
+        return conversations.stream()
+                .map(c -> toDto(c, callerId,
+                        lastBodyById.get(c.getId()),
+                        unreadById.getOrDefault(c.getId(), 0L)))
                 .toList();
     }
 
@@ -137,13 +161,19 @@ public class ChatService {
         conversationRepository.deleteAll(conversations);
     }
 
+    // Single-conversation variant (creation / fetch-one): resolves preview + unread
+    // on its own. The inbox list uses the batched overload to avoid an N+1.
     private ConversationDto toDto(Conversation c, String callerId) {
-        String otherUserId = callerId.equals(c.getOwnerId()) ? c.getInitiatorId() : c.getOwnerId();
         Message last = messageRepository.findFirstByConversationIdOrderByCreatedAtDesc(c.getId());
         long unread = messageRepository
                 .countByConversationIdAndSenderIdNotAndReadAtIsNull(c.getId(), callerId);
+        return toDto(c, callerId, last == null ? null : last.getBody(), unread);
+    }
+
+    private ConversationDto toDto(Conversation c, String callerId, String lastMessage, long unread) {
+        String otherUserId = callerId.equals(c.getOwnerId()) ? c.getInitiatorId() : c.getOwnerId();
         return new ConversationDto(c.getId(), c.getArticleId(), c.getOwnerId(), c.getInitiatorId(),
-                otherUserId, c.getCreatedAt(), c.getLastMessageAt(), last == null ? null : last.getBody(), unread);
+                otherUserId, c.getCreatedAt(), c.getLastMessageAt(), lastMessage, unread);
     }
 
     private MessageDto toDto(Message m) {

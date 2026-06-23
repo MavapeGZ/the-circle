@@ -11,10 +11,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,6 +38,28 @@ class ContractDeliveryTest {
         return c;
     }
 
+    // Wires the atomic per-column updates to mutate the shared contract instance,
+    // mirroring what the JPQL UPDATEs do in production so the service's re-read
+    // (findById) reflects the confirmation.
+    private void wireAtomicUpdates(Contract c) {
+        when(repository.markOwnerDelivered(eq("c1"), any())).thenAnswer(inv -> {
+            if (c.getOwnerDeliveredAt() == null) c.setOwnerDeliveredAt(inv.getArgument(1));
+            return 1;
+        });
+        when(repository.markReceiverReceived(eq("c1"), any())).thenAnswer(inv -> {
+            if (c.getReceiverReceivedAt() == null) c.setReceiverReceivedAt(inv.getArgument(1));
+            return 1;
+        });
+        when(repository.markDeliveredIfBothConfirmed(eq("c1"), any(), any())).thenAnswer(inv -> {
+            if (c.getStatus() == ContractStatus.ACTIVE
+                    && c.getOwnerDeliveredAt() != null && c.getReceiverReceivedAt() != null) {
+                c.setStatus(ContractStatus.DELIVERED);
+                return 1;
+            }
+            return 0;
+        });
+    }
+
     @Test
     void confirmDelivery_nonParty_forbidden() {
         when(repository.findById("c1")).thenReturn(Optional.of(active("1", "2", ContractType.SALE)));
@@ -55,10 +79,20 @@ class ContractDeliveryTest {
     }
 
     @Test
+    void confirmDelivery_depositRental_conflict() {
+        Contract c = active("1", "2", ContractType.RENT);
+        c.setGuaranteeAmount(new java.math.BigDecimal("15"));
+        when(repository.findById("c1")).thenReturn(Optional.of(c));
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> service().confirmDelivery("c1", "1"));
+        assertEquals(409, ex.getStatusCode().value());
+    }
+
+    @Test
     void confirmDelivery_ownerOnly_staysActive() {
         Contract c = active("1", "2", ContractType.SALE);
         when(repository.findById("c1")).thenReturn(Optional.of(c));
-        when(repository.save(any(Contract.class))).thenAnswer(inv -> inv.getArgument(0));
+        wireAtomicUpdates(c);
 
         ContractDto dto = service().confirmDelivery("c1", "1");
 
@@ -71,7 +105,7 @@ class ContractDeliveryTest {
     void confirmDelivery_bothParties_becomesDelivered() {
         Contract c = active("1", "2", ContractType.SALE);
         when(repository.findById("c1")).thenReturn(Optional.of(c));
-        when(repository.save(any(Contract.class))).thenAnswer(inv -> inv.getArgument(0));
+        wireAtomicUpdates(c);
 
         ContractService service = service();
         service.confirmDelivery("c1", "1"); // owner delivered
@@ -85,9 +119,9 @@ class ContractDeliveryTest {
         ContractService service = service();
         Contract c = active("1", "2", ContractType.SALE);
         assertFalse(service.isReviewable(c));
-        c.setOwnerDeliveredAt(java.time.LocalDateTime.now());
+        c.setOwnerDeliveredAt(LocalDateTime.now());
         assertFalse(service.isReviewable(c));
-        c.setReceiverReceivedAt(java.time.LocalDateTime.now());
+        c.setReceiverReceivedAt(LocalDateTime.now());
         assertTrue(service.isReviewable(c));
     }
 
