@@ -1,6 +1,5 @@
 package com.thecircle.contracts.service;
 
-import com.thecircle.contracts.client.UsersClient;
 import com.thecircle.contracts.dto.*;
 import com.thecircle.contracts.model.StoredContract;
 import org.slf4j.Logger;
@@ -47,7 +46,6 @@ public class SignatureWorkflowService {
     private final ContractService contractService;
     private final OtpDeliveryChannel otpDelivery;
     private final com.thecircle.contracts.client.GamificationClient gamificationClient;
-    private final com.thecircle.contracts.client.UsersClient usersClient;
 
     @Value("${signature.otp.length:6}")
     private int otpLength;
@@ -66,15 +64,13 @@ public class SignatureWorkflowService {
                                     ContractStorageService storageService,
                                     ContractService contractService,
                                     OtpDeliveryChannel otpDelivery,
-                                    com.thecircle.contracts.client.GamificationClient gamificationClient,
-                                    com.thecircle.contracts.client.UsersClient usersClient) {
+                                    com.thecircle.contracts.client.GamificationClient gamificationClient) {
         this.pdfService = pdfService;
         this.signatureService = signatureService;
         this.storageService = storageService;
         this.contractService = contractService;
         this.otpDelivery = otpDelivery;
         this.gamificationClient = gamificationClient;
-        this.usersClient = usersClient;
     }
 
     public SignRequestResponseDto requestOtp(SignRequestDto req) {
@@ -177,9 +173,12 @@ public class SignatureWorkflowService {
         StoredContract sc;
         try {
             // Fill signer names from ms-users so the signed PDF is not anonymous.
-            contractService.enrichSigners(session.contract, session.signerEmail);
+            // Reuse the profiles fetched here for the PDF locale instead of
+            // re-querying ms-users for the same signer.
+            ContractService.SignerProfiles profiles =
+                    contractService.enrichSigners(session.contract, session.signerEmail);
             byte[] pdf = pdfService.generatePdf(session.contract,
-                    resolveSignerLocale(session.contract, session.signerRole));
+                    profiles.languageFor(session.signerRole));
             if (session.visualOptions != null) {
                 pdf = signatureService.applyVisualSignature(pdf, session.visualOptions, buildSignerMap(session.contract));
             }
@@ -264,15 +263,7 @@ public class SignatureWorkflowService {
     private String resolveSignerLocale(ContractDto contract, SignerRole role) {
         if (contract == null || role == null) return null;
         String userId = role == SignerRole.RECEIVER ? contract.getReceiverId() : contract.getOwnerId();
-        if (userId == null || userId.isBlank()) return null;
-        try {
-            UsersClient.UserProfile profile = usersClient.getProfile(userId);
-            return profile != null ? profile.language() : null;
-        } catch (RuntimeException ex) {
-            log.warn("Could not resolve signer locale for contract {}: {}",
-                    contract.getContractId(), ex.getMessage());
-            return null;
-        }
+        return contractService.getUserLanguage(userId);
     }
 
     private String generateOtp() {
