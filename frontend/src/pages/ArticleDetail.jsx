@@ -31,6 +31,7 @@ function ArticleDetail() {
   const [rentDays, setRentDays] = useState(7);
   const [deposit, setDeposit] = useState('');
   const [acquiring, setAcquiring] = useState(false);
+  const [contacting, setContacting] = useState(false);
 
   useEffect(() => {
     const fetchArticleAndOwner = async () => {
@@ -41,8 +42,11 @@ function ArticleDetail() {
 
         if (articleData.authorId) {
           try {
-            const ownerRes = await api.get(`/users/${articleData.authorId}`);
-            setOwner(ownerRes.data);
+            // Use the public batch lookup (not the numeric profile endpoint, which
+            // is now authenticated): this page is viewable while logged out, and the
+            // result carries the owner's opaque publicId for the profile link.
+            const ownerRes = await api.get('/users/public', { params: { ids: String(articleData.authorId) } });
+            setOwner(ownerRes.data?.[0] || null);
           } catch (ownerErr) {
             console.error('Error fetching owner profile:', ownerErr);
             setOwner(null);
@@ -163,6 +167,24 @@ function ArticleDetail() {
     }
   };
 
+  // Opens (or reuses) a chat with the article owner about this item. A contract is
+  // not required: users can ask questions before any deal.
+  const handleContact = async () => {
+    if (!currentUser?.id) {
+      navigate('/login');
+      return;
+    }
+    setContacting(true);
+    try {
+      const res = await api.post('/chat/conversations', { articleId: article.id });
+      navigate(`/messages/${res.data.id}`);
+    } catch (err) {
+      console.error('Error starting conversation:', err);
+      alert(extractApiError(err, 'Could not start the conversation. Please try again.'));
+      setContacting(false);
+    }
+  };
+
   if (loading) return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">Loading article...</div>;
   if (error) return <div className="text-center mt-20 text-xl text-red-600 font-bold">{error}</div>;
   if (!article) return null;
@@ -236,9 +258,11 @@ function ArticleDetail() {
                 <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">
                   {zoneLabel(article.zone)}
                 </span>
-                <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">
-                  {article.category}
-                </span>
+                {article.category && (
+                  <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">
+                    {article.category}
+                  </span>
+                )}
                 {article.status === 'RESERVED' && (
                   <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full border border-yellow-300">
                     Reserved
@@ -275,7 +299,7 @@ function ArticleDetail() {
           <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">About the owner</h3>
 
           {owner ? (
-            <Link to={`/users/${owner.id}`} className="block mb-6 group">
+            <Link to={`/users/${owner.publicId}`} className="block mb-6 group">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xl overflow-hidden shrink-0">
                   {owner.avatarUrl ? (
@@ -311,6 +335,16 @@ function ArticleDetail() {
           ) : null}
 
           <hr className="border-gray-100 mb-6" />
+
+          {!isOwner && (
+            <button
+              onClick={handleContact}
+              disabled={contacting}
+              className={`w-full mb-3 py-3 font-bold rounded-lg shadow-sm transition border ${contacting ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'}`}
+            >
+              {contacting ? 'Opening chat…' : '💬 Contact'}
+            </button>
+          )}
 
           {isOwner ? (
             <div className="flex flex-col gap-3">

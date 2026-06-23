@@ -1,5 +1,6 @@
 package com.thecircle.contracts.controllers;
 
+import com.thecircle.contracts.service.ChatService;
 import com.thecircle.contracts.service.ContractService;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,10 +12,13 @@ import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.thecircle.contracts.model.Contract;
 
 import java.util.Arrays;
 
@@ -31,6 +35,7 @@ public class InternalContractController {
     private static final Logger log = LoggerFactory.getLogger(InternalContractController.class);
 
     private final ContractService contractService;
+    private final ChatService chatService;
     private final Environment environment;
 
     @Value("${contracts.internal.api-key:}")
@@ -53,8 +58,30 @@ public class InternalContractController {
     public ResponseEntity<Void> deleteOpenOwnerContracts(@PathVariable String userId, HttpServletRequest request) {
         assertInternalCaller(request);
         contractService.deleteOpenOwnerContracts(userId);
+        // No chat history should outlive a deleted account.
+        chatService.deleteAllForUser(userId);
         return ResponseEntity.ok().build();
     }
+
+    /**
+     * Minimal contract summary used by ms-users to authorize a review: who the two
+     * parties are and whether both confirmed delivery. Internal-only.
+     */
+    @GetMapping("/{contractId}")
+    public ResponseEntity<ContractSummary> getSummary(@PathVariable String contractId, HttpServletRequest request) {
+        assertInternalCaller(request);
+        Contract contract = contractService.getEntity(contractId);
+        if (contract == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(new ContractSummary(
+                contract.getId(),
+                contract.getOwnerId(),
+                contract.getReceiverId(),
+                contractService.isReviewable(contract)));
+    }
+
+    public record ContractSummary(String id, String ownerId, String receiverId, boolean reviewable) {}
 
     private void assertInternalCaller(HttpServletRequest request) {
         if (internalApiKey == null || internalApiKey.isBlank()) {

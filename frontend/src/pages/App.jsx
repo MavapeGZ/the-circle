@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { resolveAssetUrl } from '../services/api';
+import api, { resolveAssetUrl } from '../services/api';
+import { countContractsNeedingAction } from '../utils/contractAction';
 import Login from './Login';
 import Register from './Register';
 import ForgotPassword from './ForgotPassword';
@@ -13,26 +14,64 @@ import Home from './Home';
 import SignContract from './SignContract';
 import MyContracts from './MyContracts';
 import ContractDetail from './ContractDetail';
+import Messages from './Messages';
 import Checkout from './Checkout';
 import PaymentReceipt from './PaymentReceipt';
 import Settings from './Settings';
 import ProfilePage from './ProfilePage';
+import NotFound from './NotFound';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 // Navigation lives inside BrowserRouter so it can use useNavigate to redirect.
 function NavBar() {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, contractsRefreshNonce } = useContext(AuthContext);
   const navigate = useNavigate();
   // Mobile menu toggle. On small screens the inline links would crowd into each
   // other (e.g. "Catalog" colliding with "Login"), so they collapse behind a
   // hamburger and stack vertically when opened.
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Total unread chat messages, polled so the navbar badge stays current while the
+  // user is on any page. Same red pill as an unread conversation in the inbox.
+  const [unreadTotal, setUnreadTotal] = useState(0);
+  useEffect(() => {
+    if (!user?.id) { setUnreadTotal(0); return undefined; }
+    let active = true;
+    const load = async () => {
+      try {
+        const { data } = await api.get('/chat/conversations');
+        if (!active) return;
+        setUnreadTotal((data || []).reduce((sum, c) => sum + (c.unreadCount || 0), 0));
+      } catch { /* keep the previous count on transient errors */ }
+    };
+    load();
+    const t = setInterval(load, 15000);
+    return () => { active = false; clearInterval(t); };
+  }, [user?.id]);
+
+  // Contracts that need my action (sign / confirm delivery / settle deposit).
+  // Same red pill as the chat badge; new or changed contracts surface here.
+  const [contractsPending, setContractsPending] = useState(0);
+  useEffect(() => {
+    if (!user?.id) { setContractsPending(0); return undefined; }
+    let active = true;
+    const load = async () => {
+      try {
+        const { data } = await api.get(`/contracts/user/${user.id}`);
+        if (!active) return;
+        setContractsPending(countContractsNeedingAction(data || [], user.id));
+      } catch { /* keep the previous count on transient errors */ }
+    };
+    load();
+    const t = setInterval(load, 15000);
+    return () => { active = false; clearInterval(t); };
+  }, [user?.id, contractsRefreshNonce]);
+
   const closeMenu = () => setMenuOpen(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     closeMenu();
-    logout();
+    await logout();
     navigate('/');
   };
 
@@ -54,7 +93,26 @@ function NavBar() {
       <Link to="/" onClick={closeMenu} className={navLinkClass}>Home</Link>
       <Link to="/catalog" onClick={closeMenu} className={navLinkClass}>Catalog</Link>
       {user && <Link to="/create" onClick={closeMenu} className={navLinkClass}>Publish</Link>}
-      {user && <Link to="/contracts" onClick={closeMenu} className={navLinkClass}>Contracts</Link>}
+      {user && (
+        <Link to="/contracts" onClick={closeMenu} className={`${navLinkClass} inline-flex items-center gap-1.5`}>
+          Contracts
+          {contractsPending > 0 && (
+            <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 leading-none">
+              {contractsPending > 99 ? '99+' : contractsPending}
+            </span>
+          )}
+        </Link>
+      )}
+      {user && (
+        <Link to="/messages" onClick={closeMenu} className={`${navLinkClass} inline-flex items-center gap-1.5`}>
+          Messages
+          {unreadTotal > 0 && (
+            <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 leading-none">
+              {unreadTotal > 99 ? '99+' : unreadTotal}
+            </span>
+          )}
+        </Link>
+      )}
     </>
   );
 
@@ -165,6 +223,22 @@ function App() {
             }
           />
           <Route
+            path="/messages"
+            element={
+              <ProtectedRoute reason="view-messages">
+                <Messages />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/messages/:conversationId"
+            element={
+              <ProtectedRoute reason="view-messages">
+                <Messages />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/contracts/:contractId/sign"
             element={
               <ProtectedRoute reason="view-contracts">
@@ -212,6 +286,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Catch-all: any unmatched path renders the 404 page instead of blank. */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
     </BrowserRouter>

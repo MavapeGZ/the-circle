@@ -62,6 +62,8 @@ class SecurityErrorDispatchTest {
     @MockBean
     private DeviceCookieService deviceCookieService;
     @MockBean
+    private com.thecircle.users.service.RefreshTokenService refreshTokenService;
+    @MockBean
     private IbanCipher ibanCipher;
     @MockBean
     private CatalogClient catalogClient;
@@ -69,6 +71,8 @@ class SecurityErrorDispatchTest {
     private ContractsClient contractsClient;
     @MockBean
     private GamificationClient gamificationClient;
+    @MockBean
+    private com.thecircle.users.service.ReviewService reviewService;
 
     @Test
     @WithMockUser(username = "owner@example.com")

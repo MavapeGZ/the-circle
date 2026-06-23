@@ -81,6 +81,8 @@ services:
       NOTIFICATIONS_BASE_URL: http://ms-notifications:8085
       NOTIFICATIONS_INTERNAL_KEY: ${NOTIFICATIONS_INTERNAL_KEY}
       DEVICE_COOKIE_SECURE: "true"
+      # Refresh-token cookie only over HTTPS (Caddy terminates TLS in prod).
+      REFRESH_COOKIE_SECURE: "true"
     volumes:
       - ./data/kyc:/data/kyc
       - ./data/avatars:/data/avatars

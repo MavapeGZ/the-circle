@@ -15,6 +15,7 @@ import com.thecircle.users.dto.PublicProfileDto;
 import com.thecircle.users.service.CatalogClient;
 import com.thecircle.users.service.ContractsClient;
 import com.thecircle.users.service.DeviceCookieService;
+import com.thecircle.users.service.RefreshTokenService;
 import com.thecircle.users.service.GamificationClient;
 import com.thecircle.users.service.UploadValidation;
 import com.thecircle.users.validation.ValidationPatterns;
@@ -65,10 +66,12 @@ public class UserController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final DeviceCookieService deviceCookieService;
+    private final RefreshTokenService refreshTokenService;
     private final IbanCipher ibanCipher;
     private final CatalogClient catalogClient;
     private final ContractsClient contractsClient;
     private final GamificationClient gamificationClient;
+    private final com.thecircle.users.service.ReviewService reviewService;
 
     @GetMapping("/health")
     public String health() {
@@ -83,7 +86,7 @@ public class UserController {
                 user.getLastName(),
                 user.getEmail(),
                 user.getAddress(),
-            user.getZone(),
+                user.getZone(),
                 user.getIdNumber(),
                 user.getIbanLast4(),
                 user.isMarketingEmailsOptIn(),
@@ -145,7 +148,7 @@ public class UserController {
                 user.getLastName(),
                 user.getEmail(),
                 user.getAddress(),
-            user.getZone(),
+                user.getZone(),
                 user.getIdNumber(),
                 user.getIbanLast4(),
                 user.isMarketingEmailsOptIn(),
@@ -227,9 +230,14 @@ public class UserController {
 
         // Revoke all existing device sessions to log out from all devices immediately
         deviceCookieService.revokeAllDevices(user.getId());
+        // Refresh tokens outlive the access JWT, so revoke them too — otherwise a
+        // held refresh cookie could keep minting sessions for the deleted account.
+        refreshTokenService.revokeAllForUser(user.getId());
 
         catalogClient.removeUserArticles(user.getId());
         contractsClient.removeOwnedOpenContracts(user.getId());
+        // Drop reviews written by or about the user so none outlive the account.
+        reviewService.deleteAllForUser(user.getId());
 
         return ResponseEntity.ok().build();
     }
@@ -408,67 +416,85 @@ public class UserController {
         return auths.stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }
 
-    @GetMapping("/{userId}")
-        public ResponseEntity<PublicProfileDto> getUserProfile(@PathVariable Long userId) {
-        return userRepository.findById(userId)
-            .filter(user -> user.getDeletedAt() == null)
-            .map(user -> ResponseEntity.ok(buildPublicProfile(user)))
-            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
-        }
+    /**
+     * Public profile by opaque public id. This is the only profile route exposed
+     * to anonymous callers (see SecurityConfig); the numeric {@code /{userId}}
+     * variant is authenticated and used internally, so profiles can no longer be
+     * enumerated by walking sequential primary keys.
+     */
+    @GetMapping("/by-public-id/{publicId}")
+    public ResponseEntity<PublicProfileDto> getUserProfileByPublicId(@PathVariable String publicId) {
+        return userRepository.findByPublicId(publicId)
+                .filter(user -> user.getDeletedAt() == null)
+                .map(user -> ResponseEntity.ok(buildPublicProfile(user)))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
 
-        @GetMapping("/public")
-        public ResponseEntity<List<PublicProfileDto>> getPublicProfiles(@RequestParam List<Long> ids) {
+    @GetMapping("/{userId}")
+    public ResponseEntity<PublicProfileDto> getUserProfile(@PathVariable Long userId) {
+        return userRepository.findById(userId)
+                .filter(user -> user.getDeletedAt() == null)
+                .map(user -> ResponseEntity.ok(buildPublicProfile(user)))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
+
+    @GetMapping("/public")
+    public ResponseEntity<List<PublicProfileDto>> getPublicProfiles(@RequestParam List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return ResponseEntity.ok(List.of());
         }
 
         List<Long> uniqueIds = ids.stream().distinct().toList();
         List<User> users = userRepository.findAllById(uniqueIds).stream()
-            .filter(user -> user.getDeletedAt() == null)
-            .toList();
+                .filter(user -> user.getDeletedAt() == null)
+                .toList();
         var usersById = users.stream().collect(Collectors.toMap(User::getId, user -> user, (left, right) -> left, LinkedHashMap::new));
         var summariesById = gamificationClient.getSummaries(uniqueIds).stream()
-            .collect(Collectors.toMap(GamificationClient.UserSummary::userId, summary -> summary,
-                (left, right) -> left, LinkedHashMap::new));
+                .collect(Collectors.toMap(GamificationClient.UserSummary::userId, summary -> summary,
+                        (left, right) -> left, LinkedHashMap::new));
+        // One aggregate query for all requested users instead of two per user.
+        var reviewStatsById = reviewService.statsForTargets(uniqueIds);
+        var emptyStats = new com.thecircle.users.service.ReviewService.ReviewStats(null, 0);
 
         List<PublicProfileDto> profiles = uniqueIds.stream()
-            .map(usersById::get)
-            .filter(java.util.Objects::nonNull)
-            .map(user -> buildPublicProfile(user, summariesById.get(user.getId())))
-            .toList();
+                .map(usersById::get)
+                .filter(java.util.Objects::nonNull)
+                .map(user -> buildPublicProfile(user, summariesById.get(user.getId()),
+                        reviewStatsById.getOrDefault(user.getId(), emptyStats)))
+                .toList();
 
         return ResponseEntity.ok(profiles);
     }
 
     @PostMapping("/{userId}/reviews")
-    public ResponseEntity<ReviewDto> createReview(@PathVariable String userId, @Valid @RequestBody ReviewDto dto) {
-        return ResponseEntity.ok(new ReviewDto("r1", dto.reviewerId(), userId, dto.contractId(), dto.rating(),
-                dto.comment(), LocalDateTime.now()));
+    public ResponseEntity<ReviewDto> createReview(@PathVariable Long userId, @Valid @RequestBody ReviewDto dto,
+            Authentication authentication) {
+        User reviewer = getAuthenticatedUser(authentication);
+        return ResponseEntity.status(HttpStatus.CREATED).body(reviewService.create(reviewer.getId(), userId, dto));
     }
 
     @GetMapping("/{userId}/reviews")
-    public ResponseEntity<List<ReviewDto>> getUserReviews(@PathVariable String userId) {
-        return ResponseEntity.ok(List.of(
-                new ReviewDto("r1", "u2", userId, "c1", 5, "Great user", LocalDateTime.now())));
+    public ResponseEntity<List<ReviewDto>> getUserReviews(@PathVariable Long userId) {
+        return ResponseEntity.ok(reviewService.listForTarget(userId));
     }
 
     @GetMapping("/me")
     public ResponseEntity<UserProfileDto> me(Authentication authentication) {
         try {
             User u = getAuthenticatedUser(authentication);
-            return ResponseEntity.ok(new UserProfileDto(u.getId(), u.getEmail(), u.getFirstName(),
-                u.getLastName(), u.getZone(), u.getKycStatus().name(), avatarUrl(u)));
+            return ResponseEntity.ok(new UserProfileDto(u.getId(), u.getPublicId(), u.getEmail(), u.getFirstName(),
+                    u.getLastName(), u.getZone(), u.getKycStatus().name(), avatarUrl(u)));
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode()).build();
         }
     }
 
-        public record SettingsResponse(String firstName, String lastName, String email, String address, String zone,
+    public record SettingsResponse(String firstName, String lastName, String email, String address, String zone,
             String idNumber, String ibanLast4, boolean marketingEmailsOptIn, boolean systemEmailsOptIn,
             String avatarUrl) {
     }
 
-        public record UpdateProfileRequest(
+    public record UpdateProfileRequest(
             @Pattern(regexp = ValidationPatterns.NAME, message = "First name " + ValidationPatterns.NAME_MSG)
             String firstName,
             @Pattern(regexp = ValidationPatterns.NAME, message = "Last name " + ValidationPatterns.NAME_MSG)
@@ -521,10 +547,11 @@ public class UserController {
 
     private PublicProfileDto buildPublicProfile(User user) {
         var summary = gamificationClient.getSummaries(List.of(user.getId())).stream().findFirst().orElse(null);
-        return buildPublicProfile(user, summary);
+        return buildPublicProfile(user, summary, reviewService.statsForTarget(user.getId()));
     }
 
-    private PublicProfileDto buildPublicProfile(User user, GamificationClient.UserSummary summary) {
+    private PublicProfileDto buildPublicProfile(User user, GamificationClient.UserSummary summary,
+            com.thecircle.users.service.ReviewService.ReviewStats reviewStats) {
         int points = summary != null ? summary.totalPoints() : 0;
         List<PublicBadgeDto> badges = summary != null
                 ? summary.badges().stream()
@@ -548,12 +575,15 @@ public class UserController {
 
         return new PublicProfileDto(
                 user.getId(),
+                user.getPublicId(),
                 displayName,
                 avatarUrl(user),
                 user.getZone(),
                 user.getCreatedAt(),
                 points,
-                badges);
+                badges,
+                reviewStats.average(),
+                reviewStats.count());
     }
 
     private String normalizeZone(String zone) {

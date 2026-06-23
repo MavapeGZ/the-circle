@@ -27,11 +27,16 @@ spring:
 # Secret key for JWT token generation and validation
 jwt:
   secret: ${JWT_SECRET}
-  # Token lifetime in ms. No refresh-token flow exists, so this also caps the
-  # active session length. Kept short (1h default) so a token leaked or used
-  # after logout expires quickly; the expiry is embedded in the JWT, so both
-  # ms-users and ms-contracts reject it once elapsed. Override per deployment.
+  # Access-token lifetime in ms. Kept short (1h default) so a token leaked or
+  # used after logout expires quickly; the expiry is embedded in the JWT, so
+  # both ms-users and ms-contracts reject it once elapsed. The short TTL no
+  # longer caps the session: the refresh-token flow below lets a client mint a
+  # fresh access token without re-authenticating (see issue #89).
   expiration: ${JWT_EXPIRATION:3600000} # 1 hour in milliseconds
+  # Refresh-token lifetime in ms. This now caps the active session length: a
+  # client can keep refreshing the access token until the refresh token expires.
+  # Stored hashed in refresh_tokens and rotated on every use. Default 30 days.
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000} # 30 days in milliseconds
 
 kyc:
   upload-dir: ${KYC_UPLOAD_DIR:${user.home}/the-circle/uploads/users}
@@ -78,3 +83,9 @@ auth:
       max-age-days: ${DEVICE_COOKIE_MAX_AGE_DAYS:90}
       secure: ${DEVICE_COOKIE_SECURE:false}
       secret: ${DEVICE_COOKIE_SECRET:${jwt.secret}}
+  refresh:
+    cookie:
+      # Keep aligned with jwt.refresh-expiration (30 days). httpOnly + scoped to
+      # /api/auth. Set REFRESH_COOKIE_SECURE=true behind HTTPS in production.
+      max-age-days: ${REFRESH_COOKIE_MAX_AGE_DAYS:30}
+      secure: ${REFRESH_COOKIE_SECURE:false}

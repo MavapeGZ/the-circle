@@ -1,13 +1,14 @@
 import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import api from '../services/api';
+import api, { extractApiError } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { contractTypeLabel } from '../utils/contractType';
+import ReviewForm from '../components/ReviewForm';
 
 function ContractDetail() {
   const { contractId } = useParams();
   const navigate = useNavigate();
-  const { user: currentUser } = useContext(AuthContext);
+  const { user: currentUser, refreshContracts } = useContext(AuthContext);
 
   const [contract, setContract] = useState(null);
   const [ownerName, setOwnerName] = useState('');
@@ -17,6 +18,10 @@ function ContractDetail() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewDone, setReviewDone] = useState(false);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
 
   useEffect(() => {
     let objectUrl;
@@ -53,6 +58,22 @@ function ContractDetail() {
           .catch(() => setPayments([])),
       ]);
 
+      // Reflect a review I already left for the other party on this contract, so the
+      // form isn't offered again (the backend would reject the duplicate with a 409).
+      const myId = currentUser?.id;
+      if (myId) {
+        const otherId = String(myId) === String(data.ownerId) ? data.receiverId : data.ownerId;
+        if (otherId) {
+          api.get(`/users/${otherId}/reviews`)
+            .then((r) => {
+              const mine = (r.data || []).some(
+                (rv) => String(rv.reviewerId) === String(myId) && rv.contractId === contractId);
+              if (mine) setAlreadyReviewed(true);
+            })
+            .catch(() => {});
+        }
+      }
+
       // Prefer the signed artifact; fall back to a freshly rendered preview.
       try {
         const pdfRes = data.storedContractId
@@ -88,6 +109,7 @@ function ContractDetail() {
 
   const statusLabel = (c) => {
     if (c.status === 'ACTIVE') return { text: 'Active (signed by both)', cls: 'bg-green-100 text-green-800' };
+    if (c.status === 'DELIVERED') return { text: 'Delivered', cls: 'bg-emerald-100 text-emerald-800' };
     if (c.status === 'AWAITING_COUNTERPARTY') return { text: 'Awaiting counterparty', cls: 'bg-yellow-100 text-yellow-800' };
     if (c.status === 'COMPLETED') return { text: `Completed (deposit ${c.guaranteeStatus?.toLowerCase()})`, cls: 'bg-gray-200 text-gray-700' };
     if (c.status === 'CANCELLED') return { text: 'Cancelled', cls: 'bg-red-100 text-red-700' };
@@ -113,6 +135,40 @@ function ContractDetail() {
     navigate(`/contracts/${contract.id}/sign`, {
       state: { contract, signerEmail: currentUser?.email, role: myRole, from: `/contracts/${contract.id}` },
     });
+  };
+
+  // Delivery hand-over for sales/donations/cessions: available once both parties
+  // have signed (ACTIVE/DELIVERED). Owner confirms delivery, receiver confirms
+  // reception; both → DELIVERED. Rentals don't use this handshake — they are
+  // reviewable on devolution (the deposit is settled → COMPLETED).
+  const isRental = contract.type === 'RENT';
+  // A deposit rental is reviewable on devolution (deposit settled → COMPLETED).
+  // Everything else — goods and deposit-less rentals — uses the hand-over handshake.
+  const rentalHasDeposit = isRental && Number(contract.guaranteeAmount) > 0;
+  const usesHandshake = !isRental || !rentalHasDeposit;
+  const canConfirmDelivery = myRole && usesHandshake
+    && (contract.status === 'ACTIVE' || contract.status === 'DELIVERED');
+  const myConfirmedAt = isOwner ? contract.ownerDeliveredAt : contract.receiverReceivedAt;
+  const bothConfirmed = contract.ownerDeliveredAt && contract.receiverReceivedAt;
+  // When each party may leave a review: hand-over confirmed, or the deposit rental
+  // has been returned (COMPLETED).
+  const canReview = myRole && (
+    (usesHandshake && bothConfirmed) || (rentalHasDeposit && contract.status === 'COMPLETED')
+  );
+  const otherPartyId = isOwner ? contract.receiverId : contract.ownerId;
+
+  const confirmDelivery = async () => {
+    setConfirming(true);
+    setError('');
+    try {
+      const res = await api.post(`/contracts/${contract.id}/delivery/confirm`);
+      setContract(res.data);
+      refreshContracts();
+    } catch (err) {
+      setError(extractApiError(err, 'Could not confirm delivery.'));
+    } finally {
+      setConfirming(false);
+    }
   };
 
   const escrowed = payments.find((p) => p.status === 'ESCROWED') || null;
@@ -217,6 +273,56 @@ function ContractDetail() {
             >
               Download signed PDF
             </button>
+          )}
+
+          {canConfirmDelivery && (
+            <div className="mt-6 p-4 bg-emerald-50 border border-emerald-100 rounded-lg text-sm text-emerald-900">
+              <p className="font-bold mb-2">Hand-over</p>
+              <ul className="space-y-1 mb-3">
+                <li>Owner delivered: {contract.ownerDeliveredAt ? new Date(contract.ownerDeliveredAt).toLocaleString() : 'Not yet'}</li>
+                <li>Receiver received: {contract.receiverReceivedAt ? new Date(contract.receiverReceivedAt).toLocaleString() : 'Not yet'}</li>
+              </ul>
+              {myConfirmedAt ? (
+                <p className="text-emerald-700">
+                  You confirmed {isOwner ? 'delivery' : 'reception'}.
+                  {!bothConfirmed && ' Waiting for the other party.'}
+                </p>
+              ) : (
+                <button
+                  onClick={confirmDelivery}
+                  disabled={confirming}
+                  className={`w-full font-bold py-2.5 px-6 rounded-lg text-white ${confirming ? 'bg-emerald-400' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                >
+                  {confirming ? 'Saving…' : isOwner ? 'Mark as delivered' : 'Mark as received'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {canReview && !reviewDone && !alreadyReviewed && (
+            showReviewForm ? (
+              <ReviewForm
+                targetUserId={otherPartyId}
+                contractId={contract.id}
+                onSubmitted={() => { setReviewDone(true); setShowReviewForm(false); }}
+                onCancel={() => setShowReviewForm(false)}
+              />
+            ) : (
+              <button
+                onClick={() => setShowReviewForm(true)}
+                className="mt-3 w-full bg-yellow-500 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-yellow-600 transition"
+              >
+                Leave a review
+              </button>
+            )
+          )}
+
+          {reviewDone && (
+            <p className="mt-3 text-sm font-semibold text-emerald-700">Thanks! Your review was submitted.</p>
+          )}
+
+          {canReview && alreadyReviewed && !reviewDone && (
+            <p className="mt-3 text-sm font-semibold text-gray-500">You already reviewed this transaction.</p>
           )}
         </div>
 

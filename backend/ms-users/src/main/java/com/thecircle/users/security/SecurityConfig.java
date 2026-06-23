@@ -42,7 +42,17 @@ public class SecurityConfig {
                 .requestMatchers("/api/users/me").authenticated()
                 // Avatars load from plain <img> tags that cannot carry the JWT.
                 .requestMatchers(HttpMethod.GET, "/api/users/*/avatar").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
+                // Reviews are shown on public profiles, so reading them is public too.
+                .requestMatchers(HttpMethod.GET, "/api/users/*/reviews").permitAll()
+                // Public profile is addressed by an opaque, non-sequential id so it
+                // cannot be enumerated. The batch lookup (used by the catalog for
+                // seller cards) takes the ids the caller already has from listings.
+                .requestMatchers(HttpMethod.GET, "/api/users/by-public-id/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/users/public").permitAll()
+                // Numeric profile lookup is for authenticated app flows only (name
+                // resolution in chat/contracts); blocking anonymous access stops
+                // walking /api/users/1, 2, 3… to harvest profiles.
+                .requestMatchers(HttpMethod.GET, "/api/users/*").authenticated()
                 .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                 .anyRequest().authenticated()
             )

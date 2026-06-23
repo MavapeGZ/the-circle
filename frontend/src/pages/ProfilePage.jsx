@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import api, { resolveAssetUrl } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import BadgeList from '../components/BadgeList';
+import ReviewsSection from '../components/ReviewsSection';
 import { ZONE_OPTIONS } from '../constants/zones';
 
 function zoneLabel(zone) {
@@ -22,7 +23,9 @@ export default function ProfilePage() {
   const { id: profileId } = useParams();
   const { user } = useContext(AuthContext);
 
-  const resolvedId = profileId || user?.id;
+  // Profiles are addressed by opaque public id. The route param carries it for
+  // other people's profiles; for my own (/profile) it comes from my session.
+  const resolvedId = profileId || user?.publicId;
   const [profile, setProfile] = useState(null);
   const [allBadges, setAllBadges] = useState([]);
   const [loading, setLoading] = useState(Boolean(resolvedId));
@@ -44,7 +47,7 @@ export default function ProfilePage() {
         // Fetch the profile and the full badge catalogue together. The catalogue
         // lets us show every badge (dimmed until earned), not just earned ones.
         const [{ data }, catalogue] = await Promise.all([
-          api.get(`/users/${resolvedId}`),
+          api.get(`/users/by-public-id/${resolvedId}`),
           api.get('/gamification/badges').then((r) => r.data).catch(() => []),
         ]);
         if (mounted) {
@@ -180,6 +183,8 @@ export default function ProfilePage() {
           )}
         </aside>
       </section>
+
+      <ReviewsSection userId={profile.id} average={profile.reviewAverage} count={profile.reviewCount} />
     </div>
   );
 }
