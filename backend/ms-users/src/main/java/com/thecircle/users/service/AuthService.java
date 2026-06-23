@@ -40,14 +40,11 @@ public class AuthService {
     private final PasswordResetTokenStore passwordResetTokenStore;
     private final RefreshTokenService refreshTokenService;
 
-    @Value("${signature.mail.verify-subject:The Circle - Verify your account}")
-    private String verifySubject;
-
-    @Value("${signature.mail.login-subject:The Circle - Sign-in code}")
-    private String loginSubject;
-
-    @Value("${signature.mail.password-reset-subject:The Circle - Password reset code}")
-    private String passwordResetSubject;
+    // i18n subject keys; ms-notifications resolves the localized subject per the
+    // recipient's language. (Replaces the previous hardcoded @Value subjects.)
+    private static final String VERIFY_SUBJECT_KEY = "email.subject.verify";
+    private static final String LOGIN_SUBJECT_KEY = "email.subject.login";
+    private static final String PASSWORD_RESET_SUBJECT_KEY = "email.subject.reset";
 
     @Transactional
     public AuthenticationResponse register(RegisterRequest request) {
@@ -78,7 +75,7 @@ public class AuthService {
 
         AuthOtpService.Issued issued = otpService.issue(user.getId(), user.getEmail(),
                 AuthOtpService.Purpose.EMAIL_VERIFICATION);
-        sendOtpEmail(user, issued, verifySubject, "account-verification");
+        sendOtpEmail(user, issued, VERIFY_SUBJECT_KEY, "account-verification");
 
         return AuthenticationResponse.builder()
                 .sessionId(issued.sessionId)
@@ -118,7 +115,7 @@ public class AuthService {
         if (!user.isEmailVerified()) {
             AuthOtpService.Issued issued = otpService.issue(user.getId(), user.getEmail(),
                     AuthOtpService.Purpose.EMAIL_VERIFICATION);
-            sendOtpEmail(user, issued, verifySubject, "account-verification");
+            sendOtpEmail(user, issued, VERIFY_SUBJECT_KEY, "account-verification");
             return LoginOutcome.intermediate(AuthenticationResponse.builder()
                     .sessionId(issued.sessionId)
                     .requiresEmailVerification(true)
@@ -136,7 +133,7 @@ public class AuthService {
 
         AuthOtpService.Issued issued = otpService.issue(user.getId(), user.getEmail(),
                 AuthOtpService.Purpose.LOGIN);
-        sendOtpEmail(user, issued, loginSubject, "login-otp");
+        sendOtpEmail(user, issued, LOGIN_SUBJECT_KEY, "login-otp");
         return LoginOutcome.intermediate(AuthenticationResponse.builder()
                 .sessionId(issued.sessionId)
                 .requiresOtp(true)
@@ -185,14 +182,13 @@ public class AuthService {
         return jwtService.generateToken(user);
     }
 
-    private void sendOtpEmail(User user, AuthOtpService.Issued issued, String subject, String templateName) {
+    private void sendOtpEmail(User user, AuthOtpService.Issued issued, String subjectKey, String templateName) {
         Map<String, Object> vars = new HashMap<>();
         vars.put("otpCode", issued.rawOtp);
         vars.put("ttlMinutes", Math.max(1, issued.ttlSeconds / 60));
         vars.put("recipientName", user.getFirstName());
-        vars.put("subject", subject);
         try {
-            notificationsClient.sendEmail(user.getEmail(), subject, templateName, vars);
+            notificationsClient.sendEmail(user.getEmail(), subjectKey, templateName, user.getLanguage(), vars);
         } catch (NotificationsClient.DeliveryException e) {
             log.error("Failed to deliver OTP email to {}", user.getEmail(), e);
             throw e;
@@ -285,7 +281,7 @@ public class AuthService {
         // is logged but never surfaced — a bouncing mailbox would otherwise let
         // a caller distinguish a real email from an unknown one.
         try {
-            sendOtpEmail(user, issued, passwordResetSubject, "password-reset");
+            sendOtpEmail(user, issued, PASSWORD_RESET_SUBJECT_KEY, "password-reset");
         } catch (NotificationsClient.DeliveryException e) {
             log.warn("Password reset email could not be sent to {}", user.getEmail());
         }

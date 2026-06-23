@@ -1,13 +1,17 @@
 import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import { usePreferences } from '../context/PreferencesContext';
 import { contractTypeLabel } from '../utils/contractType';
 import { contractActionRequired } from '../utils/contractAction';
 import usePageTitle from '../hooks/usePageTitle';
 
 function MyContracts() {
-  usePageTitle('My Contracts');
+  usePageTitle('title.contracts');
+  const { t } = useTranslation();
+  const { formatDate } = usePreferences();
   const navigate = useNavigate();
   const { refreshContracts } = useContext(AuthContext);
 
@@ -31,7 +35,7 @@ function MyContracts() {
         setMe(meRes.data);
         await loadContracts(meRes.data.id);
       } catch {
-        setError('Could not load your contracts.');
+        setError(t('mc.loadError'));
       } finally {
         setLoading(false);
       }
@@ -88,7 +92,7 @@ function MyContracts() {
       await loadContracts(me.id);
       refreshContracts();
     } catch {
-      setError('Could not update the deposit.');
+      setError(t('mc.depositError'));
     } finally {
       setBusyId(null);
     }
@@ -105,30 +109,30 @@ function MyContracts() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      setError('Could not download the contract.');
+      setError(t('mc.downloadError'));
     }
   };
 
   const statusLabel = (c) => {
-    if (c.status === 'ACTIVE') return { text: 'Active (signed by both)', cls: 'bg-green-100 text-green-800' };
-    if (c.status === 'DELIVERED') return { text: 'Delivered', cls: 'bg-emerald-100 text-emerald-800' };
-    if (c.status === 'COMPLETED') return { text: `Completed (deposit ${c.guaranteeStatus?.toLowerCase()})`, cls: 'bg-gray-200 text-gray-700' };
-    if (iNeedToSign(c)) return { text: 'Awaiting your signature', cls: 'bg-yellow-100 text-yellow-800' };
-    return { text: 'Awaiting other party', cls: 'bg-indigo-100 text-indigo-800' };
+    if (c.status === 'ACTIVE') return { text: t('mc.status.active'), cls: 'bg-green-100 text-green-800' };
+    if (c.status === 'DELIVERED') return { text: t('mc.status.delivered'), cls: 'bg-emerald-100 text-emerald-800' };
+    if (c.status === 'COMPLETED') return { text: t('mc.status.completed', { status: c.guaranteeStatus?.toLowerCase() }), cls: 'bg-gray-200 text-gray-700' };
+    if (iNeedToSign(c)) return { text: t('mc.status.awaitingYou'), cls: 'bg-yellow-100 text-yellow-800' };
+    return { text: t('mc.status.awaitingOther'), cls: 'bg-indigo-100 text-indigo-800' };
   };
 
-  if (loading) return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">Loading contracts...</div>;
+  if (loading) return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">{t('mc.loading')}</div>;
 
   return (
     <div className="max-w-4xl mx-auto mt-8 p-4">
-      <h1 className="text-3xl font-extrabold text-gray-900 mb-6">My Contracts</h1>
+      <h1 className="text-3xl font-extrabold text-gray-900 mb-6">{t('mc.title')}</h1>
 
       {error && (
         <div className="p-4 mb-6 rounded-lg text-sm font-bold bg-red-100 text-red-700">{error}</div>
       )}
 
       {contracts.length === 0 ? (
-        <p className="text-gray-500">You have no contracts yet.</p>
+        <p className="text-gray-500">{t('mc.none')}</p>
       ) : (
         <ul className="space-y-4">
           {contracts.map((c) => {
@@ -145,16 +149,16 @@ function MyContracts() {
                     <p className="font-bold text-gray-900 text-base flex items-center gap-2">
                       {needsAction && (
                         <span className="bg-red-500 text-white text-[10px] font-bold rounded-full px-2 py-0.5 leading-none uppercase tracking-wide">
-                          Action required
+                          {t('mc.actionRequired')}
                         </span>
                       )}
-                      <span>{contractTypeLabel(c.type)} · {mineAsOwner ? 'You are the owner' : 'You are the receiver'}</span>
+                      <span>{contractTypeLabel(c.type, t)} · {mineAsOwner ? t('mc.youAreOwner') : t('mc.youAreReceiver')}</span>
                     </p>
-                    <p>Item: {itemTitles[c.itemId] || c.itemId}</p>
-                    <p>With: {userNames[counterpartId] || counterpartId}</p>
-                    <p>Created: {c.createdAt ? new Date(c.createdAt).toLocaleString() : '—'}</p>
+                    <p>{t('mc.item', { title: itemTitles[c.itemId] || c.itemId })}</p>
+                    <p>{t('mc.with', { name: userNames[counterpartId] || counterpartId })}</p>
+                    <p>{t('mc.created', { date: c.createdAt ? formatDate(c.createdAt, { dateStyle: 'medium', timeStyle: 'short' }) : '—' })}</p>
                     {c.guaranteeStatus && c.guaranteeStatus !== 'NONE' && (
-                      <p>Deposit: {c.guaranteeAmount} € ({c.guaranteeStatus.toLowerCase()})</p>
+                      <p>{t('mc.deposit', { amount: c.guaranteeAmount, status: c.guaranteeStatus.toLowerCase() })}</p>
                     )}
                   </div>
                   <span className={`text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ${label.cls}`}>
@@ -168,7 +172,7 @@ function MyContracts() {
                       onClick={() => goSign(c)}
                       className="px-6 py-2 bg-indigo-600 text-white font-bold rounded shadow hover:bg-indigo-700 transition"
                     >
-                      Sign
+                      {t('mc.sign')}
                     </button>
                   )}
                   {canSettle && (
@@ -178,14 +182,14 @@ function MyContracts() {
                         disabled={busyId === c.id}
                         className="px-5 py-2 bg-green-600 text-white font-bold rounded shadow hover:bg-green-700 transition disabled:opacity-50"
                       >
-                        Release deposit
+                        {t('mc.releaseDeposit')}
                       </button>
                       <button
                         onClick={() => settleGuarantee(c, 'claim')}
                         disabled={busyId === c.id}
                         className="px-5 py-2 bg-red-600 text-white font-bold rounded shadow hover:bg-red-700 transition disabled:opacity-50"
                       >
-                        Claim deposit
+                        {t('mc.claimDeposit')}
                       </button>
                     </>
                   )}
@@ -195,13 +199,13 @@ function MyContracts() {
                         onClick={() => navigate(`/contracts/${c.id}`)}
                         className="px-5 py-2 bg-indigo-50 text-indigo-700 font-bold rounded shadow hover:bg-indigo-100 transition"
                       >
-                        View detail
+                        {t('mc.viewDetail')}
                       </button>
                       <button
                         onClick={() => downloadSigned(c)}
                         className="px-5 py-2 bg-gray-100 text-gray-700 font-bold rounded shadow hover:bg-gray-200 transition"
                       >
-                        Download PDF
+                        {t('mc.downloadPdf')}
                       </button>
                     </>
                   )}

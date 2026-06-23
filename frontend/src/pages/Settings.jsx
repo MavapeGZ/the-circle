@@ -1,16 +1,23 @@
 import { useState, useEffect, useContext, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api, { resolveAssetUrl, extractApiError } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import { usePreferences } from '../context/PreferencesContext';
+import { SUPPORTED_CURRENCIES } from '../utils/currency';
 import { ZONE_OPTIONS } from '../constants/zones';
 import usePageTitle from '../hooks/usePageTitle';
 
-const TABS = ['profile', 'security', 'payments', 'verification', 'notifications', 'account'];
+const TABS = ['profile', 'security', 'payments', 'verification', 'notifications', 'preferences', 'account'];
+const TIMEZONE_OPTIONS = ['Europe/Madrid', 'Europe/London', 'Atlantic/Canary', 'UTC', 'America/New_York', 'America/Los_Angeles'];
+const LANGUAGE_OPTIONS = ['es', 'en'];
 
 function Settings() {
-  usePageTitle('Settings');
+  usePageTitle('title.settings');
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
+  const { language, currency, timezone, updatePreferences } = usePreferences();
   const { user, logout, uploadKycDocuments, updateUser } = useContext(AuthContext);
 
   const initialTab = location.state?.tab && TABS.includes(location.state.tab)
@@ -141,6 +148,24 @@ function Settings() {
     }
   };
 
+  // Mirror the global preferences locally so the selects are editable, then push
+  // all three at once. updatePreferences persists to the account + localStorage
+  // and re-localizes the app immediately.
+  const [prefForm, setPrefForm] = useState({ language, currency, timezone });
+  useEffect(() => {
+    setPrefForm({ language, currency, timezone });
+  }, [language, currency, timezone]);
+
+  const handlePreferencesUpdate = async (e) => {
+    e.preventDefault();
+    try {
+      await updatePreferences(prefForm);
+      showMessage(t('settings.preferences.saved'));
+    } catch (err) {
+      showMessage(extractApiError(err, t('settings.preferences.saveError')), 'error');
+    }
+  };
+
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     try {
@@ -243,11 +268,11 @@ function Settings() {
     }
   };
 
-  if (loading) return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">Loading settings...</div>;
+  if (loading) return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">{t('settings.loading')}</div>;
 
   return (
     <div className="max-w-4xl mx-auto mt-8 p-4">
-      <h1 className="text-3xl font-extrabold text-gray-900 mb-8">Account Settings</h1>
+      <h1 className="text-3xl font-extrabold text-gray-900 mb-8">{t('settings.title')}</h1>
 
       {message.text && (
         <div className={`p-4 mb-6 rounded-lg text-sm font-bold ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
@@ -267,7 +292,7 @@ function Settings() {
                 activeTab === tab ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {tab}
+              {t(`settings.tab.${tab}`)}
             </button>
           ))}
         </div>
@@ -597,6 +622,60 @@ function Settings() {
 
               <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition">
                 Save Preferences
+              </button>
+            </form>
+          )}
+
+          {/* PREFERENCES TAB */}
+          {activeTab === 'preferences' && (
+            <form onSubmit={handlePreferencesUpdate} className="space-y-6">
+              <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">{t('settings.preferences.title')}</h2>
+              <p className="text-sm text-gray-600">{t('settings.preferences.intro')}</p>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">{t('settings.preferences.language')}</label>
+                <select
+                  value={prefForm.language}
+                  onChange={(e) => setPrefForm({ ...prefForm, language: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 bg-white"
+                >
+                  {LANGUAGE_OPTIONS.map((code) => (
+                    <option key={code} value={code}>{t(`lang.${code}`)}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">{t('settings.preferences.languageHelp')}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">{t('settings.preferences.currency')}</label>
+                <select
+                  value={prefForm.currency}
+                  onChange={(e) => setPrefForm({ ...prefForm, currency: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 bg-white"
+                >
+                  {SUPPORTED_CURRENCIES.map((code) => (
+                    <option key={code} value={code}>{code}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">{t('settings.preferences.currencyHelp')}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">{t('settings.preferences.timezone')}</label>
+                <select
+                  value={prefForm.timezone}
+                  onChange={(e) => setPrefForm({ ...prefForm, timezone: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 bg-white"
+                >
+                  {TIMEZONE_OPTIONS.map((tz) => (
+                    <option key={tz} value={tz}>{t(`tz.${tz}`)}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">{t('settings.preferences.timezoneHelp')}</p>
+              </div>
+
+              <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition">
+                {t('settings.preferences.save')}
               </button>
             </form>
           )}

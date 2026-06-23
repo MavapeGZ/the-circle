@@ -83,7 +83,7 @@ class SignatureWorkflowServiceTest {
         assertNotNull(resp.getSessionId());
         assertNotNull(resp.getMessage());
         assertNull(resp.getOtp());
-        verify(otpDelivery).send(eq("signer@example.com"), any(), any());
+        verify(otpDelivery).send(eq("signer@example.com"), any(), any(), any());
     }
 
     @Test
@@ -97,7 +97,7 @@ class SignatureWorkflowServiceTest {
 
     @Test
     void requestOtp_deliveryFailure_throws502() {
-        doThrow(new RestClientException("ms-notifications down")).when(otpDelivery).send(any(), any(), any());
+        doThrow(new RestClientException("ms-notifications down")).when(otpDelivery).send(any(), any(), any(), any());
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> service.requestOtp(buildRequest()));
         assertEquals(HttpStatus.BAD_GATEWAY, ex.getStatusCode());
@@ -144,7 +144,7 @@ class SignatureWorkflowServiceTest {
         ReflectionTestUtils.setField(service, "exposeOtp", true);
         SignRequestResponseDto init = service.requestOtp(buildRequest());
 
-        when(pdfService.generatePdf(any())).thenReturn("PDF".getBytes());
+        when(pdfService.generatePdf(any(), any())).thenReturn("PDF".getBytes());
         when(storageService.saveWithAudit(any(), any(), any(), any(), any())).thenReturn(buildStoredContract());
 
         SignConfirmResponseDto resp = service.confirm(init.getSessionId(), init.getOtp(), "127.0.0.1", "TestAgent");
@@ -187,7 +187,7 @@ class SignatureWorkflowServiceTest {
         ReflectionTestUtils.setField(service, "exposeOtp", true);
         SignRequestResponseDto init = service.requestOtp(buildRequest());
 
-        when(pdfService.generatePdf(any())).thenReturn("PDF".getBytes());
+        when(pdfService.generatePdf(any(), any())).thenReturn("PDF".getBytes());
         when(storageService.saveWithAudit(any(), any(), any(), any(), any())).thenReturn(buildStoredContract());
 
         service.confirm(init.getSessionId(), init.getOtp(), "127.0.0.1", "UA");
@@ -202,7 +202,7 @@ class SignatureWorkflowServiceTest {
         ReflectionTestUtils.setField(service, "exposeOtp", true);
         SignRequestResponseDto init = service.requestOtp(buildRequest());
 
-        when(pdfService.generatePdf(any()))
+        when(pdfService.generatePdf(any(), any()))
                 .thenThrow(new IOException("boom"))
                 .thenReturn("PDF".getBytes());
         when(storageService.saveWithAudit(any(), any(), any(), any(), any())).thenReturn(buildStoredContract());

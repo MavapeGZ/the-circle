@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { resolveAssetUrl } from '../services/api';
 import { ZONE_OPTIONS } from '../constants/zones';
+import { usePreferences } from '../context/PreferencesContext';
 
-function zoneLabel(zone) {
-  return ZONE_OPTIONS.find((option) => option.value === zone)?.label || zone || 'Not shared';
+function zoneLabel(zone, fallback) {
+  return ZONE_OPTIONS.find((option) => option.value === zone)?.label || zone || fallback;
 }
 
 function initials(name) {
@@ -17,46 +19,49 @@ function initials(name) {
 }
 
 export default function ArticleCard({ article, sellerProfile }) {
+  const { t } = useTranslation();
+  const { formatPrice, formatDate } = usePreferences();
+
   const renderBadge = () => {
     switch (article.productType) {
       case 'DONATION':
         return (
           <span className="bg-purple-100 text-purple-800 text-xs font-extrabold px-3 py-1 rounded-full border border-purple-300 shadow-sm">
-            🎁 Donation — Free
+            🎁 {t('product.donation')}
           </span>
         );
       case 'DEMAND':
         return (
           <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full border border-indigo-300">
-            DEMAND
+            {t('product.demand')}
           </span>
         );
       case 'SYMBOLIC_SALE':
         return (
           <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full border border-green-300">
-            SALE
+            {t('product.sale')}
           </span>
         );
       case 'SYMBOLIC_RENTAL':
         return (
           <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full border border-green-300">
-            RENTAL
+            {t('product.rental')}
           </span>
         );
       default:
         return null;
     }
   };
-    
-  const priceDisplay = article.price == null || article.price === 0 ? 'Free' : `${article.price} €`;
-  const sellerName = sellerProfile?.displayName || `User ${article.authorId || article.id}`;
-  const sellerInitials = initials(sellerProfile?.displayName || sellerName);
-  const sellerZone = zoneLabel(sellerProfile?.approximateZone);
 
-  // Format the date (comes in ISO format from OpenSearch)
-  const formattedDate = new Date(article.createdAt).toLocaleDateString('en-US', {
-    day: '2-digit', month: 'short', year: 'numeric'
-  });
+  const priceDisplay = article.price == null || article.price === 0
+    ? t('common.free')
+    : formatPrice(article.price);
+  const sellerName = sellerProfile?.displayName || t('common.user', { name: `#${article.authorId || article.id}` });
+  const sellerInitials = initials(sellerProfile?.displayName || sellerName);
+  const sellerZone = zoneLabel(sellerProfile?.approximateZone, t('common.notShared'));
+
+  // Date arrives ISO from OpenSearch; show it in the user's locale + time zone.
+  const formattedDate = formatDate(article.createdAt);
 
   return (
     <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 border border-gray-100 overflow-hidden flex flex-col h-full">
@@ -110,11 +115,11 @@ export default function ArticleCard({ article, sellerProfile }) {
             <div className="flex gap-2 flex-wrap">
               {renderBadge()}
               <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">
-                {zoneLabel(article.zone)}
+                {zoneLabel(article.zone, t('common.notShared'))}
               </span>
               {article.status === 'RESERVED' && (
                 <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full border border-yellow-300">
-                  Reserved
+                  {t('common.reserved')}
                 </span>
               )}
             </div>

@@ -5,6 +5,7 @@ import com.thecircle.contracts.dto.SignerDto;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.ResourceBundleMessageSource;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
@@ -14,7 +15,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class ContractPdfServiceTest {
 
-    private final ContractPdfService service = new ContractPdfService();
+    private final ContractPdfService service = new ContractPdfService(messageSource());
+
+    private static ResourceBundleMessageSource messageSource() {
+        ResourceBundleMessageSource ms = new ResourceBundleMessageSource();
+        ms.setBasename("i18n/messages");
+        ms.setDefaultEncoding("UTF-8");
+        return ms;
+    }
 
     @Test
     public void generatePdf_shouldContainNames() throws Exception {
@@ -28,7 +36,7 @@ public class ContractPdfServiceTest {
         SignerDto s2 = new SignerDto(); s2.setFullName("Maria Lopez"); s2.setIdNumber("5678");
         dto.setPrimarySigner(s1); dto.setSecondarySigner(s2);
 
-        byte[] pdfBytes = service.generatePdf(dto);
+        byte[] pdfBytes = service.generatePdf(dto, "en");
         assertNotNull(pdfBytes);
         assertTrue(pdfBytes.length > 0);
 

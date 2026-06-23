@@ -33,11 +33,17 @@ public class NotificationsClient {
         this.restTemplate = notificationsRestTemplate;
     }
 
-    public void sendEmail(String to, String subject, String templateName, Map<String, Object> variables) {
+    /**
+     * Sends a templated email. The subject is resolved by ms-notifications from
+     * {@code subjectKey} against the recipient's {@code locale} (ISO 639-1, e.g.
+     * "es"/"en"); a null/blank locale falls back to the English bundle.
+     */
+    public void sendEmail(String to, String subjectKey, String templateName, String locale, Map<String, Object> variables) {
         Map<String, Object> body = new HashMap<>();
         body.put("to", to);
-        body.put("subject", subject);
+        body.put("subjectKey", subjectKey);
         body.put("templateName", templateName);
+        body.put("locale", locale);
         body.put("variables", variables);
 
         HttpHeaders headers = new HttpHeaders();

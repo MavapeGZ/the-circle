@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
 import usePageTitle from '../hooks/usePageTitle';
 
@@ -13,9 +14,8 @@ function buildShortcuts(isAuthenticated) {
 
   return [
     {
+      key: 'catalog',
       to: '/catalog',
-      title: 'Browse the catalog',
-      text: 'Explore what the community is offering and find what you need.',
       accent: 'text-sky-600 bg-sky-100',
       ring: 'hover:border-sky-300 hover:shadow-sky-100',
       icon: (
@@ -23,9 +23,8 @@ function buildShortcuts(isAuthenticated) {
       ),
     },
     {
+      key: 'publish',
       to: gated('/create', 'publish-article'),
-      title: 'Publish an article',
-      text: 'Offer something you no longer use as a donation or a symbolic rental.',
       accent: 'text-emerald-600 bg-emerald-100',
       ring: 'hover:border-emerald-300 hover:shadow-emerald-100',
       icon: (
@@ -33,9 +32,8 @@ function buildShortcuts(isAuthenticated) {
       ),
     },
     {
+      key: 'contracts',
       to: gated('/contracts', 'view-contracts'),
-      title: 'My contracts',
-      text: 'Track your exchanges: sign, confirm delivery and settle deposits.',
       accent: 'text-amber-600 bg-amber-100',
       ring: 'hover:border-amber-300 hover:shadow-amber-100',
       icon: (
@@ -43,9 +41,8 @@ function buildShortcuts(isAuthenticated) {
       ),
     },
     {
+      key: 'messages',
       to: gated('/messages', 'view-messages'),
-      title: 'Messages',
-      text: 'Chat with other members and agree on a meeting point securely.',
       accent: 'text-orange-600 bg-orange-100',
       ring: 'hover:border-orange-300 hover:shadow-orange-100',
       icon: (
@@ -53,9 +50,8 @@ function buildShortcuts(isAuthenticated) {
       ),
     },
     {
+      key: 'profile',
       to: '/profile',
-      title: 'My profile',
-      text: 'Manage your published items, reviews and reputation in the circle.',
       accent: 'text-rose-600 bg-rose-100',
       ring: 'hover:border-rose-300 hover:shadow-rose-100',
       icon: (
@@ -63,9 +59,8 @@ function buildShortcuts(isAuthenticated) {
       ),
     },
     {
+      key: 'settings',
       to: gated('/settings', 'settings'),
-      title: 'Settings',
-      text: 'Update your account, contact details and notification preferences.',
       accent: 'text-slate-600 bg-slate-100',
       ring: 'hover:border-slate-300 hover:shadow-slate-100',
       icon: (
@@ -77,6 +72,7 @@ function buildShortcuts(isAuthenticated) {
 
 function Home() {
   usePageTitle();
+  const { t } = useTranslation();
   const { isAuthenticated } = useContext(AuthContext);
   const shortcuts = buildShortcuts(isAuthenticated);
   const publishTo = isAuthenticated
@@ -101,10 +97,10 @@ function Home() {
           />
 
           <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight mb-6">
-            Welcome to <span className="text-indigo-200">The Circle</span>
+            {t('home.welcomeTo')} <span className="text-indigo-200">The Circle</span>
           </h1>
           <p className="text-xl md:text-2xl text-indigo-50/90 mb-10 max-w-3xl mx-auto font-light leading-relaxed">
-            A solidary community where you can give a second life to your belongings or find what you need. Share, connect, and build a more sustainable world.
+            {t('home.subtitle')}
           </p>
 
           {/* Single, focused call to action. */}
@@ -112,7 +108,7 @@ function Home() {
             to={publishTo}
             className="inline-block px-10 py-4 bg-amber-400 text-indigo-950 font-extrabold rounded-full shadow-lg hover:bg-amber-300 hover:scale-105 transition-all duration-300"
           >
-            Be part of the change – publish your first article
+            {t('home.cta')}
           </Link>
         </div>
       </section>
@@ -120,14 +116,14 @@ function Home() {
       {/* QUICK ACCESS — clickable shortcuts into the menu sections. */}
       <section className="py-20 px-4 max-w-6xl mx-auto flex-grow w-full">
         <div className="text-center mb-14">
-          <h2 className="text-3xl font-extrabold text-gray-800 mb-4">Where do you want to go?</h2>
-          <p className="text-gray-500 max-w-2xl mx-auto">Jump straight into any part of The Circle.</p>
+          <h2 className="text-3xl font-extrabold text-gray-800 mb-4">{t('home.where')}</h2>
+          <p className="text-gray-500 max-w-2xl mx-auto">{t('home.whereSub')}</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {shortcuts.map((s) => (
             <Link
-              key={s.title}
+              key={s.key}
               to={s.to}
               className={`group bg-white p-8 rounded-2xl shadow-sm border border-gray-100 transition-all hover:-translate-y-1 hover:shadow-xl ${s.ring} flex flex-col items-center text-center`}
             >
@@ -137,10 +133,10 @@ function Home() {
                 </svg>
               </div>
               <h3 className="text-xl font-bold text-gray-800 mb-3 inline-flex items-center gap-1.5">
-                {s.title}
+                {t(`home.shortcut.${s.key}.title`)}
                 <span className="text-gray-300 group-hover:text-gray-500 group-hover:translate-x-1 transition-all">→</span>
               </h3>
-              <p className="text-gray-600 leading-relaxed">{s.text}</p>
+              <p className="text-gray-600 leading-relaxed">{t(`home.shortcut.${s.key}.text`)}</p>
             </Link>
           ))}
         </div>
@@ -155,7 +151,7 @@ function Home() {
             alt="The Circle"
             className="h-16 w-auto bg-white rounded-2xl px-5 py-3 shadow-sm"
           />
-          <p className="text-sm">© {new Date().getFullYear()} The Circle. All rights reserved.</p>
+          <p className="text-sm">© {new Date().getFullYear()} The Circle. {t('home.footer.rights')}</p>
         </div>
       </footer>
     </div>

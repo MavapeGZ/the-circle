@@ -245,8 +245,8 @@ class ContractServiceTest {
         ContractDto dto = new ContractDto();
         dto.setOwnerId("10");
         dto.setReceiverId("20");
-        when(usersClient.getProfile("20")).thenReturn(new UsersClient.UserProfile(20L, null, "Ana", "Buyer", "1 Main St", "X123"));
-        when(usersClient.getProfile("10")).thenReturn(new UsersClient.UserProfile(10L, "owner@x.com", "Leo", "Owner", "2 Oak Ave", "Y456"));
+        when(usersClient.getProfile("20")).thenReturn(new UsersClient.UserProfile(20L, null, "Ana", "Buyer", "1 Main St", "X123", "MADRID", "es"));
+        when(usersClient.getProfile("10")).thenReturn(new UsersClient.UserProfile(10L, "owner@x.com", "Leo", "Owner", "2 Oak Ave", "Y456", "MADRID", "en"));
 
         service.enrichSigners(dto, "buyer@x.com");
 

@@ -6,7 +6,10 @@ const CONTRACT_TYPE_LABELS = {
   CESSION_PERMANENT: 'Donation',
 };
 
-export function contractTypeLabel(type) {
+// Pass the i18next `t` to get a localized label; without it, falls back to the
+// English map (keeps non-React callers working).
+export function contractTypeLabel(type, t) {
   if (!type) return '—';
-  return CONTRACT_TYPE_LABELS[type] || type;
+  const fallback = CONTRACT_TYPE_LABELS[type] || type;
+  return t ? t(`contractType.${type}`, { defaultValue: fallback }) : fallback;
 }

@@ -8,17 +8,45 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.springframework.context.MessageSource;
+import org.springframework.context.NoSuchMessageException;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Locale;
 
 @Service
 public class ContractPdfService {
 
-    private static final String NA = "[N/A]";
+    private final MessageSource messageSource;
 
-    public byte[] generatePdf(ContractDto dto) throws IOException {
+    public ContractPdfService(MessageSource messageSource) {
+        this.messageSource = messageSource;
+    }
+
+    /** Resolves a bundle key for {@code locale}, falling back to the key itself. */
+    private String t(String key, Locale locale) {
+        try {
+            return messageSource.getMessage(key, null, locale);
+        } catch (NoSuchMessageException e) {
+            return key;
+        }
+    }
+
+    /** Maps a language tag (e.g. "es"/"en") to a Locale; null/blank => English fallback. */
+    private Locale resolveLocale(String tag) {
+        if (!StringUtils.hasText(tag)) {
+            return Locale.ENGLISH;
+        }
+        Locale locale = Locale.forLanguageTag(tag);
+        return StringUtils.hasText(locale.getLanguage()) ? locale : Locale.ENGLISH;
+    }
+
+    public byte[] generatePdf(ContractDto dto, String languageTag) throws IOException {
+        Locale locale = resolveLocale(languageTag);
+        String na = t("contract.na", locale);
         try (PDDocument doc = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.LETTER);
             doc.addPage(page);
@@ -29,19 +57,19 @@ public class ContractPdfService {
                 float height = rect.getHeight();
 
                 drawTitle(cs, width, height - 80f, "The Circle");
-                drawSubtitle(cs, width, height - 110f, "Contract");
+                drawSubtitle(cs, width, height - 110f, t("contract.title", locale));
 
                 SignerDto p1 = dto.getPrimarySigner();
                 SignerDto p2 = dto.getSecondarySigner();
 
-                String name1 = p1 != null && p1.getFullName() != null ? p1.getFullName() : NA;
-                String name2 = p2 != null && p2.getFullName() != null ? p2.getFullName() : NA;
-                String addr1 = p1 != null && p1.getAddress() != null ? p1.getAddress() : NA;
-                String addr2 = p2 != null && p2.getAddress() != null ? p2.getAddress() : NA;
-                String id1 = p1 != null && p1.getIdNumber() != null ? p1.getIdNumber() : NA;
-                String id2 = p2 != null && p2.getIdNumber() != null ? p2.getIdNumber() : NA;
-                String type = typeLabel(dto.getType());
-                String price = formatPrice(dto.getPrice());
+                String name1 = p1 != null && p1.getFullName() != null ? p1.getFullName() : na;
+                String name2 = p2 != null && p2.getFullName() != null ? p2.getFullName() : na;
+                String addr1 = p1 != null && p1.getAddress() != null ? p1.getAddress() : na;
+                String addr2 = p2 != null && p2.getAddress() != null ? p2.getAddress() : na;
+                String id1 = p1 != null && p1.getIdNumber() != null ? p1.getIdNumber() : na;
+                String id2 = p2 != null && p2.getIdNumber() != null ? p2.getIdNumber() : na;
+                String type = typeLabel(dto.getType(), locale, na);
+                String price = formatPrice(dto.getPrice(), na);
 
                 float x = 60f;
                 float y = height - 170f;
@@ -50,36 +78,36 @@ public class ContractPdfService {
                 cs.beginText();
                 cs.setFont(PDType1Font.HELVETICA_BOLD, 12);
                 cs.newLineAtOffset(x, y);
-                cs.showText("Party A");
+                cs.showText(t("contract.partyA", locale));
                 cs.endText();
                 y -= lineGap;
 
-                y = drawLabelValue(cs, x, y, lineGap, "Full name:", name1);
-                y = drawLabelValue(cs, x, y, lineGap, "ID number:", id1);
-                y = drawLabelValue(cs, x, y, lineGap, "Address:", addr1);
+                y = drawLabelValue(cs, x, y, lineGap, t("contract.fullName", locale), name1);
+                y = drawLabelValue(cs, x, y, lineGap, t("contract.idNumber", locale), id1);
+                y = drawLabelValue(cs, x, y, lineGap, t("contract.address", locale), addr1);
 
                 y -= lineGap;
                 cs.beginText();
                 cs.setFont(PDType1Font.HELVETICA_BOLD, 12);
                 cs.newLineAtOffset(x, y);
-                cs.showText("Party B");
+                cs.showText(t("contract.partyB", locale));
                 cs.endText();
                 y -= lineGap;
 
-                y = drawLabelValue(cs, x, y, lineGap, "Full name:", name2);
-                y = drawLabelValue(cs, x, y, lineGap, "ID number:", id2);
-                y = drawLabelValue(cs, x, y, lineGap, "Address:", addr2);
+                y = drawLabelValue(cs, x, y, lineGap, t("contract.fullName", locale), name2);
+                y = drawLabelValue(cs, x, y, lineGap, t("contract.idNumber", locale), id2);
+                y = drawLabelValue(cs, x, y, lineGap, t("contract.address", locale), addr2);
 
                 y -= lineGap;
                 cs.beginText();
                 cs.setFont(PDType1Font.HELVETICA_BOLD, 12);
                 cs.newLineAtOffset(x, y);
-                cs.showText("Transaction");
+                cs.showText(t("contract.transaction", locale));
                 cs.endText();
                 y -= lineGap;
 
-                y = drawLabelValue(cs, x, y, lineGap, "Type:", type);
-                y = drawLabelValue(cs, x, y, lineGap, "Price:", price);
+                y = drawLabelValue(cs, x, y, lineGap, t("contract.type", locale), type);
+                y = drawLabelValue(cs, x, y, lineGap, t("contract.price", locale), price);
             }
 
             return PdfUtils.toByteArray(doc);
@@ -122,19 +150,24 @@ public class ContractPdfService {
         return y - lineGap;
     }
 
-    /** User-facing label for the contract type (mirrors the frontend mapping). */
-    private String typeLabel(com.thecircle.contracts.dto.ContractType type) {
-        if (type == null) return NA;
-        return switch (type) {
-            case SALE -> "Sale";
-            case RENT -> "Rental";
-            case CESSION_TEMPORARY -> "Loan";
-            case CESSION_PERMANENT -> "Donation";
+    /** Localized label for the contract type (mirrors the frontend mapping). */
+    private String typeLabel(com.thecircle.contracts.dto.ContractType type, Locale locale, String na) {
+        if (type == null) return na;
+        String key = switch (type) {
+            case SALE -> "contract.type.sale";
+            case RENT -> "contract.type.rent";
+            case CESSION_TEMPORARY -> "contract.type.loan";
+            case CESSION_PERMANENT -> "contract.type.donation";
         };
+        return t(key, locale);
     }
 
-    private String formatPrice(BigDecimal price) {
-        if (price == null) return NA;
+    /**
+     * Contract amounts stay in EUR: the price is the legally agreed transaction
+     * value, independent of the reader's display-currency preference.
+     */
+    private String formatPrice(BigDecimal price, String na) {
+        if (price == null) return na;
         return price.toPlainString() + " EUR";
     }
 }

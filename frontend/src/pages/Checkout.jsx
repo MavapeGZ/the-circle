@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api, { extractApiError } from '../services/api';
 import { contractTypeLabel } from '../utils/contractType';
 
@@ -31,6 +32,7 @@ const formatExpiry = (raw) => {
 };
 
 function Checkout() {
+  const { t } = useTranslation();
   const { contractId } = useParams();
   const navigate = useNavigate();
 
@@ -47,7 +49,7 @@ function Checkout() {
         const res = await api.get(`/contracts/${contractId}`);
         setContract(res.data);
       } catch {
-        setError('Could not load the contract.');
+        setError(t('checkout.loadError'));
       } finally {
         setLoading(false);
       }
@@ -55,7 +57,7 @@ function Checkout() {
   }, [contractId]);
 
   const amount = contract?.type === 'SALE' ? contract?.price : contract?.guaranteeAmount;
-  const amountLabel = contract?.type === 'RENT' ? 'Security deposit' : 'Amount due';
+  const amountLabel = contract?.type === 'RENT' ? t('checkout.deposit') : t('checkout.amountDue');
 
   const isLuhnValid = luhn(card.number);
   const isExpiryValid = /^(0[1-9]|1[0-2])\/(\d{2}|\d{4})$/.test(card.expiry.trim());
@@ -93,35 +95,35 @@ function Checkout() {
       const detail = raw || (reason && reason !== 'Bad Request' && reason !== 'Internal Server Error' ? reason : '');
 
       if (status === 422) {
-        setError(detail || 'The seller has no payout account configured yet. Please try again later.');
+        setError(detail || t('checkout.err.noPayout'));
       } else if (status === 400) {
         setError(detail
-          ? `Payment was not completed: ${detail}`
-          : 'Payment was not completed. Please check your card details and try again.');
+          ? t('checkout.err.notCompleted', { detail })
+          : t('checkout.err.checkCard'));
       } else if (status === 403) {
-        setError('Only the buyer of this contract can complete the payment.');
+        setError(t('checkout.err.onlyBuyer'));
       } else if (status === 409) {
-        setError('This contract is no longer accepting payments.');
+        setError(t('checkout.err.noLonger'));
       } else if (status === 401) {
-        setError('Your session has expired. Please sign in again.');
+        setError(t('checkout.err.sessionExpired'));
       } else if (status >= 500) {
-        setError('An unexpected error occurred. Payment was not completed. Please try again in a few minutes.');
+        setError(t('checkout.err.unexpected'));
       } else {
-        setError('An unexpected error occurred. Payment was not completed. Please try again later.');
+        setError(t('checkout.err.unexpectedLater'));
       }
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">Loading checkout…</div>;
-  if (!contract) return <div className="max-w-xl mx-auto mt-10 p-6 bg-red-50 text-red-700 rounded-lg">{error || 'Contract not found.'}</div>;
+  if (loading) return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">{t('checkout.loading')}</div>;
+  if (!contract) return <div className="max-w-xl mx-auto mt-10 p-6 bg-red-50 text-red-700 rounded-lg">{error || t('checkout.notFound')}</div>;
 
   return (
     <div className="max-w-3xl mx-auto mt-8 p-4">
-      <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Checkout</h1>
+      <h1 className="text-3xl font-extrabold text-gray-900 mb-2">{t('checkout.title')}</h1>
       <p className="text-gray-500 mb-6">
-        This is a simulated payment for demo purposes. No real money is moved and no card data is stored.
+        {t('checkout.intro')}
       </p>
 
       {error && (
@@ -129,30 +131,29 @@ function Checkout() {
       )}
 
       <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6 text-sm text-indigo-800">
-        <p><span className="font-bold">Contract:</span> {contract.id}</p>
-        <p><span className="font-bold">Type:</span> {contractTypeLabel(contract.type)}</p>
+        <p><span className="font-bold">{t('checkout.contract')}</span> {contract.id}</p>
+        <p><span className="font-bold">{t('checkout.type')}</span> {contractTypeLabel(contract.type, t)}</p>
         <p><span className="font-bold">{amountLabel}:</span> {amount?.toFixed ? amount.toFixed(2) : amount} €</p>
         <p className="mt-2 text-xs text-indigo-700">
-          Funds are held in escrow and only released to the seller once they sign. If the seller does
-          not sign within 7 days, the money is refunded automatically.
+          {t('checkout.escrowNote')}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 space-y-5">
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">Cardholder name</label>
+          <label className="block text-sm font-bold text-gray-700 mb-1">{t('checkout.cardholder')}</label>
           <input
             type="text"
             value={card.holderName}
             onChange={(e) => setCard({ ...card, holderName: e.target.value })}
             className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
-            placeholder="Name as it appears on the card"
+            placeholder={t('checkout.cardholderPlaceholder')}
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">Card number</label>
+          <label className="block text-sm font-bold text-gray-700 mb-1">{t('checkout.cardNumber')}</label>
           <input
             type="text"
             inputMode="numeric"
@@ -165,16 +166,16 @@ function Checkout() {
             required
           />
           {card.number && !isLuhnValid && (
-            <p className="text-xs text-red-600 mt-1">Card number does not look valid.</p>
+            <p className="text-xs text-red-600 mt-1">{t('checkout.cardInvalid')}</p>
           )}
           <p className="text-xs text-gray-500 mt-1">
-            Demo tip: any Luhn-valid number works. Cards ending in <code>0000</code> always fail.
+            {t('checkout.demoTip')}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Expiry (MM/YY)</label>
+            <label className="block text-sm font-bold text-gray-700 mb-1">{t('checkout.expiry')}</label>
             <input
               type="text"
               inputMode="numeric"
@@ -187,7 +188,7 @@ function Checkout() {
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">CVC</label>
+            <label className="block text-sm font-bold text-gray-700 mb-1">{t('checkout.cvc')}</label>
             <input
               type="text"
               inputMode="numeric"
@@ -207,7 +208,7 @@ function Checkout() {
             canSubmit ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-300 cursor-not-allowed'
           }`}
         >
-          {submitting ? 'Processing…' : `Pay ${amount?.toFixed ? amount.toFixed(2) : amount} €`}
+          {submitting ? t('checkout.processing') : t('checkout.pay', { amount: amount?.toFixed ? amount.toFixed(2) : amount })}
         </button>
       </form>
     </div>

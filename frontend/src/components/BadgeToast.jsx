@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { resolveAssetUrl } from '../services/api';
 
 function isImageUrl(value) {
@@ -13,6 +14,7 @@ function isImageUrl(value) {
  * library — so it can be dropped onto any page.
  */
 export default function BadgeToast({ badges = [], to = '/profile', autoDismissMs = 9000 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(true);
 
   useEffect(() => {
@@ -29,10 +31,10 @@ export default function BadgeToast({ badges = [], to = '/profile', autoDismissMs
     <div className="fixed bottom-6 right-6 z-50 w-80 max-w-[calc(100vw-3rem)] animate-[fadeIn_0.2s_ease-out]">
       <div className="rounded-2xl bg-white shadow-2xl border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-br from-indigo-600 to-indigo-600 px-4 py-3 flex items-center justify-between">
-          <p className="font-extrabold text-white">{plural ? 'New badges unlocked!' : 'Badge unlocked!'}</p>
+          <p className="font-extrabold text-white">{plural ? t('badge.newUnlocked') : t('badge.unlocked')}</p>
           <button
             type="button"
-            aria-label="Dismiss"
+            aria-label={t('badge.dismiss')}
             onClick={() => setOpen(false)}
             className="text-white/80 hover:text-white text-lg leading-none"
           >
@@ -57,7 +59,7 @@ export default function BadgeToast({ badges = [], to = '/profile', autoDismissMs
             onClick={() => setOpen(false)}
             className="mt-2 inline-flex items-center font-bold text-indigo-600 hover:text-indigo-800"
           >
-            View my badges &rarr;
+            {t('badge.viewMine')} &rarr;
           </Link>
         </div>
       </div>

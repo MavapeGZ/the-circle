@@ -1,5 +1,6 @@
 import { useState, useContext, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
 import { extractApiError } from '../services/api';
 
@@ -13,6 +14,7 @@ const STEP_DONE = 'done';
 const describeError = (err, fallback) => extractApiError(err, fallback);
 
 function Register() {
+  const { t } = useTranslation();
   const { register, verifyEmail, fetchMe, uploadKycDocuments } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -39,7 +41,7 @@ function Register() {
       setSessionId(data.sessionId);
       setStep(STEP_OTP);
     } catch (err) {
-      setError(describeError(err, 'We could not create your account. Please try again.'));
+      setError(describeError(err, t('register.error.create')));
     } finally {
       setSubmitting(false);
     }
@@ -55,7 +57,7 @@ function Register() {
       setUserId(me.id);
       setStep(STEP_KYC);
     } catch (err) {
-      setError(describeError(err, 'Invalid or expired code. Check your email and try again.'));
+      setError(describeError(err, t('register.error.invalidCode')));
     } finally {
       setSubmitting(false);
     }
@@ -65,16 +67,16 @@ function Register() {
     e.preventDefault();
     setError('');
     if (!frontFile || !backFile) {
-      setError('Both front and back of your ID are required.');
+      setError(t('register.error.idRequired'));
       return;
     }
     setSubmitting(true);
     try {
       const result = await uploadKycDocuments(userId, frontFile, backFile);
-      setKycMessage(result?.message || 'Documents received.');
+      setKycMessage(result?.message || t('register.documentsReceived'));
       setStep(STEP_DONE);
     } catch (err) {
-      setError(describeError(err, 'Could not upload your documents. Try again.'));
+      setError(describeError(err, t('register.error.upload')));
     } finally {
       setSubmitting(false);
     }
@@ -83,22 +85,22 @@ function Register() {
   return (
     <div className="flex justify-center items-center mt-16">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg border">
-        <h2 className="text-3xl font-bold text-center text-green-600 mb-2">Create Account</h2>
+        <h2 className="text-3xl font-bold text-center text-green-600 mb-2">{t('register.title')}</h2>
         <StepIndicator step={step} />
 
         {error && <p className="bg-red-100 text-red-600 p-3 rounded my-3 text-center">{error}</p>}
 
         {step === STEP_ACCOUNT && (
           <form onSubmit={submitAccount} className="flex flex-col gap-4">
-            <Field label="First Name" name="firstName" value={formData.firstName} onChange={onAccountChange} />
-            <Field label="Last Name" name="lastName" value={formData.lastName} onChange={onAccountChange} />
-            <Field label="Email" name="email" type="email" value={formData.email} onChange={onAccountChange} />
-            <Field label="ID Number" name="idNumber" value={formData.idNumber} onChange={onAccountChange} />
-            <Field label="Address" name="address" value={formData.address} onChange={onAccountChange} />
-            <Field label="Password" name="password" type="password" value={formData.password} onChange={onAccountChange} minLength={8} />
-            <SubmitButton disabled={submitting}>{submitting ? 'Sending code…' : 'Continue'}</SubmitButton>
+            <Field label={t('register.field.firstName')} name="firstName" value={formData.firstName} onChange={onAccountChange} />
+            <Field label={t('register.field.lastName')} name="lastName" value={formData.lastName} onChange={onAccountChange} />
+            <Field label={t('register.field.email')} name="email" type="email" value={formData.email} onChange={onAccountChange} />
+            <Field label={t('register.field.idNumber')} name="idNumber" value={formData.idNumber} onChange={onAccountChange} />
+            <Field label={t('register.field.address')} name="address" value={formData.address} onChange={onAccountChange} />
+            <Field label={t('register.field.password')} name="password" type="password" value={formData.password} onChange={onAccountChange} minLength={8} />
+            <SubmitButton disabled={submitting}>{submitting ? t('register.sendingCode') : t('register.continue')}</SubmitButton>
             <p className="text-center text-gray-600 text-sm">
-              Already have an account? <Link to="/login" className="text-green-500 hover:underline">Sign In</Link>
+              {t('register.haveAccount')} <Link to="/login" className="text-green-500 hover:underline">{t('register.signIn')}</Link>
             </p>
           </form>
         )}
@@ -106,17 +108,17 @@ function Register() {
         {step === STEP_OTP && (
           <form onSubmit={submitOtp} className="flex flex-col gap-4">
             <p className="text-gray-600 text-center">
-              We sent a 6-digit verification code to <strong>{formData.email}</strong>.
+              {t('register.otp.sentPrefix')} <strong>{formData.email}</strong>.
             </p>
             <input
               type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
               className="w-full p-3 border rounded text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-green-500"
               value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} required
             />
-            <SubmitButton disabled={submitting}>{submitting ? 'Verifying…' : 'Verify Email'}</SubmitButton>
+            <SubmitButton disabled={submitting}>{submitting ? t('register.verifying') : t('register.verifyEmail')}</SubmitButton>
             <button type="button" className="text-sm text-gray-500 hover:underline"
                     onClick={() => setStep(STEP_ACCOUNT)}>
-              Use a different email
+              {t('register.differentEmail')}
             </button>
           </form>
         )}
@@ -124,14 +126,14 @@ function Register() {
         {step === STEP_KYC && (
           <form onSubmit={submitKyc} className="flex flex-col gap-4">
             <p className="text-gray-600 text-center">
-              Upload the front and back of your government-issued ID to finish your KYC verification.
+              {t('register.kyc.intro')}
             </p>
-            <IdField label="ID — Front" file={frontFile} onChange={setFrontFile} fallbackName="dni-front" />
-            <IdField label="ID — Back" file={backFile} onChange={setBackFile} fallbackName="dni-back" />
-            <SubmitButton disabled={submitting}>{submitting ? 'Uploading…' : 'Submit Documents'}</SubmitButton>
+            <IdField label={t('register.kyc.front')} file={frontFile} onChange={setFrontFile} fallbackName="dni-front" />
+            <IdField label={t('register.kyc.back')} file={backFile} onChange={setBackFile} fallbackName="dni-back" />
+            <SubmitButton disabled={submitting}>{submitting ? t('register.uploading') : t('register.submitDocs')}</SubmitButton>
             <button type="button" className="text-sm text-gray-500 hover:underline"
                     onClick={() => navigate('/')}>
-              Skip for now
+              {t('register.skip')}
             </button>
           </form>
         )}
@@ -139,10 +141,10 @@ function Register() {
         {step === STEP_DONE && (
           <div className="flex flex-col gap-4 text-center">
             <p className="text-green-700 font-semibold">{kycMessage}</p>
-            <p className="text-gray-600">You can continue using The Circle while we verify your identity.</p>
+            <p className="text-gray-600">{t('register.done.continue')}</p>
             <button onClick={() => navigate('/')}
                     className="bg-green-600 text-white font-bold p-3 rounded hover:bg-green-700 transition">
-              Go to Home
+              {t('register.goHome')}
             </button>
           </div>
         )}
@@ -152,10 +154,11 @@ function Register() {
 }
 
 function StepIndicator({ step }) {
+  const { t } = useTranslation();
   const steps = [
-    { id: STEP_ACCOUNT, label: 'Account' },
-    { id: STEP_OTP, label: 'Verify Email' },
-    { id: STEP_KYC, label: 'Identity' },
+    { id: STEP_ACCOUNT, label: t('register.step.account') },
+    { id: STEP_OTP, label: t('register.step.verify') },
+    { id: STEP_KYC, label: t('register.step.identity') },
   ];
   const activeIndex = steps.findIndex((s) => s.id === step);
   return (
@@ -190,6 +193,7 @@ function Field({ label, name, value, onChange, type = 'text', minLength }) {
 }
 
 function IdField({ label, file, onChange, fallbackName }) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState('idle');
   const [cameraError, setCameraError] = useState('');
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -224,7 +228,7 @@ function IdField({ label, file, onChange, fallbackName }) {
         }
       })
       .catch((err) => {
-        setCameraError(err?.message || 'Camera unavailable.');
+        setCameraError(err?.message || t('register.cameraUnavailable'));
         setMode('idle');
       });
     return () => {
@@ -268,14 +272,14 @@ function IdField({ label, file, onChange, fallbackName }) {
           onClick={() => fileInputRef.current?.click()}
           className="flex-1 p-2 rounded border bg-green-600 text-white border-green-600 hover:bg-green-700"
         >
-          Upload file
+          {t('register.uploadFile')}
         </button>
         <button
           type="button"
           onClick={() => setMode('camera')}
           className={`flex-1 p-2 rounded border ${mode === 'camera' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300'}`}
         >
-          Take photo
+          {t('register.takePhoto')}
         </button>
       </div>
 
@@ -298,7 +302,7 @@ function IdField({ label, file, onChange, fallbackName }) {
             onClick={snapshot}
             className="bg-green-600 text-white font-semibold p-2 rounded hover:bg-green-700"
           >
-            Capture
+            {t('register.capture')}
           </button>
         </div>
       )}

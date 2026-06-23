@@ -1,10 +1,14 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
-// Sets the browser tab title for a page. The home page passes nothing and shows
-// just "The Circle"; every other section shows "The Circle – <Section>" using an
-// en dash (guión medio), e.g. usePageTitle('Catalog') -> "The Circle – Catalog".
-export default function usePageTitle(section) {
+// Sets the browser tab title for a page. Pass an i18n key (e.g. 'title.catalog');
+// the home page passes nothing and shows just "The Circle". Every other section
+// shows "The Circle – <Section>" with an en dash, localized to the active
+// language and re-applied whenever the language changes.
+export default function usePageTitle(sectionKey) {
+  const { t, i18n } = useTranslation();
   useEffect(() => {
+    const section = sectionKey ? t(sectionKey) : '';
     document.title = section ? `The Circle – ${section}` : 'The Circle';
-  }, [section]);
+  }, [sectionKey, t, i18n.language]);
 }

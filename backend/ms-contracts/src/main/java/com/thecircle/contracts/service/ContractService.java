@@ -418,6 +418,21 @@ public class ContractService {
         }
     }
 
+    /**
+     * Best-effort lookup of a user's preferred language tag (e.g. "es"/"en") to
+     * localize the rendered PDF. Returns null on any gap so the PDF renderer
+     * falls back to English; a users-service hiccup never blocks PDF download.
+     */
+    public String getUserLanguage(String userId) {
+        if (userId == null || userId.isBlank()) return null;
+        try {
+            UsersClient.UserProfile profile = usersClient.getProfile(userId);
+            return profile != null ? profile.language() : null;
+        } catch (RuntimeException ex) {
+            return null;
+        }
+    }
+
     private SignerDto buildSigner(UsersClient.UserProfile profile, String fallbackEmail) {
         if (profile == null && fallbackEmail == null) return null;
         SignerDto signer = new SignerDto();

@@ -1,6 +1,10 @@
 spring:
   application:
     name: ms-notifications
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
   datasource:
     url: jdbc:postgresql://localhost:5432/${DB_NOTIFICATIONS_NAME:notifications_db}
     username: ${DB_USER:}

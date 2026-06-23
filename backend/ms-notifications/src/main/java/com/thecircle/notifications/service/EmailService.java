@@ -7,11 +7,15 @@ import com.thecircle.notifications.model.EmailStatus;
 import com.thecircle.notifications.repository.EmailLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.NoSuchMessageException;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -22,6 +26,7 @@ public class EmailService {
     private final SpringTemplateEngine templateEngine;
     private final EmailLogRepository emailLogRepository;
     private final EmailDispatcher emailDispatcher;
+    private final MessageSource messageSource;
 
     /**
      * Renders the template (fail-fast), persists the email as QUEUED and hands the
@@ -30,18 +35,20 @@ public class EmailService {
      */
     public EmailResponseDto send(EmailRequestDto request) {
         Instant now = Instant.now();
+        Locale locale = resolveLocale(request.getLocale());
+        String subject = resolveSubject(request, locale);
         String htmlBody;
         try {
-            htmlBody = renderTemplate(request.getTemplateName(), request.getVariables());
+            htmlBody = renderTemplate(request.getTemplateName(), request.getVariables(), locale);
         } catch (RuntimeException e) {
-            EmailLog failed = persist(request, EmailStatus.FAILED, "Template render error: " + e.getMessage(), null, now);
+            EmailLog failed = persist(request, subject, EmailStatus.FAILED, "Template render error: " + e.getMessage(), null, now);
             log.error("Template render failed for {} -> {} (emailLogId={})", request.getTemplateName(), request.getTo(), failed.getId(), e);
             throw new EmailDeliveryException("Unexpected error. Please contact our support team.", e);
         }
 
-        EmailLog queued = persist(request, EmailStatus.QUEUED, null, null, now);
+        EmailLog queued = persist(request, subject, EmailStatus.QUEUED, null, null, now);
         try {
-            emailDispatcher.dispatch(queued.getId(), request.getTo(), request.getSubject(), htmlBody);
+            emailDispatcher.dispatch(queued.getId(), request.getTo(), subject, htmlBody);
         } catch (org.springframework.core.task.TaskRejectedException e) {
             queued.setStatus(EmailStatus.FAILED);
             queued.setErrorMessage("Email dispatch rejected (queue full)");
@@ -56,18 +63,46 @@ public class EmailService {
                 .build();
     }
 
-    private String renderTemplate(String templateName, Map<String, Object> variables) {
-        Context ctx = new Context();
+    private String renderTemplate(String templateName, Map<String, Object> variables, Locale locale) {
+        // Locale-aware context so Thymeleaf #{...} expressions resolve against the
+        // recipient's language bundle (falling back to messages.properties).
+        Context ctx = new Context(locale);
         if (variables != null) {
             ctx.setVariables(variables);
         }
         return templateEngine.process("email/" + templateName, ctx);
     }
 
-    private EmailLog persist(EmailRequestDto request, EmailStatus status, String errorMessage, Instant sentAt, Instant createdAt) {
+    /** Maps an incoming language tag to a Locale, defaulting to English (the fallback bundle). */
+    private Locale resolveLocale(String tag) {
+        if (!StringUtils.hasText(tag)) {
+            return Locale.ENGLISH;
+        }
+        Locale locale = Locale.forLanguageTag(tag);
+        return StringUtils.hasText(locale.getLanguage()) ? locale : Locale.ENGLISH;
+    }
+
+    /**
+     * Resolves the email subject: prefers the localized subjectKey, falling back
+     * to a literal subject. If a key is supplied but missing, the literal subject
+     * (or the key itself) is used so a send is never blocked by a translation gap.
+     */
+    private String resolveSubject(EmailRequestDto request, Locale locale) {
+        if (StringUtils.hasText(request.getSubjectKey())) {
+            try {
+                return messageSource.getMessage(request.getSubjectKey(), null, locale);
+            } catch (NoSuchMessageException e) {
+                log.warn("Missing subject key '{}' for locale {}; using literal subject fallback",
+                        request.getSubjectKey(), locale);
+            }
+        }
+        return StringUtils.hasText(request.getSubject()) ? request.getSubject() : request.getSubjectKey();
+    }
+
+    private EmailLog persist(EmailRequestDto request, String subject, EmailStatus status, String errorMessage, Instant sentAt, Instant createdAt) {
         EmailLog entry = EmailLog.builder()
                 .toAddress(request.getTo())
-                .subject(request.getSubject())
+                .subject(subject)
                 .templateName(request.getTemplateName())
                 .status(status)
                 .errorMessage(truncate(errorMessage, 1000))

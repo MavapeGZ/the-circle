@@ -75,7 +75,8 @@ public class ContractsController {
         contractService.enrichSigners(dto, null);
         byte[] pdf;
         try {
-            pdf = pdfService.generatePdf(dto);
+            // Render in the downloading party's language (best-effort; English fallback).
+            pdf = pdfService.generatePdf(dto, contractService.getUserLanguage(callerId));
         } catch (IOException ex) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate PDF", ex);
         }

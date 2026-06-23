@@ -142,7 +142,8 @@ public class ContractController {
                     "The contract data is missing from the request. Please fill in the contract form and try again.");
         }
         try {
-            return pdfService.generatePdf(dto);
+            // Draft is rendered for the receiver (buyer) who initiates the deal.
+            return pdfService.generatePdf(dto, contractService.getUserLanguage(dto.getReceiverId()));
         } catch (IOException ex) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Unexpected error. Please contact our support team.", ex);
