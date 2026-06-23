@@ -20,22 +20,40 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
         return;
       }
-      try {
-        // Silent probe: handle an expired token here (clear it) rather than letting
-        // the global interceptor redirect a passive visitor away from a public page.
-        const { data } = await api.get('/users/me', { skipAuthRedirect: true });
-        setUser({ ...data, token });
-      } catch (error) {
-        const status = error?.response?.status;
-        if (status === 401 || status === 403) {
-          localStorage.removeItem('token');
-          setUser(null);
-        } else {
+
+      // Silent probe for the persisted session. On first load the backend may still
+      // be warming up (cold containers, gateway not ready yet), so /users/me fails
+      // with a network/5xx error. Retry a few times before giving up: otherwise we
+      // fall through to the optimistic { token } state, which renders a logged-in
+      // avatar with no profile (generic "User" placeholder instead of the real name)
+      // until the next reload. An expired token (401/403) is handled here instead —
+      // we clear it rather than let the interceptor redirect a passive visitor.
+      const probe = async (attempt = 0) => {
+        try {
+          const { data } = await api.get('/users/me', { skipAuthRedirect: true });
+          setUser({ ...data, token });
+        } catch (error) {
+          const status = error?.response?.status;
+          if (status === 401 || status === 403) {
+            localStorage.removeItem('token');
+            setUser(null);
+            return;
+          }
+          // Transient (network / 5xx): back off and retry so a cold backend on the
+          // first request doesn't strand us in the name-less degraded state.
+          if (attempt < 4) {
+            await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+            return probe(attempt + 1);
+          }
+          // Still failing after retries: stay optimistically logged in (don't log the
+          // user out over a transient outage), accepting the degraded state as a last
+          // resort rather than the first.
           setUser({ token });
         }
-      } finally {
-        setLoading(false);
-      }
+      };
+
+      await probe();
+      setLoading(false);
     };
     bootstrap();
   }, []);

@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect, useRef } from 'react';
+import { useState, useContext, useEffect, useRef, Fragment } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
@@ -73,7 +73,7 @@ function Register() {
     setSubmitting(true);
     try {
       const result = await uploadKycDocuments(userId, frontFile, backFile);
-      setKycMessage(result?.message || t('register.documentsReceived'));
+      setKycMessage(result?.verified ? t('register.kyc.verified') : t('register.documentsReceived'));
       setStep(STEP_DONE);
     } catch (err) {
       setError(describeError(err, t('register.error.upload')));
@@ -167,13 +167,15 @@ function StepIndicator({ step }) {
         const done = i < activeIndex || step === STEP_DONE;
         const active = i === activeIndex && step !== STEP_DONE;
         return (
-          <div key={s.id} className="flex-1 flex items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
-              done ? 'bg-green-600' : active ? 'bg-green-500' : 'bg-gray-300'
-            }`}>{i + 1}</div>
-            <span className={`ml-2 text-sm ${active ? 'text-green-700 font-semibold' : 'text-gray-500'}`}>{s.label}</span>
+          <Fragment key={s.id}>
+            <div className="flex items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                done ? 'bg-green-600' : active ? 'bg-green-500' : 'bg-gray-300'
+              }`}>{i + 1}</div>
+              <span className={`ml-2 text-sm ${active ? 'text-green-700 font-semibold' : 'text-gray-500'}`}>{s.label}</span>
+            </div>
             {i < steps.length - 1 && <div className="flex-1 h-0.5 bg-gray-200 mx-2" />}
-          </div>
+          </Fragment>
         );
       })}
     </div>

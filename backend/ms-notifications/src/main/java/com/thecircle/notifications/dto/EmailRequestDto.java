@@ -1,5 +1,6 @@
 package com.thecircle.notifications.dto;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -7,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.util.StringUtils;
 
 import java.util.Map;
 
@@ -40,4 +42,9 @@ public class EmailRequestDto {
     private String locale;
 
     private Map<String, Object> variables;
+
+    @AssertTrue(message = "Either subject or subjectKey is required")
+    public boolean isSubjectPresent() {
+        return StringUtils.hasText(subject) || StringUtils.hasText(subjectKey);
+    }
 }

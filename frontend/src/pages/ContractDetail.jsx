@@ -30,9 +30,6 @@ function ContractDetail() {
   useEffect(() => {
     let objectUrl;
 
-    // Best-effort name lookup so the UI shows people, not raw ids.
-    const fullName = (u) => [u?.firstName, u?.lastName].filter(Boolean).join(' ').trim();
-
     const load = async () => {
       let data = null;
       try {
@@ -49,10 +46,10 @@ function ContractDetail() {
       // fall back to the raw id so the page still renders.
       await Promise.all([
         data.ownerId && api.get(`/users/${data.ownerId}`)
-          .then((r) => setOwnerName(fullName(r.data) || `User ${data.ownerId}`))
+          .then((r) => setOwnerName(r.data?.displayName || `User ${data.ownerId}`))
           .catch(() => setOwnerName(`User ${data.ownerId}`)),
         data.receiverId && api.get(`/users/${data.receiverId}`)
-          .then((r) => setReceiverName(fullName(r.data) || `User ${data.receiverId}`))
+          .then((r) => setReceiverName(r.data?.displayName || `User ${data.receiverId}`))
           .catch(() => setReceiverName(`User ${data.receiverId}`)),
         data.itemId && api.get(`/catalog/articles/${data.itemId}`)
           .then((r) => setItemTitle(r.data?.title || data.itemId))

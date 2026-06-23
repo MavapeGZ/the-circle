@@ -160,7 +160,7 @@ function ArticleDetail() {
         type: 'CESSION_PERMANENT',
         price: article.price ?? 0,
         guaranteeAmount: null,
-        conditions: `Fulfill demand: ${cleanTitle(article.title)}`,
+        conditions: t('detail.fulfillCondition', { title: cleanTitle(article.title) }),
         returnDate: null,
       });
       navigate(`/contracts/${res.data.id}/sign`, {
