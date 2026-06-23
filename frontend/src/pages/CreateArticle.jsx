@@ -2,15 +2,18 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api, { extractApiError } from '../services/api';
+import { usePreferences } from '../context/PreferencesContext';
 import usePageTitle from '../hooks/usePageTitle';
 
 // Product types that have no price (free / priority). DEMAND is priority, so no price selection.
 const PRICELESS_TYPES = ['DONATION', 'DEMAND'];
-const GUARANTEE_MAX = 20.0;
+// Deposit cap, in EUR (the stored base). Shown to the user in their currency.
+const GUARANTEE_MAX_EUR = 20.0;
 
 function CreateArticle() {
   usePageTitle('title.publish');
   const { t } = useTranslation();
+  const { formatPrice, toEur, fromEur, currencySymbol } = usePreferences();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -70,9 +73,14 @@ function CreateArticle() {
       const isRental = formData.productType === 'SYMBOLIC_RENTAL';
       let guaranteeAmount = null;
       if (isRental) {
-        guaranteeAmount = parseFloat(formData.guaranteeAmount);
-        if (Number.isNaN(guaranteeAmount) || guaranteeAmount <= 0 || guaranteeAmount > GUARANTEE_MAX) {
-          setError(t('create.error.deposit', { max: GUARANTEE_MAX }));
+        // Inputs are typed in the user's currency; store EUR (the base) and
+        // validate the cap in EUR.
+        guaranteeAmount = toEur(formData.guaranteeAmount);
+        if (guaranteeAmount == null || guaranteeAmount <= 0 || guaranteeAmount > GUARANTEE_MAX_EUR) {
+          setError(t('create.error.deposit', {
+            min: formatPrice(0.01),
+            max: formatPrice(GUARANTEE_MAX_EUR),
+          }));
           setLoading(false);
           return;
         }
@@ -83,7 +91,7 @@ function CreateArticle() {
         productType: formData.productType,
         category: 'General',
         imageBase64: imageBase64,
-        price: PRICELESS_TYPES.includes(formData.productType) ? 0.0 : parseFloat(formData.price),
+        price: PRICELESS_TYPES.includes(formData.productType) ? 0.0 : (toEur(formData.price) ?? 0),
         guaranteeAmount
       };
 
@@ -189,7 +197,7 @@ function CreateArticle() {
         {!PRICELESS_TYPES.includes(formData.productType) && (
           <div>
             <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-1">
-              {t('article.field.price')} <span className="text-red-500">*</span>
+              {t('article.field.price', { currency: currencySymbol })} <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -210,14 +218,14 @@ function CreateArticle() {
         {formData.productType === 'SYMBOLIC_RENTAL' && (
           <div>
             <label htmlFor="guaranteeAmount" className="block text-sm font-semibold text-gray-700 mb-1">
-              {t('create.field.deposit')} <span className="text-red-500">*</span>
+              {t('create.field.deposit', { currency: currencySymbol })} <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
               id="guaranteeAmount"
               name="guaranteeAmount"
               min="0.01"
-              max={GUARANTEE_MAX}
+              max={fromEur(GUARANTEE_MAX_EUR)}
               step="0.01"
               required
               placeholder={t('create.depositPlaceholder')}
@@ -226,7 +234,7 @@ function CreateArticle() {
               onChange={handleChange}
             />
             <p className="text-xs text-gray-500 mt-1">
-              {t('create.depositHelp', { max: GUARANTEE_MAX })}
+              {t('create.depositHelp', { max: formatPrice(GUARANTEE_MAX_EUR) })}
             </p>
           </div>
         )}

@@ -9,7 +9,7 @@ import ReviewForm from '../components/ReviewForm';
 
 function ContractDetail() {
   const { t } = useTranslation();
-  const { formatDate } = usePreferences();
+  const { formatDate, formatPrice } = usePreferences();
   const { contractId } = useParams();
   const navigate = useNavigate();
   const { user: currentUser, refreshContracts } = useContext(AuthContext);
@@ -208,7 +208,7 @@ function ContractDetail() {
             <Row term={t('cd.row.ownerSigned')} value={contract.ownerSignedAt ? formatDate(contract.ownerSignedAt, { dateStyle: 'medium', timeStyle: 'short' }) : t('cd.notYet')} />
             <Row term={t('cd.row.receiverSigned')} value={contract.receiverSignedAt ? formatDate(contract.receiverSignedAt, { dateStyle: 'medium', timeStyle: 'short' }) : t('cd.notYet')} />
             {contract.guaranteeStatus && contract.guaranteeStatus !== 'NONE' && (
-              <Row term={t('cd.row.deposit')} value={`${contract.guaranteeAmount} € (${contract.guaranteeStatus.toLowerCase()})`} />
+              <Row term={t('cd.row.deposit')} value={`${formatPrice(contract.guaranteeAmount)} (${contract.guaranteeStatus.toLowerCase()})`} />
             )}
             {contract.conditions && <Row term={t('cd.row.conditions')} value={contract.conditions} />}
           </dl>
@@ -216,7 +216,7 @@ function ContractDetail() {
           {escrowed && (
             <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-900">
               <p className="font-bold">
-                {t('cd.escrowTitle', { amount: escrowed.amount, currency: escrowed.currency })}
+                {t('cd.escrowTitle', { amount: formatPrice(escrowed.amount) })}
               </p>
               <p className="mt-1">
                 {isOwner

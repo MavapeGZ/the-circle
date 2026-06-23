@@ -1,7 +1,14 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import i18n, { SUPPORTED_LANGUAGES } from '../i18n';
 import api from '../services/api';
-import { formatPrice as formatPriceUtil, SUPPORTED_CURRENCIES, BASE_CURRENCY } from '../utils/currency';
+import {
+  formatPrice as formatPriceUtil,
+  convertToEur,
+  convertFromEur,
+  currencySymbol as currencySymbolUtil,
+  SUPPORTED_CURRENCIES,
+  BASE_CURRENCY,
+} from '../utils/currency';
 
 export const PreferencesContext = createContext();
 
@@ -13,7 +20,10 @@ const DEFAULTS = { language: 'es', currency: 'EUR', timezone: 'Europe/Madrid' };
 function detectInitial() {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-    if (stored?.language) return { ...DEFAULTS, ...stored };
+    // Restore on any saved field (a record with only currency/timezone is valid too).
+    if (stored && (stored.language || stored.currency || stored.timezone)) {
+      return { ...DEFAULTS, ...stored };
+    }
   } catch { /* ignore corrupt storage */ }
   const navLang = (navigator.language || 'es').slice(0, 2).toLowerCase();
   const language = SUPPORTED_LANGUAGES.includes(navLang) ? navLang : DEFAULTS.language;
@@ -22,6 +32,9 @@ function detectInitial() {
 
 export const PreferencesProvider = ({ children }) => {
   const [prefs, setPrefs] = useState(detectInitial);
+  // Always-current snapshot so updatePreferences can roll back without stale closure.
+  const prefsRef = useRef(prefs);
+  useEffect(() => { prefsRef.current = prefs; }, [prefs]);
 
   // Keep i18next in sync with the active language.
   useEffect(() => {
@@ -49,16 +62,23 @@ export const PreferencesProvider = ({ children }) => {
     return () => { active = false; };
   }, []);
 
-  // Apply a partial change locally + to storage, and persist to the account when
-  // the user is logged in. Persisting is best-effort: the UI updates regardless.
+  // Apply a partial change locally + to storage, then persist to the account when
+  // the user is logged in. If the server rejects it, roll the optimistic update
+  // back so UI + storage stay consistent with the server, and rethrow so the
+  // caller can surface the error.
   const updatePreferences = useCallback(async (partial) => {
-    setPrefs((prev) => {
-      const next = { ...prev, ...partial };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
+    const prev = prefsRef.current;
+    const next = { ...prev, ...partial };
+    setPrefs(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     if (localStorage.getItem('token')) {
-      await api.patch('/users/me', partial);
+      try {
+        await api.patch('/users/me', partial);
+      } catch (err) {
+        setPrefs(prev);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(prev));
+        throw err;
+      }
     }
   }, []);
 
@@ -66,6 +86,11 @@ export const PreferencesProvider = ({ children }) => {
     (amountEur) => formatPriceUtil(amountEur, prefs.currency, prefs.language),
     [prefs.currency, prefs.language],
   );
+
+  // chosen-currency -> EUR (for amounts the user typed, before sending to the API).
+  const toEur = useCallback((amount) => convertToEur(amount, prefs.currency), [prefs.currency]);
+  // EUR -> chosen currency (for prefilling number inputs with a stored EUR value).
+  const fromEur = useCallback((amountEur) => convertFromEur(amountEur, prefs.currency), [prefs.currency]);
 
   // Locale-aware date/time formatting in the user's chosen time zone. Uses
   // Intl.DateTimeFormat (not toLocaleDateString) so callers can pass either
@@ -89,8 +114,11 @@ export const PreferencesProvider = ({ children }) => {
     <PreferencesContext.Provider value={{
       ...prefs,
       baseCurrency: BASE_CURRENCY,
+      currencySymbol: currencySymbolUtil(prefs.currency),
       updatePreferences,
       formatPrice,
+      toEur,
+      fromEur,
       formatDate,
     }}>
       {children}

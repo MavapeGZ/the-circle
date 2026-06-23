@@ -6,7 +6,7 @@ import { usePreferences } from '../context/PreferencesContext';
 
 function PaymentReceipt() {
   const { t } = useTranslation();
-  const { formatDate } = usePreferences();
+  const { formatDate, formatPrice } = usePreferences();
   const { contractId, paymentId } = useParams();
   const location = useLocation();
 
@@ -80,7 +80,7 @@ function PaymentReceipt() {
         </div>
         <div className="flex justify-between border-b pb-2">
           <dt className="text-gray-500">{t('receipt.amount')}</dt>
-          <dd className="text-gray-800 font-bold">{payment.amount} {payment.currency}</dd>
+          <dd className="text-gray-800 font-bold">{formatPrice(payment.amount)}</dd>
         </div>
         <div className="flex justify-between border-b pb-2">
           <dt className="text-gray-500">{t('receipt.card')}</dt>

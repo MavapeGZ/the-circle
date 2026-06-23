@@ -11,7 +11,7 @@ import usePageTitle from '../hooks/usePageTitle';
 function MyContracts() {
   usePageTitle('title.contracts');
   const { t } = useTranslation();
-  const { formatDate } = usePreferences();
+  const { formatDate, formatPrice } = usePreferences();
   const navigate = useNavigate();
   const { refreshContracts } = useContext(AuthContext);
 
@@ -158,7 +158,7 @@ function MyContracts() {
                     <p>{t('mc.with', { name: userNames[counterpartId] || counterpartId })}</p>
                     <p>{t('mc.created', { date: c.createdAt ? formatDate(c.createdAt, { dateStyle: 'medium', timeStyle: 'short' }) : '—' })}</p>
                     {c.guaranteeStatus && c.guaranteeStatus !== 'NONE' && (
-                      <p>{t('mc.deposit', { amount: c.guaranteeAmount, status: c.guaranteeStatus.toLowerCase() })}</p>
+                      <p>{t('mc.deposit', { amount: formatPrice(c.guaranteeAmount), status: c.guaranteeStatus.toLowerCase() })}</p>
                     )}
                   </div>
                   <span className={`text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ${label.cls}`}>

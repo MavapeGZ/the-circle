@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api, { extractApiError } from '../services/api';
+import { usePreferences } from '../context/PreferencesContext';
 
 // Product types that have no price (free / priority). DEMAND is priority, so no price selection.
 const PRICELESS_TYPES = ['DONATION', 'DEMAND'];
 
 function EditArticle() {
   const { t } = useTranslation();
+  const { toEur, fromEur, currencySymbol } = usePreferences();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -20,7 +22,9 @@ function EditArticle() {
   
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState('');
-  
+  // Canonical price in EUR (the stored base); the input shows it converted.
+  const [priceEur, setPriceEur] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -30,14 +34,15 @@ function EditArticle() {
       try {
         const response = await api.get(`/catalog/articles/${id}`);
         const article = response.data;
-        
+
+        setPriceEur(article.price ?? 0);
         setFormData({
           title: article.title || '',
           description: article.description || '',
           productType: article.productType || 'SYMBOLIC_SALE',
-          price: article.price || 0
+          price: 0
         });
-        
+
         if (article.imageBase64) {
           setImagePreview(article.imageBase64);
           setImageBase64(article.imageBase64);
@@ -52,6 +57,15 @@ function EditArticle() {
 
     fetchArticle();
   }, [id]);
+
+  // Show the stored EUR price converted to the user's currency. Re-runs if the
+  // currency preference resolves after the article loads, so the displayed value
+  // (and thus the value converted back to EUR on save) is always correct.
+  useEffect(() => {
+    if (priceEur != null) {
+      setFormData((prev) => ({ ...prev, price: fromEur(priceEur) ?? 0 }));
+    }
+  }, [priceEur, fromEur]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -97,7 +111,8 @@ function EditArticle() {
         productType: formData.productType,
         category: 'General',
         imageBase64: imageBase64,
-        price: PRICELESS_TYPES.includes(formData.productType) ? 0.0 : parseFloat(formData.price)
+        // Input is in the user's currency; store EUR (the base).
+        price: PRICELESS_TYPES.includes(formData.productType) ? 0.0 : (toEur(formData.price) ?? 0)
       };
 
       await api.put(`/catalog/articles/${id}`, payload);
@@ -178,7 +193,7 @@ function EditArticle() {
         {!PRICELESS_TYPES.includes(formData.productType) && (
           <div>
             <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-1">
-              {t('article.field.price')} <span className="text-red-500">*</span>
+              {t('article.field.price', { currency: currencySymbol })} <span className="text-red-500">*</span>
             </label>
             <input
               type="number"

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api, { extractApiError } from '../services/api';
+import { usePreferences } from '../context/PreferencesContext';
 import { contractTypeLabel } from '../utils/contractType';
 
 const luhn = (raw) => {
@@ -33,6 +34,7 @@ const formatExpiry = (raw) => {
 
 function Checkout() {
   const { t } = useTranslation();
+  const { formatPrice } = usePreferences();
   const { contractId } = useParams();
   const navigate = useNavigate();
 
@@ -133,7 +135,7 @@ function Checkout() {
       <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6 text-sm text-indigo-800">
         <p><span className="font-bold">{t('checkout.contract')}</span> {contract.id}</p>
         <p><span className="font-bold">{t('checkout.type')}</span> {contractTypeLabel(contract.type, t)}</p>
-        <p><span className="font-bold">{amountLabel}:</span> {amount?.toFixed ? amount.toFixed(2) : amount} €</p>
+        <p><span className="font-bold">{amountLabel}:</span> {formatPrice(amount)}</p>
         <p className="mt-2 text-xs text-indigo-700">
           {t('checkout.escrowNote')}
         </p>
@@ -208,7 +210,7 @@ function Checkout() {
             canSubmit ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-300 cursor-not-allowed'
           }`}
         >
-          {submitting ? t('checkout.processing') : t('checkout.pay', { amount: amount?.toFixed ? amount.toFixed(2) : amount })}
+          {submitting ? t('checkout.processing') : t('checkout.pay', { amount: formatPrice(amount) })}
         </button>
       </form>
     </div>

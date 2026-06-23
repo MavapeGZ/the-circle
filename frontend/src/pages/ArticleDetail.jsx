@@ -21,7 +21,7 @@ function cleanTitle(title) {
 
 function ArticleDetail() {
   const { t } = useTranslation();
-  const { formatPrice, formatDate } = usePreferences();
+  const { formatPrice, formatDate, toEur } = usePreferences();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -115,8 +115,9 @@ function ArticleDetail() {
     const returnDate = isRent
       ? new Date(Date.now() + rentDays * 86400000).toISOString().slice(0, 19)
       : null;
-    // Security deposit only applies to rentals; default to the listing price.
-    const guaranteeAmount = isRent ? Number(deposit || article.price || 0) : null;
+    // Security deposit only applies to rentals; default to the listing price. The
+    // buyer types it in their display currency, so convert back to EUR for storage.
+    const guaranteeAmount = isRent ? (toEur(deposit) ?? article.price ?? 0) : null;
 
     try {
       const res = await api.post('/contracts', {
