@@ -155,7 +155,7 @@ function Home() {
             alt="The Circle"
             className="h-16 w-auto bg-white rounded-2xl px-5 py-3 shadow-sm"
           />
-          <p className="text-sm">© {new Date().getFullYear()} The Circle. Master's Final Project.</p>
+          <p className="text-sm">© {new Date().getFullYear()} The Circle. All rights reserved.</p>
         </div>
       </footer>
     </div>
