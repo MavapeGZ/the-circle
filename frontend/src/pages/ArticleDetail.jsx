@@ -199,7 +199,7 @@ function ArticleDetail() {
         );
       case 'DEMAND':
         return (
-          <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full border border-blue-300">
+          <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full border border-indigo-300">
             DEMAND
           </span>
         );
@@ -238,7 +238,7 @@ function ArticleDetail() {
 
       {/* LEFT COLUMN */}
       <div className="lg:col-span-2">
-        <Link to="/catalog" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6 font-semibold">
+        <Link to="/catalog" className="inline-flex items-center text-indigo-600 hover:text-indigo-800 mb-6 font-semibold">
           &larr; Back to Catalog
         </Link>
 
@@ -301,7 +301,7 @@ function ArticleDetail() {
           {owner ? (
             <Link to={`/users/${owner.publicId}`} className="block mb-6 group">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xl overflow-hidden shrink-0">
+                <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-xl overflow-hidden shrink-0">
                   {owner.avatarUrl ? (
                     <img src={resolveAssetUrl(owner.avatarUrl)} alt={owner.displayName} className="h-full w-full object-cover" />
                   ) : (
@@ -309,7 +309,7 @@ function ArticleDetail() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h4 className="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
+                  <h4 className="text-lg font-bold text-gray-900 group-hover:text-indigo-700 transition-colors">
                     {owner.displayName}
                   </h4>
                   <div className="flex flex-wrap items-center gap-2 mt-1 text-xs font-semibold text-gray-500">
@@ -340,7 +340,7 @@ function ArticleDetail() {
             <button
               onClick={handleContact}
               disabled={contacting}
-              className={`w-full mb-3 py-3 font-bold rounded-lg shadow-sm transition border ${contacting ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'}`}
+              className={`w-full mb-3 py-3 font-bold rounded-lg shadow-sm transition border ${contacting ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-indigo-700 border-indigo-300 hover:bg-indigo-50'}`}
             >
               {contacting ? 'Opening chat…' : '💬 Contact'}
             </button>
@@ -371,7 +371,7 @@ function ArticleDetail() {
                     value={rentDays}
                     onChange={(e) => setRentDays(Number(e.target.value))}
                     disabled={acquiring}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm bg-white focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm bg-white focus:ring-2 focus:ring-indigo-500"
                   >
                     {RENT_OPTIONS.map((opt) => (
                       <option key={opt.days} value={opt.days}>{opt.label}</option>
@@ -385,14 +385,14 @@ function ArticleDetail() {
                     onChange={(e) => setDeposit(e.target.value)}
                     disabled={acquiring}
                     placeholder={`Deposit (${article.price || 0} €)`}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500"
                   />
                 </>
               )}
               <button
                 onClick={handleAcquire}
                 disabled={acquiring}
-                className={`w-full py-4 font-extrabold rounded-lg shadow-md transition text-white text-lg ${acquiring ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-[1.02]'}`}
+                className={`w-full py-4 font-extrabold rounded-lg shadow-md transition text-white text-lg ${acquiring ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 hover:scale-[1.02]'}`}
               >
                 {acquiring ? 'Processing...' : `${acquireCfg.label} & Sign`}
               </button>
@@ -401,7 +401,7 @@ function ArticleDetail() {
             <button
               onClick={handleFulfillDemand}
               disabled={acquiring}
-              className={`w-full py-4 font-extrabold rounded-lg shadow-md transition text-white text-lg ${acquiring ? 'bg-blue-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 hover:scale-[1.02]'}`}
+              className={`w-full py-4 font-extrabold rounded-lg shadow-md transition text-white text-lg ${acquiring ? 'bg-indigo-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 hover:scale-[1.02]'}`}
             >
               {acquiring ? 'Processing...' : 'Offer this item & Sign'}
             </button>
@@ -417,7 +417,7 @@ function ArticleDetail() {
         </div>
 
         {!isOwner && (canAcquire || canFulfill) && (
-          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm text-blue-800">
+          <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-sm text-indigo-800">
             <p className="font-bold mb-1">Safe Transaction</p>
             <p>Your request will initiate a digital agreement secured by an OTP electronic signature.</p>
           </div>

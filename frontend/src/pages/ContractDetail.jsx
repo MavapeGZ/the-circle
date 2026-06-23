@@ -113,7 +113,7 @@ function ContractDetail() {
     if (c.status === 'AWAITING_COUNTERPARTY') return { text: 'Awaiting counterparty', cls: 'bg-yellow-100 text-yellow-800' };
     if (c.status === 'COMPLETED') return { text: `Completed (deposit ${c.guaranteeStatus?.toLowerCase()})`, cls: 'bg-gray-200 text-gray-700' };
     if (c.status === 'CANCELLED') return { text: 'Cancelled', cls: 'bg-red-100 text-red-700' };
-    return { text: 'Pending signatures', cls: 'bg-blue-100 text-blue-800' };
+    return { text: 'Pending signatures', cls: 'bg-indigo-100 text-indigo-800' };
   };
 
   if (loading) return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">Loading contract...</div>;
@@ -182,7 +182,7 @@ function ContractDetail() {
 
   return (
     <div className="max-w-5xl mx-auto mt-8 p-4">
-      <Link to="/contracts" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6 font-semibold">
+      <Link to="/contracts" className="inline-flex items-center text-indigo-600 hover:text-indigo-800 mb-6 font-semibold">
         &larr; Back to My Contracts
       </Link>
 
@@ -269,7 +269,7 @@ function ContractDetail() {
           {contract.storedContractId && (
             <button
               onClick={downloadSigned}
-              className="mt-3 w-full bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition"
+              className="mt-3 w-full bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition"
             >
               Download signed PDF
             </button>

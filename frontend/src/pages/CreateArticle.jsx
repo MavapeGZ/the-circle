@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api, { extractApiError } from '../services/api';
+import usePageTitle from '../hooks/usePageTitle';
 
 // Product types that have no price (free / priority). DEMAND is priority, so no price selection.
 const PRICELESS_TYPES = ['DONATION', 'DEMAND'];
 const GUARANTEE_MAX = 20.0;
 
 function CreateArticle() {
+  usePageTitle('Publish');
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -136,7 +138,7 @@ function CreateArticle() {
             required
             maxLength={140}
             placeholder="e.g., Mountain Bike in good condition"
-            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             value={formData.title}
             onChange={handleChange}
           />
@@ -155,7 +157,7 @@ function CreateArticle() {
             rows="4"
             maxLength={4000}
             placeholder="Describe the item, its condition, and any other relevant details..."
-            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
             value={formData.description}
             onChange={handleChange}
           />
@@ -170,7 +172,7 @@ function CreateArticle() {
           <select
             id="productType"
             name="productType"
-            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
             value={formData.productType}
             onChange={handleChange}
           >
@@ -195,7 +197,7 @@ function CreateArticle() {
               step="0.01"
               required
               placeholder="0.00"
-              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               value={formData.price}
               onChange={handleChange}
             />
@@ -217,7 +219,7 @@ function CreateArticle() {
               step="0.01"
               required
               placeholder="e.g. 10.00"
-              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               value={formData.guaranteeAmount}
               onChange={handleChange}
             />
@@ -238,7 +240,7 @@ function CreateArticle() {
             name="image"
             accept="image/*"
             onChange={handleImageChange}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
           />
 
           {imagePreview && (
@@ -258,7 +260,7 @@ function CreateArticle() {
           type="submit"
           disabled={loading}
           className={`w-full py-3 px-4 text-white font-bold rounded shadow-md transition ${
-            loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+            loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
           }`}
         >
           {loading ? 'Publishing...' : 'Publish Article'}

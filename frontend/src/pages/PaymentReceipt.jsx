@@ -45,7 +45,7 @@ function PaymentReceipt() {
       <p className="text-gray-500 mb-6">Simulated payment — no real funds were moved.</p>
 
       {inEscrow && (
-        <div className="p-4 mb-6 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800">
+        <div className="p-4 mb-6 bg-indigo-50 border border-indigo-100 rounded-lg text-sm text-indigo-800">
           Funds are held in escrow. They will be released to the seller as soon as they sign the
           contract. If they do not sign by <span className="font-bold">{new Date(payment.escrowExpiresAt).toLocaleString()}</span>,
           the payment will be refunded automatically.
@@ -103,7 +103,7 @@ function PaymentReceipt() {
       <div className="mt-6 flex gap-3">
         <Link
           to={`/contracts/${payment.contractId}`}
-          className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition"
+          className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition"
         >
           Back to contract
         </Link>

@@ -178,7 +178,7 @@ function SignContract() {
 
   const bannerClasses = banner?.type === 'error'
     ? 'bg-red-100 text-red-700'
-    : 'bg-blue-100 text-blue-700';
+    : 'bg-indigo-100 text-indigo-700';
 
   return (
     <div className="max-w-5xl mx-auto mt-8 p-4">
@@ -186,7 +186,7 @@ function SignContract() {
       <button
         type="button"
         onClick={() => navigate(backTo)}
-        className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6 font-semibold"
+        className="inline-flex items-center text-indigo-600 hover:text-indigo-800 mb-6 font-semibold"
       >
         &larr; Back
       </button>
@@ -237,14 +237,14 @@ function SignContract() {
                   type="email"
                   value={signerEmail}
                   onChange={(e) => setSignerEmail(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
                   required
                 />
               </div>
               <button
                 type="submit"
                 disabled={submitting || loadingContract || !contract}
-                className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Sending…' : 'Send code'}
               </button>
@@ -263,7 +263,7 @@ function SignContract() {
                   maxLength={6}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 text-center text-2xl tracking-[0.5em] font-mono focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 text-center text-2xl tracking-[0.5em] font-mono focus:ring-2 focus:ring-indigo-500"
                   autoFocus
                   required
                 />
@@ -271,7 +271,7 @@ function SignContract() {
               <button
                 type="submit"
                 disabled={submitting || otp.length !== 6}
-                className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Verifying…' : 'Sign contract'}
               </button>
@@ -279,7 +279,7 @@ function SignContract() {
                 type="button"
                 onClick={requestOtp}
                 disabled={submitting}
-                className="block text-sm text-blue-600 font-bold hover:underline disabled:opacity-50"
+                className="block text-sm text-indigo-600 font-bold hover:underline disabled:opacity-50"
               >
                 Resend code
               </button>
@@ -296,7 +296,7 @@ function SignContract() {
               )}
 
               {!result.fullySigned && (
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm text-blue-700 font-bold">
+                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-sm text-indigo-700 font-bold">
                   Your signature has been recorded. The contract will become active once the other party signs.
                 </div>
               )}
@@ -315,7 +315,7 @@ function SignContract() {
                   <button
                     type="button"
                     onClick={() => navigate(`/contracts/${contractId}/checkout`)}
-                    className="bg-blue-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-blue-700 transition"
+                    className="bg-indigo-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-indigo-700 transition"
                   >
                     Go to checkout
                   </button>
@@ -330,7 +330,7 @@ function SignContract() {
               </div>
               <button
                 onClick={downloadSigned}
-                className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition"
+                className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition"
               >
                 Download signed PDF
               </button>

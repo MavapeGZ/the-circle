@@ -3,8 +3,10 @@ import axios from 'axios';
 import api from '../services/api';
 import ArticleCard from '../components/ArticleCard';
 import { ZONE_OPTIONS } from '../constants/zones';
+import usePageTitle from '../hooks/usePageTitle';
 
 function Catalog() {
+  usePageTitle('Catalog');
   const [articles, setArticles] = useState([]);
   const [sellerProfiles, setSellerProfiles] = useState({});
   const [loading, setLoading] = useState(false);
@@ -116,14 +118,14 @@ function Catalog() {
           type="text"
           aria-label="Search catalog"
           placeholder="Search for bikes, books, clothes..."
-          className="flex-grow p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-grow p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
 
         <select
           aria-label="Filter by product type"
-          className="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          className="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           value={productType}
           onChange={(e) => setProductType(e.target.value)}
         >
@@ -136,7 +138,7 @@ function Catalog() {
 
         <select
           aria-label="Filter by area"
-          className="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          className="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           value={zone}
           onChange={(e) => setZone(e.target.value)}
         >
@@ -150,7 +152,7 @@ function Catalog() {
 
         <button
           type="submit"
-          className="bg-blue-600 text-white font-bold py-3 px-8 rounded hover:bg-blue-700 transition"
+          className="bg-indigo-600 text-white font-bold py-3 px-8 rounded hover:bg-indigo-700 transition"
         >
           Search
         </button>

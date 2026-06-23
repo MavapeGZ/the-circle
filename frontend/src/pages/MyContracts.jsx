@@ -4,8 +4,10 @@ import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { contractTypeLabel } from '../utils/contractType';
 import { contractActionRequired } from '../utils/contractAction';
+import usePageTitle from '../hooks/usePageTitle';
 
 function MyContracts() {
+  usePageTitle('My Contracts');
   const navigate = useNavigate();
   const { refreshContracts } = useContext(AuthContext);
 
@@ -112,7 +114,7 @@ function MyContracts() {
     if (c.status === 'DELIVERED') return { text: 'Delivered', cls: 'bg-emerald-100 text-emerald-800' };
     if (c.status === 'COMPLETED') return { text: `Completed (deposit ${c.guaranteeStatus?.toLowerCase()})`, cls: 'bg-gray-200 text-gray-700' };
     if (iNeedToSign(c)) return { text: 'Awaiting your signature', cls: 'bg-yellow-100 text-yellow-800' };
-    return { text: 'Awaiting other party', cls: 'bg-blue-100 text-blue-800' };
+    return { text: 'Awaiting other party', cls: 'bg-indigo-100 text-indigo-800' };
   };
 
   if (loading) return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">Loading contracts...</div>;
@@ -164,7 +166,7 @@ function MyContracts() {
                   {canSign && (
                     <button
                       onClick={() => goSign(c)}
-                      className="px-6 py-2 bg-blue-600 text-white font-bold rounded shadow hover:bg-blue-700 transition"
+                      className="px-6 py-2 bg-indigo-600 text-white font-bold rounded shadow hover:bg-indigo-700 transition"
                     >
                       Sign
                     </button>
@@ -191,7 +193,7 @@ function MyContracts() {
                     <>
                       <button
                         onClick={() => navigate(`/contracts/${c.id}`)}
-                        className="px-5 py-2 bg-blue-50 text-blue-700 font-bold rounded shadow hover:bg-blue-100 transition"
+                        className="px-5 py-2 bg-indigo-50 text-indigo-700 font-bold rounded shadow hover:bg-indigo-100 transition"
                       >
                         View detail
                       </button>

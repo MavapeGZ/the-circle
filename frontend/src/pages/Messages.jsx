@@ -2,13 +2,14 @@ import { useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api, { extractApiError } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import usePageTitle from '../hooks/usePageTitle';
 
 const POLL_MS = 5000;
 
 // Transaction-type chip styling, mirroring the catalog badges.
 const TYPE_BADGE = {
   DONATION: { label: 'Donation', cls: 'bg-purple-100 text-purple-800 border-purple-300' },
-  DEMAND: { label: 'Demand', cls: 'bg-blue-100 text-blue-800 border-blue-300' },
+  DEMAND: { label: 'Demand', cls: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
   SYMBOLIC_SALE: { label: 'Sale', cls: 'bg-green-100 text-green-800 border-green-300' },
   SYMBOLIC_RENTAL: { label: 'Rental', cls: 'bg-green-100 text-green-800 border-green-300' },
 };
@@ -30,6 +31,7 @@ function ArticleThumb({ image, title }) {
 // Inbox + thread chat view. Conversations are about a catalog article and stay
 // open before, during and after a deal. Real-time is approximated with polling.
 export default function Messages() {
+  usePageTitle('Messages');
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
@@ -124,7 +126,7 @@ export default function Messages() {
       <div className="max-w-3xl mx-auto mt-16 p-4 text-center">
         <h1 className="text-3xl font-extrabold text-gray-900 mb-4">Messages</h1>
         <p className="text-gray-600 mb-6">Sign in to view your conversations.</p>
-        <Link to="/login" className="inline-flex px-6 py-3 rounded-full bg-blue-600 text-white font-bold shadow hover:bg-blue-700">Go to login</Link>
+        <Link to="/login" className="inline-flex px-6 py-3 rounded-full bg-indigo-600 text-white font-bold shadow hover:bg-indigo-700">Go to login</Link>
       </div>
     );
   }
@@ -148,7 +150,7 @@ export default function Messages() {
                   <li key={c.id}>
                     <button
                       onClick={() => navigate(`/messages/${c.id}`)}
-                      className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 ${isActive ? 'bg-blue-50' : ''}`}
+                      className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 ${isActive ? 'bg-indigo-50' : ''}`}
                     >
                       <div className="flex justify-between items-center gap-2">
                         <span className="font-bold text-gray-800 truncate">{m.otherName || 'User'}</span>
@@ -176,7 +178,7 @@ export default function Messages() {
                 <div className="min-w-0">
                   <p className="font-bold text-gray-800 truncate">{meta[conversationId]?.otherName || 'Conversation'}</p>
                   {active && (
-                    <Link to={`/catalog/${active.articleId}`} className="text-xs text-blue-600 hover:underline truncate block">
+                    <Link to={`/catalog/${active.articleId}`} className="text-xs text-indigo-600 hover:underline truncate block">
                       About: {meta[conversationId]?.title || 'article'}
                     </Link>
                   )}
@@ -204,9 +206,9 @@ export default function Messages() {
                   const mine = String(msg.senderId) === myId;
                   return (
                     <div key={msg.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${mine ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
+                      <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${mine ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
                         <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                        <p className={`text-[10px] mt-1 ${mine ? 'text-blue-100' : 'text-gray-400'}`}>
+                        <p className={`text-[10px] mt-1 ${mine ? 'text-indigo-100' : 'text-gray-400'}`}>
                           {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </p>
                       </div>
@@ -224,12 +226,12 @@ export default function Messages() {
                   onChange={(e) => setDraft(e.target.value)}
                   maxLength={4000}
                   placeholder="Write a message…"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500"
                 />
                 <button
                   type="submit"
                   disabled={sending || !draft.trim()}
-                  className={`px-5 py-2 rounded-full font-bold text-white ${sending || !draft.trim() ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'}`}
+                  className={`px-5 py-2 rounded-full font-bold text-white ${sending || !draft.trim() ? 'bg-indigo-300' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                 >
                   Send
                 </button>

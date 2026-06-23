@@ -113,13 +113,13 @@ function ForgotPassword() {
   return (
     <div className="flex justify-center items-center mt-20">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md border">
-        <h2 className="text-3xl font-bold text-center text-blue-600 mb-6">{heading}</h2>
+        <h2 className="text-3xl font-bold text-center text-indigo-600 mb-6">{heading}</h2>
 
         {error && (
           <p className="bg-red-100 text-red-600 p-3 rounded mb-4 text-center">{error}</p>
         )}
         {notice && step === STEP_OTP && (
-          <p className="bg-blue-50 text-blue-700 p-3 rounded mb-4 text-center text-sm">{notice}</p>
+          <p className="bg-indigo-50 text-indigo-700 p-3 rounded mb-4 text-center text-sm">{notice}</p>
         )}
 
         {step === STEP_EMAIL && (
@@ -132,16 +132,16 @@ function ForgotPassword() {
               <label className="block text-gray-700 font-semibold mb-2">Email</label>
               <input
                 type="email" required autoFocus
-                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={email} onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <button type="submit" disabled={submitting}
-              className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition disabled:opacity-60">
+              className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition disabled:opacity-60">
               {submitting ? 'Sending…' : 'Send reset code'}
             </button>
             <p className="text-center text-sm text-gray-600">
-              <Link to="/login" className="text-blue-500 hover:underline">Back to sign in</Link>
+              <Link to="/login" className="text-indigo-500 hover:underline">Back to sign in</Link>
             </p>
           </form>
         )}
@@ -153,11 +153,11 @@ function ForgotPassword() {
             </p>
             <input
               type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required autoFocus
-              className="w-full p-3 border rounded text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 border rounded text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
             />
             <button type="submit" disabled={submitting || otp.length !== 6}
-              className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition disabled:opacity-60">
+              className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition disabled:opacity-60">
               {submitting ? 'Verifying…' : 'Verify code'}
             </button>
             <button type="button" onClick={restart} className="text-sm text-gray-500 hover:underline">
@@ -175,7 +175,7 @@ function ForgotPassword() {
               <label className="block text-gray-700 font-semibold mb-2">New password</label>
               <input
                 type="password" required minLength={6} autoFocus
-                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
               />
             </div>
@@ -183,12 +183,12 @@ function ForgotPassword() {
               <label className="block text-gray-700 font-semibold mb-2">Confirm new password</label>
               <input
                 type="password" required minLength={6}
-                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
               />
             </div>
             <button type="submit" disabled={submitting}
-              className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition disabled:opacity-60">
+              className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition disabled:opacity-60">
               {submitting ? 'Updating…' : 'Update password'}
             </button>
           </form>
@@ -202,7 +202,7 @@ function ForgotPassword() {
             </p>
             <button type="button"
               onClick={() => navigate('/login')}
-              className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition">
+              className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition">
               Go to sign in
             </button>
           </div>
