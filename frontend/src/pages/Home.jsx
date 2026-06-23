@@ -16,8 +16,8 @@ function buildShortcuts(isAuthenticated) {
       to: '/catalog',
       title: 'Browse the catalog',
       text: 'Explore what the community is offering and find what you need.',
-      accent: 'text-teal-600 bg-teal-100',
-      ring: 'hover:border-teal-300 hover:shadow-teal-100',
+      accent: 'text-sky-600 bg-sky-100',
+      ring: 'hover:border-sky-300 hover:shadow-sky-100',
       icon: (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       ),
