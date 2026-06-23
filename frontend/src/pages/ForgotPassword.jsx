@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api, { extractApiError } from '../services/api';
 
 const STEP_EMAIL = 'email';
@@ -8,6 +9,7 @@ const STEP_PASSWORD = 'password';
 const STEP_DONE = 'done';
 
 function ForgotPassword() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(STEP_EMAIL);
@@ -32,15 +34,14 @@ function ForgotPassword() {
       // Backend always returns 200 + sessionId (real or fake) to avoid leaking
       // which addresses are registered. Message stays neutral on purpose.
       setSessionId(res.data.sessionId);
-      setNotice(res.data.message || 'If that email is registered, a reset code is on its way.');
+      setNotice(res.data.message || t('forgot.neutral'));
       setStep(STEP_OTP);
     } catch (err) {
       const status = err?.response?.status;
       if (status === 429) {
-        setError(err.response?.data?.message
-          || 'Too many password reset requests. Please wait a few minutes and try again.');
+        setError(err.response?.data?.message || t('forgot.error.rate'));
       } else {
-        setError('Something went wrong. Please try again later.');
+        setError(t('forgot.error.generic'));
       }
     } finally {
       setSubmitting(false);
@@ -61,9 +62,9 @@ function ForgotPassword() {
     } catch (err) {
       const status = err?.response?.status;
       if (status === 400) {
-        setError(extractApiError(err, 'The reset code does not match or has expired.'));
+        setError(extractApiError(err, t('forgot.error.codeMismatch')));
       } else {
-        setError('Something went wrong. Please try again later.');
+        setError(t('forgot.error.generic'));
       }
     } finally {
       setSubmitting(false);
@@ -74,11 +75,11 @@ function ForgotPassword() {
     e.preventDefault();
     setError('');
     if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters long.');
+      setError(t('forgot.error.minLength'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('The two passwords do not match.');
+      setError(t('forgot.error.mismatch'));
       return;
     }
     setSubmitting(true);
@@ -88,9 +89,9 @@ function ForgotPassword() {
     } catch (err) {
       const status = err?.response?.status;
       if (status === 400) {
-        setError(extractApiError(err, 'Your reset session has expired. Please start over.'));
+        setError(extractApiError(err, t('forgot.error.sessionExpired')));
       } else {
-        setError('Something went wrong. Please try again later.');
+        setError(t('forgot.error.generic'));
       }
     } finally {
       setSubmitting(false);
@@ -108,40 +109,39 @@ function ForgotPassword() {
     setError('');
   };
 
-  const heading = step === STEP_DONE ? 'Password updated' : 'Reset your password';
+  const heading = step === STEP_DONE ? t('forgot.doneTitle') : t('forgot.title');
 
   return (
     <div className="flex justify-center items-center mt-20">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md border">
-        <h2 className="text-3xl font-bold text-center text-blue-600 mb-6">{heading}</h2>
+        <h2 className="text-3xl font-bold text-center text-indigo-600 mb-6">{heading}</h2>
 
         {error && (
           <p className="bg-red-100 text-red-600 p-3 rounded mb-4 text-center">{error}</p>
         )}
         {notice && step === STEP_OTP && (
-          <p className="bg-blue-50 text-blue-700 p-3 rounded mb-4 text-center text-sm">{notice}</p>
+          <p className="bg-indigo-50 text-indigo-700 p-3 rounded mb-4 text-center text-sm">{notice}</p>
         )}
 
         {step === STEP_EMAIL && (
           <form onSubmit={requestCode} className="flex flex-col gap-4">
             <p className="text-gray-600 text-sm text-center">
-              Enter the email associated with your account and we'll send you a 6-digit code to
-              choose a new password.
+              {t('forgot.intro')}
             </p>
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">Email</label>
+              <label className="block text-gray-700 font-semibold mb-2">{t('forgot.email')}</label>
               <input
                 type="email" required autoFocus
-                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={email} onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <button type="submit" disabled={submitting}
-              className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition disabled:opacity-60">
-              {submitting ? 'Sending…' : 'Send reset code'}
+              className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition disabled:opacity-60">
+              {submitting ? t('forgot.sending') : t('forgot.send')}
             </button>
             <p className="text-center text-sm text-gray-600">
-              <Link to="/login" className="text-blue-500 hover:underline">Back to sign in</Link>
+              <Link to="/login" className="text-indigo-500 hover:underline">{t('forgot.back')}</Link>
             </p>
           </form>
         )}
@@ -149,19 +149,19 @@ function ForgotPassword() {
         {step === STEP_OTP && (
           <form onSubmit={submitOtp} className="flex flex-col gap-4">
             <p className="text-gray-600 text-sm text-center">
-              Enter the 6-digit code we sent to your inbox.
+              {t('forgot.otpIntro')}
             </p>
             <input
               type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required autoFocus
-              className="w-full p-3 border rounded text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 border rounded text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
             />
             <button type="submit" disabled={submitting || otp.length !== 6}
-              className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition disabled:opacity-60">
-              {submitting ? 'Verifying…' : 'Verify code'}
+              className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition disabled:opacity-60">
+              {submitting ? t('forgot.verifying') : t('forgot.verify')}
             </button>
             <button type="button" onClick={restart} className="text-sm text-gray-500 hover:underline">
-              Use a different email
+              {t('forgot.differentEmail')}
             </button>
           </form>
         )}
@@ -169,27 +169,27 @@ function ForgotPassword() {
         {step === STEP_PASSWORD && (
           <form onSubmit={submitNewPassword} className="flex flex-col gap-4">
             <p className="text-gray-600 text-sm text-center">
-              Choose a new password. You'll be signed out from every trusted device after the change.
+              {t('forgot.passwordIntro')}
             </p>
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">New password</label>
+              <label className="block text-gray-700 font-semibold mb-2">{t('forgot.newPassword')}</label>
               <input
                 type="password" required minLength={6} autoFocus
-                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
               />
             </div>
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">Confirm new password</label>
+              <label className="block text-gray-700 font-semibold mb-2">{t('forgot.confirmPassword')}</label>
               <input
                 type="password" required minLength={6}
-                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
               />
             </div>
             <button type="submit" disabled={submitting}
-              className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition disabled:opacity-60">
-              {submitting ? 'Updating…' : 'Update password'}
+              className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition disabled:opacity-60">
+              {submitting ? t('forgot.updating') : t('forgot.update')}
             </button>
           </form>
         )}
@@ -197,13 +197,12 @@ function ForgotPassword() {
         {step === STEP_DONE && (
           <div className="flex flex-col gap-4 text-center">
             <p className="text-green-700 bg-green-50 border border-green-100 rounded p-4">
-              Your password has been updated. For your security, all trusted devices have been
-              signed out — you'll need to sign in again everywhere.
+              {t('forgot.doneMessage')}
             </p>
             <button type="button"
               onClick={() => navigate('/login')}
-              className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition">
-              Go to sign in
+              className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition">
+              {t('forgot.goSignIn')}
             </button>
           </div>
         )}

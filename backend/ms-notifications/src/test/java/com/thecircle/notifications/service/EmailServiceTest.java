@@ -8,6 +8,7 @@ import com.thecircle.notifications.repository.EmailLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.MessageSource;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import java.util.Map;
@@ -26,6 +27,7 @@ class EmailServiceTest {
     private SpringTemplateEngine templateEngine;
     private EmailLogRepository repository;
     private EmailDispatcher dispatcher;
+    private MessageSource messageSource;
     private EmailService service;
 
     @BeforeEach
@@ -33,7 +35,8 @@ class EmailServiceTest {
         templateEngine = mock(SpringTemplateEngine.class);
         repository = mock(EmailLogRepository.class);
         dispatcher = mock(EmailDispatcher.class);
-        service = new EmailService(templateEngine, repository, dispatcher);
+        messageSource = mock(MessageSource.class);
+        service = new EmailService(templateEngine, repository, dispatcher, messageSource);
 
         when(templateEngine.process(eq("email/otp"), any())).thenReturn("<p>123456</p>");
         when(repository.save(any(EmailLog.class))).thenAnswer(inv -> {

@@ -1,10 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import ArticleCard from '../components/ArticleCard';
 import { ZONE_OPTIONS } from '../constants/zones';
+import usePageTitle from '../hooks/usePageTitle';
 
 function Catalog() {
+  usePageTitle('title.catalog');
+  const { t } = useTranslation();
   const [articles, setArticles] = useState([]);
   const [sellerProfiles, setSellerProfiles] = useState({});
   const [loading, setLoading] = useState(false);
@@ -42,7 +46,7 @@ function Catalog() {
         return; 
       } else {
         console.error(err);
-        setError('Error loading catalog. Please try again later.');
+        setError(t('catalog.error'));
       }
     } finally {
       if (abortControllerRef.current === controller) {
@@ -106,41 +110,41 @@ function Catalog() {
   return (
     <div className="max-w-6xl mx-auto mt-4">
       <div className="flex flex-col items-center mb-10">
-        <h1 className="text-4xl font-extrabold text-gray-800 mb-2">Solidary Catalog</h1>
-        <p className="text-gray-500">Find or request what you need in the community.</p>
+        <h1 className="text-4xl font-extrabold text-gray-800 mb-2">{t('catalog.title')}</h1>
+        <p className="text-gray-500">{t('catalog.subtitle')}</p>
       </div>
 
       {/* SEARCH BAR */}
       <form onSubmit={handleSearch} className="bg-white p-4 rounded-xl shadow-md border border-gray-200 flex flex-col md:flex-row gap-4 mb-10">
         <input
           type="text"
-          aria-label="Search catalog"
-          placeholder="Search for bikes, books, clothes..."
-          className="flex-grow p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label={t('catalog.searchAria')}
+          placeholder={t('catalog.searchPlaceholder')}
+          className="flex-grow p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
 
         <select
-          aria-label="Filter by product type"
-          className="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          aria-label={t('catalog.filterTypeAria')}
+          className="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           value={productType}
           onChange={(e) => setProductType(e.target.value)}
         >
-          <option value="">All Types</option>
-          <option value="DONATION">🎁 Only Donations</option>
-          <option value="SYMBOLIC_SALE">Sales</option>
-          <option value="SYMBOLIC_RENTAL">Rentals</option>
-          <option value="DEMAND">Demands</option>
+          <option value="">{t('catalog.filter.allTypes')}</option>
+          <option value="DONATION">{t('catalog.filter.donations')}</option>
+          <option value="SYMBOLIC_SALE">{t('catalog.filter.sales')}</option>
+          <option value="SYMBOLIC_RENTAL">{t('catalog.filter.rentals')}</option>
+          <option value="DEMAND">{t('catalog.filter.demands')}</option>
         </select>
 
         <select
-          aria-label="Filter by area"
-          className="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          aria-label={t('catalog.filterAreaAria')}
+          className="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           value={zone}
           onChange={(e) => setZone(e.target.value)}
         >
-          <option value="">All areas</option>
+          <option value="">{t('catalog.filter.allAreas')}</option>
           {ZONE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -150,16 +154,16 @@ function Catalog() {
 
         <button
           type="submit"
-          className="bg-blue-600 text-white font-bold py-3 px-8 rounded hover:bg-blue-700 transition"
+          className="bg-indigo-600 text-white font-bold py-3 px-8 rounded hover:bg-indigo-700 transition"
         >
-          Search
+          {t('catalog.search')}
         </button>
       </form>
 
       {/* STATE: LOADING / ERROR / RESULTS */}
       {loading ? (
         <div className="text-center py-20 text-gray-500 text-xl font-semibold animate-pulse">
-          Searching in catalog...
+          {t('catalog.loading')}
         </div>
       ) : error ? (
         <div className="bg-red-100 text-red-700 p-4 rounded-lg text-center font-semibold">
@@ -167,7 +171,7 @@ function Catalog() {
         </div>
       ) : articles.length === 0 ? (
         <div className="text-center py-20 text-gray-500 text-xl">
-          No results found.
+          {t('catalog.noResults')}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

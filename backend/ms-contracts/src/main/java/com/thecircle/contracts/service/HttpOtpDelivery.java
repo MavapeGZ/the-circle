@@ -29,27 +29,25 @@ public class HttpOtpDelivery implements OtpDeliveryChannel {
     private static final String EMAIL_PATH = "/api/notifications/email";
     private static final String INTERNAL_KEY_HEADER = "X-Internal-Api-Key";
     private static final String OTP_TEMPLATE_NAME = "otp";
+    private static final String OTP_SUBJECT_KEY = "email.subject.signature";
 
     private final RestTemplate restTemplate;
     private final String notificationsBaseUrl;
     private final String internalApiKey;
-    private final String subject;
     private final int ttlMinutes;
 
     public HttpOtpDelivery(RestTemplate notificationsRestTemplate,
                            @Value("${notifications.url:http://localhost:8085}") String notificationsBaseUrl,
                            @Value("${notifications.api-key:}") String internalApiKey,
-                           @Value("${signature.mail.subject:The Circle - Electronic signature code}") String subject,
                            @Value("${signature.otp.ttl-seconds:600}") int ttlSeconds) {
         this.restTemplate = notificationsRestTemplate;
         this.notificationsBaseUrl = stripTrailingSlash(notificationsBaseUrl);
         this.internalApiKey = internalApiKey;
-        this.subject = subject;
         this.ttlMinutes = Math.max(1, ttlSeconds / 60);
     }
 
     @Override
-    public void send(String destination, String otp, String signerFullName) {
+    public void send(String destination, String otp, String signerFullName, String locale) {
         Map<String, Object> variables = new LinkedHashMap<>();
         if (signerFullName != null && !signerFullName.isBlank()) {
             variables.put("recipientName", signerFullName);
@@ -59,7 +57,9 @@ public class HttpOtpDelivery implements OtpDeliveryChannel {
 
         Map<String, Object> body = new HashMap<>();
         body.put("to", destination);
-        body.put("subject", subject);
+        // ms-notifications resolves the localized subject from this key + locale.
+        body.put("subjectKey", OTP_SUBJECT_KEY);
+        body.put("locale", locale);
         body.put("templateName", OTP_TEMPLATE_NAME);
         body.put("variables", variables);
 

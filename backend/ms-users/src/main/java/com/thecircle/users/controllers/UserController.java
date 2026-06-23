@@ -58,6 +58,18 @@ public class UserController {
             "MALAGA",
             "OTHER");
 
+    // Locale preference allowlists. Kept in sync with the frontend selectors and
+    // the backend i18n bundles; invalid values are rejected at the API boundary.
+    private static final Set<String> ALLOWED_LANGUAGES = Set.of("es", "en");
+    private static final Set<String> ALLOWED_CURRENCIES = Set.of("EUR", "USD", "GBP");
+    private static final Set<String> ALLOWED_TIMEZONES = Set.of(
+            "Europe/Madrid",
+            "Europe/London",
+            "Atlantic/Canary",
+            "UTC",
+            "America/New_York",
+            "America/Los_Angeles");
+
     // Each KYC scan capped at 5 MB; aligns with spring.servlet.multipart.max-file-size.
     private static final long MAX_KYC_BYTES = 5L * 1024 * 1024;
 
@@ -81,17 +93,7 @@ public class UserController {
     @GetMapping("/me/settings")
     public ResponseEntity<SettingsResponse> getSettings(Authentication authentication) {
         User user = getAuthenticatedUser(authentication);
-        return ResponseEntity.ok(new SettingsResponse(
-                user.getFirstName(),
-                user.getLastName(),
-                user.getEmail(),
-                user.getAddress(),
-                user.getZone(),
-                user.getIdNumber(),
-                user.getIbanLast4(),
-                user.isMarketingEmailsOptIn(),
-                user.isSystemEmailsOptIn(),
-                avatarUrl(user)));
+        return ResponseEntity.ok(settingsResponse(user));
     }
 
     /**
@@ -140,10 +142,20 @@ public class UserController {
             user.setMarketingEmailsOptIn(request.marketingEmailsOptIn());
         if (request.systemEmailsOptIn() != null)
             user.setSystemEmailsOptIn(request.systemEmailsOptIn());
+        if (request.language() != null)
+            user.setLanguage(normalizeChoice(request.language().toLowerCase(), ALLOWED_LANGUAGES, "language"));
+        if (request.currency() != null)
+            user.setCurrency(normalizeChoice(request.currency().toUpperCase(), ALLOWED_CURRENCIES, "currency"));
+        if (request.timezone() != null)
+            user.setTimezone(normalizeChoice(request.timezone(), ALLOWED_TIMEZONES, "timezone"));
 
         userRepository.save(user);
 
-        return ResponseEntity.ok(new SettingsResponse(
+        return ResponseEntity.ok(settingsResponse(user));
+    }
+
+    private SettingsResponse settingsResponse(User user) {
+        return new SettingsResponse(
                 user.getFirstName(),
                 user.getLastName(),
                 user.getEmail(),
@@ -153,7 +165,17 @@ public class UserController {
                 user.getIbanLast4(),
                 user.isMarketingEmailsOptIn(),
                 user.isSystemEmailsOptIn(),
-                avatarUrl(user)));
+                avatarUrl(user),
+                user.getLanguage(),
+                user.getCurrency(),
+                user.getTimezone());
+    }
+
+    private String normalizeChoice(String value, Set<String> allowed, String field) {
+        if (!allowed.contains(value)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid " + field + ".");
+        }
+        return value;
     }
 
     @PostMapping("/me/change-password")
@@ -491,7 +513,7 @@ public class UserController {
 
     public record SettingsResponse(String firstName, String lastName, String email, String address, String zone,
             String idNumber, String ibanLast4, boolean marketingEmailsOptIn, boolean systemEmailsOptIn,
-            String avatarUrl) {
+            String avatarUrl, String language, String currency, String timezone) {
     }
 
     public record UpdateProfileRequest(
@@ -507,7 +529,10 @@ public class UserController {
             @Size(max = 50, message = "ID number must be at most 50 characters")
             @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "ID number " + ValidationPatterns.NO_ANGLE_MSG)
             String idNumber,
-            Boolean marketingEmailsOptIn, Boolean systemEmailsOptIn) {
+            Boolean marketingEmailsOptIn, Boolean systemEmailsOptIn,
+            @Size(max = 8, message = "Language code too long") String language,
+            @Size(max = 3, message = "Currency code too long") String currency,
+            @Size(max = 64, message = "Timezone too long") String timezone) {
     }
 
     public record UpdateIbanRequest(

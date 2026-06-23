@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { useContext, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
 import api, { resolveAssetUrl } from '../services/api';
 import { countContractsNeedingAction } from '../utils/contractAction';
@@ -25,6 +26,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 // Navigation lives inside BrowserRouter so it can use useNavigate to redirect.
 function NavBar() {
   const { user, logout, contractsRefreshNonce } = useContext(AuthContext);
+  const { t } = useTranslation();
   const navigate = useNavigate();
   // Mobile menu toggle. On small screens the inline links would crowd into each
   // other (e.g. "Catalog" colliding with "Login"), so they collapse behind a
@@ -75,7 +77,7 @@ function NavBar() {
     navigate('/');
   };
 
-  const navLinkClass = 'font-bold hover:text-blue-200 transition-colors';
+  const navLinkClass = 'font-bold hover:text-indigo-200 transition-colors';
 
   // Initials shown when the user has no profile picture yet.
   const userInitials = user
@@ -90,12 +92,12 @@ function NavBar() {
   // Shared link set, reused for the desktop row and the mobile dropdown.
   const mainLinks = (
     <>
-      <Link to="/" onClick={closeMenu} className={navLinkClass}>Home</Link>
-      <Link to="/catalog" onClick={closeMenu} className={navLinkClass}>Catalog</Link>
-      {user && <Link to="/create" onClick={closeMenu} className={navLinkClass}>Publish</Link>}
+      <Link to="/" onClick={closeMenu} className={navLinkClass}>{t('nav.home')}</Link>
+      <Link to="/catalog" onClick={closeMenu} className={navLinkClass}>{t('nav.catalog')}</Link>
+      {user && <Link to="/create" onClick={closeMenu} className={navLinkClass}>{t('nav.publish')}</Link>}
       {user && (
         <Link to="/contracts" onClick={closeMenu} className={`${navLinkClass} inline-flex items-center gap-1.5`}>
-          Contracts
+          {t('nav.contracts')}
           {contractsPending > 0 && (
             <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 leading-none">
               {contractsPending > 99 ? '99+' : contractsPending}
@@ -105,7 +107,7 @@ function NavBar() {
       )}
       {user && (
         <Link to="/messages" onClick={closeMenu} className={`${navLinkClass} inline-flex items-center gap-1.5`}>
-          Messages
+          {t('nav.messages')}
           {unreadTotal > 0 && (
             <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 leading-none">
               {unreadTotal > 99 ? '99+' : unreadTotal}
@@ -119,34 +121,37 @@ function NavBar() {
   const authLinks = user ? (
     <>
       <Link to="/profile" onClick={closeMenu} aria-label="Profile" title="Profile" className="flex items-center gap-2">
-        <span className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-black overflow-hidden shrink-0 ring-2 ring-white/70 hover:ring-white transition-colors">
+        <span className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-800 flex items-center justify-center text-sm font-black overflow-hidden shrink-0 ring-2 ring-white/70 hover:ring-white transition-colors">
           {user.avatarUrl ? (
             <img src={resolveAssetUrl(user.avatarUrl)} alt="Profile" className="h-full w-full object-cover" />
           ) : (
             <span>{userInitials}</span>
           )}
         </span>
-        <span className="md:hidden font-bold">Profile</span>
+        <span className="md:hidden font-bold">{t('nav.profile')}</span>
       </Link>
-      <Link to="/settings" onClick={closeMenu} className={navLinkClass}>Settings</Link>
+      <Link to="/settings" onClick={closeMenu} className={navLinkClass}>{t('nav.settings')}</Link>
       <button
         onClick={handleLogout}
         className="font-bold bg-red-500 px-4 py-2 rounded hover:bg-red-600 transition-colors shadow-sm text-left"
       >
-        Logout
+        {t('nav.logout')}
       </button>
     </>
   ) : (
     <>
-      <Link to="/login" onClick={closeMenu} className={navLinkClass}>Login</Link>
-      <Link to="/register" onClick={closeMenu} className="font-bold bg-green-500 px-4 py-2 rounded hover:bg-green-600 transition-colors shadow-sm">Register</Link>
+      <Link to="/login" onClick={closeMenu} className={navLinkClass}>{t('nav.login')}</Link>
+      <Link to="/register" onClick={closeMenu} className="font-bold bg-amber-400 text-indigo-950 px-4 py-2 rounded hover:bg-amber-300 transition-colors shadow-sm">{t('nav.register')}</Link>
     </>
   );
 
   return (
-    <nav className="bg-blue-600 text-white shadow-md relative z-10">
+    <nav className="bg-indigo-800 text-white shadow-md relative z-10">
       <div className="p-4 flex justify-between items-center">
-        <Link to="/" onClick={closeMenu} className="font-extrabold text-xl tracking-wider">THE CIRCLE</Link>
+        <Link to="/" onClick={closeMenu} className="flex items-center gap-2.5 font-extrabold text-xl tracking-wider">
+          <img src="/img/logo.png" alt="" aria-hidden="true" className="h-9 w-9 rounded-full bg-white p-0.5 shadow-sm" />
+          THE CIRCLE
+        </Link>
 
         {/* Desktop: inline links. Hidden below md, where the hamburger takes over. */}
         <div className="hidden md:flex gap-4 items-center">{mainLinks}</div>
@@ -158,7 +163,7 @@ function NavBar() {
           aria-label="Toggle navigation menu"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((open) => !open)}
-          className="md:hidden inline-flex items-center justify-center p-2 rounded hover:bg-blue-700 transition-colors"
+          className="md:hidden inline-flex items-center justify-center p-2 rounded hover:bg-indigo-900 transition-colors"
         >
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             {menuOpen ? (
@@ -172,9 +177,9 @@ function NavBar() {
 
       {/* Mobile: stacked dropdown, only when open. */}
       {menuOpen && (
-        <div className="md:hidden px-4 pb-4 flex flex-col gap-3 border-t border-blue-500">
+        <div className="md:hidden px-4 pb-4 flex flex-col gap-3 border-t border-indigo-700">
           <div className="flex flex-col gap-3 pt-3">{mainLinks}</div>
-          <div className="flex flex-col gap-3 pt-3 border-t border-blue-500">{authLinks}</div>
+          <div className="flex flex-col gap-3 pt-3 border-t border-indigo-700">{authLinks}</div>
         </div>
       )}
     </nav>

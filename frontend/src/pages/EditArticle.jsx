@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api, { extractApiError } from '../services/api';
+import { usePreferences } from '../context/PreferencesContext';
 
 // Product types that have no price (free / priority). DEMAND is priority, so no price selection.
 const PRICELESS_TYPES = ['DONATION', 'DEMAND'];
 
 function EditArticle() {
+  const { t } = useTranslation();
+  const { toEur, fromEur, currencySymbol } = usePreferences();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -18,7 +22,9 @@ function EditArticle() {
   
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState('');
-  
+  // Canonical price in EUR (the stored base); the input shows it converted.
+  const [priceEur, setPriceEur] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -28,21 +34,22 @@ function EditArticle() {
       try {
         const response = await api.get(`/catalog/articles/${id}`);
         const article = response.data;
-        
+
+        setPriceEur(article.price ?? 0);
         setFormData({
           title: article.title || '',
           description: article.description || '',
           productType: article.productType || 'SYMBOLIC_SALE',
-          price: article.price || 0
+          price: 0
         });
-        
+
         if (article.imageBase64) {
           setImagePreview(article.imageBase64);
           setImageBase64(article.imageBase64);
         }
       } catch (err) {
         console.error(err);
-        setError('Error loading article data.');
+        setError(t('edit.error.load'));
       } finally {
         setLoading(false);
       }
@@ -50,6 +57,15 @@ function EditArticle() {
 
     fetchArticle();
   }, [id]);
+
+  // Show the stored EUR price converted to the user's currency. Re-runs if the
+  // currency preference resolves after the article loads, so the displayed value
+  // (and thus the value converted back to EUR on save) is always correct.
+  useEffect(() => {
+    if (priceEur != null) {
+      setFormData((prev) => ({ ...prev, price: fromEur(priceEur) ?? 0 }));
+    }
+  }, [priceEur, fromEur]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -70,7 +86,7 @@ function EditArticle() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        setError('The image is too large. Maximum size is 2MB.');
+        setError(t('article.error.imageTooLarge'));
         return;
       }
       setError('');
@@ -95,7 +111,8 @@ function EditArticle() {
         productType: formData.productType,
         category: 'General',
         imageBase64: imageBase64,
-        price: PRICELESS_TYPES.includes(formData.productType) ? 0.0 : parseFloat(formData.price)
+        // Input is in the user's currency; store EUR (the base).
+        price: PRICELESS_TYPES.includes(formData.productType) ? 0.0 : (toEur(formData.price) ?? 0)
       };
 
       await api.put(`/catalog/articles/${id}`, payload);
@@ -103,19 +120,19 @@ function EditArticle() {
       navigate(`/catalog/${id}`);
     } catch (err) {
       console.error('Error updating article:', err);
-      setError(extractApiError(err, 'Failed to update the article. Please try again.'));
+      setError(extractApiError(err, t('edit.error.update')));
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <div className="text-center mt-20 text-xl text-gray-500 animate-pulse">Loading article data...</div>;
+  if (loading) return <div className="text-center mt-20 text-xl text-gray-500 animate-pulse">{t('edit.loading')}</div>;
 
   return (
     <div className="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg border border-gray-100">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-extrabold text-gray-800">Edit Article</h1>
-        <Link to={`/catalog/${id}`} className="text-sm text-gray-500 hover:text-gray-700">Cancel</Link>
+        <h1 className="text-3xl font-extrabold text-gray-800">{t('edit.title')}</h1>
+        <Link to={`/catalog/${id}`} className="text-sm text-gray-500 hover:text-gray-700">{t('edit.cancel')}</Link>
       </div>
       
       {error && (
@@ -127,13 +144,13 @@ function EditArticle() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* TITLE */}
         <div>
-          <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-1">Title</label>
+          <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-1">{t('article.field.title')}</label>
           <input
             type="text"
             id="title"
             name="title"
             required
-            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             value={formData.title}
             onChange={handleChange}
           />
@@ -141,13 +158,13 @@ function EditArticle() {
 
         {/* DESCRIPTION */}
         <div>
-          <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+          <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1">{t('article.field.description')}</label>
           <textarea
             id="description"
             name="description"
             required
             rows="4"
-            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
             value={formData.description}
             onChange={handleChange}
           />
@@ -156,19 +173,19 @@ function EditArticle() {
         {/* PRODUCT TYPE */}
         <div>
           <label htmlFor="productType" className="block text-sm font-semibold text-gray-700 mb-1">
-            Product Type <span className="text-red-500">*</span>
+            {t('article.field.productType')} <span className="text-red-500">*</span>
           </label>
           <select
             id="productType"
             name="productType"
-            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
             value={formData.productType}
             onChange={handleChange}
           >
-            <option value="SYMBOLIC_SALE">Symbolic Sale</option>
-            <option value="SYMBOLIC_RENTAL">Symbolic Rental</option>
-            <option value="DONATION">Donation (Free)</option>
-            <option value="DEMAND">Demand</option>
+            <option value="SYMBOLIC_SALE">{t('article.type.sale')}</option>
+            <option value="SYMBOLIC_RENTAL">{t('article.type.rental')}</option>
+            <option value="DONATION">{t('article.type.donation')}</option>
+            <option value="DEMAND">{t('article.type.demand')}</option>
           </select>
         </div>
 
@@ -176,7 +193,7 @@ function EditArticle() {
         {!PRICELESS_TYPES.includes(formData.productType) && (
           <div>
             <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-1">
-              Price (€) <span className="text-red-500">*</span>
+              {t('article.field.price', { currency: currencySymbol })} <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -185,7 +202,7 @@ function EditArticle() {
               min="0"
               step="0.01"
               required
-              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               value={formData.price}
               onChange={handleChange}
             />
@@ -194,13 +211,13 @@ function EditArticle() {
 
         {/* IMAGE UPLOAD */}
         <div>
-          <label htmlFor="image" className="block text-sm font-semibold text-gray-700 mb-1">Change Image (Optional)</label>
+          <label htmlFor="image" className="block text-sm font-semibold text-gray-700 mb-1">{t('edit.changeImage')}</label>
           <input
             type="file"
             id="image"
             accept="image/*"
             onChange={handleImageChange}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
           />
           {imagePreview && (
             <div className="mt-4">
@@ -213,10 +230,10 @@ function EditArticle() {
           type="submit"
           disabled={saving}
           className={`w-full py-3 px-4 text-white font-bold rounded shadow-md transition ${
-            saving ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+            saving ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
           }`}
         >
-          {saving ? 'Saving changes...' : 'Save Changes'}
+          {saving ? t('edit.saving') : t('edit.save')}
         </button>
       </form>
     </div>

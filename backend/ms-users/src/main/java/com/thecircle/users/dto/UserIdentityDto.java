@@ -12,5 +12,6 @@ public record UserIdentityDto(
     String lastName,
     String address,
     String idNumber,
-    String zone
+    String zone,
+    String language
 ) {}

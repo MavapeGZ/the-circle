@@ -1,11 +1,15 @@
 import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api, { extractApiError } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import { usePreferences } from '../context/PreferencesContext';
 import { contractTypeLabel } from '../utils/contractType';
 import ReviewForm from '../components/ReviewForm';
 
 function ContractDetail() {
+  const { t } = useTranslation();
+  const { formatDate, formatPrice } = usePreferences();
   const { contractId } = useParams();
   const navigate = useNavigate();
   const { user: currentUser, refreshContracts } = useContext(AuthContext);
@@ -36,7 +40,7 @@ function ContractDetail() {
         data = res.data;
         setContract(data);
       } catch {
-        setError('Could not load this contract.');
+        setError(t('cd.loadError'));
         setLoading(false);
         return;
       }
@@ -103,20 +107,20 @@ function ContractDetail() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      setError('Could not download the signed contract.');
+      setError(t('cd.downloadError'));
     }
   };
 
   const statusLabel = (c) => {
-    if (c.status === 'ACTIVE') return { text: 'Active (signed by both)', cls: 'bg-green-100 text-green-800' };
-    if (c.status === 'DELIVERED') return { text: 'Delivered', cls: 'bg-emerald-100 text-emerald-800' };
-    if (c.status === 'AWAITING_COUNTERPARTY') return { text: 'Awaiting counterparty', cls: 'bg-yellow-100 text-yellow-800' };
-    if (c.status === 'COMPLETED') return { text: `Completed (deposit ${c.guaranteeStatus?.toLowerCase()})`, cls: 'bg-gray-200 text-gray-700' };
-    if (c.status === 'CANCELLED') return { text: 'Cancelled', cls: 'bg-red-100 text-red-700' };
-    return { text: 'Pending signatures', cls: 'bg-blue-100 text-blue-800' };
+    if (c.status === 'ACTIVE') return { text: t('cd.status.active'), cls: 'bg-green-100 text-green-800' };
+    if (c.status === 'DELIVERED') return { text: t('cd.status.delivered'), cls: 'bg-emerald-100 text-emerald-800' };
+    if (c.status === 'AWAITING_COUNTERPARTY') return { text: t('cd.status.awaitingCounterparty'), cls: 'bg-yellow-100 text-yellow-800' };
+    if (c.status === 'COMPLETED') return { text: t('cd.status.completed', { status: c.guaranteeStatus?.toLowerCase() }), cls: 'bg-gray-200 text-gray-700' };
+    if (c.status === 'CANCELLED') return { text: t('cd.status.cancelled'), cls: 'bg-red-100 text-red-700' };
+    return { text: t('cd.status.pending'), cls: 'bg-indigo-100 text-indigo-800' };
   };
 
-  if (loading) return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">Loading contract...</div>;
+  if (loading) return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">{t('cd.loading')}</div>;
   if (error) return <div className="text-center mt-20 text-xl text-red-600 font-bold">{error}</div>;
   if (!contract) return null;
 
@@ -165,7 +169,7 @@ function ContractDetail() {
       setContract(res.data);
       refreshContracts();
     } catch (err) {
-      setError(extractApiError(err, 'Could not confirm delivery.'));
+      setError(extractApiError(err, t('cd.confirmDeliveryError')));
     } finally {
       setConfirming(false);
     }
@@ -182,63 +186,61 @@ function ContractDetail() {
 
   return (
     <div className="max-w-5xl mx-auto mt-8 p-4">
-      <Link to="/contracts" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6 font-semibold">
-        &larr; Back to My Contracts
+      <Link to="/contracts" className="inline-flex items-center text-indigo-600 hover:text-indigo-800 mb-6 font-semibold">
+        &larr; {t('cd.back')}
       </Link>
 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* DETAILS */}
         <div className="lg:w-1/2 bg-white p-6 rounded-2xl shadow-lg border border-gray-100 h-fit">
           <div className="flex justify-between items-start mb-4">
-            <h1 className="text-2xl font-extrabold text-gray-900">{contractTypeLabel(contract.type)}</h1>
+            <h1 className="text-2xl font-extrabold text-gray-900">{contractTypeLabel(contract.type, t)}</h1>
             <span className={`text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ${label.cls}`}>
               {label.text}
             </span>
           </div>
 
           <dl className="text-sm text-gray-600 space-y-2">
-            <Row term="Item" value={itemTitle || contract.itemId} />
-            <Row term="Owner" value={ownerName || contract.ownerId} />
-            <Row term="Receiver" value={receiverName || contract.receiverId} />
-            <Row term="Created" value={contract.createdAt ? new Date(contract.createdAt).toLocaleString() : '—'} />
-            <Row term="Owner signed" value={contract.ownerSignedAt ? new Date(contract.ownerSignedAt).toLocaleString() : 'Not yet'} />
-            <Row term="Receiver signed" value={contract.receiverSignedAt ? new Date(contract.receiverSignedAt).toLocaleString() : 'Not yet'} />
+            <Row term={t('cd.row.item')} value={itemTitle || contract.itemId} />
+            <Row term={t('cd.row.owner')} value={ownerName || contract.ownerId} />
+            <Row term={t('cd.row.receiver')} value={receiverName || contract.receiverId} />
+            <Row term={t('cd.row.created')} value={contract.createdAt ? formatDate(contract.createdAt, { dateStyle: 'medium', timeStyle: 'short' }) : '—'} />
+            <Row term={t('cd.row.ownerSigned')} value={contract.ownerSignedAt ? formatDate(contract.ownerSignedAt, { dateStyle: 'medium', timeStyle: 'short' }) : t('cd.notYet')} />
+            <Row term={t('cd.row.receiverSigned')} value={contract.receiverSignedAt ? formatDate(contract.receiverSignedAt, { dateStyle: 'medium', timeStyle: 'short' }) : t('cd.notYet')} />
             {contract.guaranteeStatus && contract.guaranteeStatus !== 'NONE' && (
-              <Row term="Deposit" value={`${contract.guaranteeAmount} € (${contract.guaranteeStatus.toLowerCase()})`} />
+              <Row term={t('cd.row.deposit')} value={`${formatPrice(contract.guaranteeAmount)} (${contract.guaranteeStatus.toLowerCase()})`} />
             )}
-            {contract.conditions && <Row term="Conditions" value={contract.conditions} />}
+            {contract.conditions && <Row term={t('cd.row.conditions')} value={contract.conditions} />}
           </dl>
 
           {escrowed && (
             <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-900">
               <p className="font-bold">
-                Payment held in escrow — {escrowed.amount} {escrowed.currency}
+                {t('cd.escrowTitle', { amount: formatPrice(escrowed.amount) })}
               </p>
               <p className="mt-1">
                 {isOwner
-                  ? 'Sign the contract before '
-                  : 'The seller has until '}
-                <span className="font-bold">{new Date(escrowed.escrowExpiresAt).toLocaleString()}</span>
-                {isOwner ? ' to release the funds.' : ' to sign; otherwise the payment will be refunded automatically.'}
+                  ? t('cd.escrowOwnerMsg', { date: formatDate(escrowed.escrowExpiresAt, { dateStyle: 'medium', timeStyle: 'short' }) })
+                  : t('cd.escrowReceiverMsg', { date: formatDate(escrowed.escrowExpiresAt, { dateStyle: 'medium', timeStyle: 'short' }) })}
               </p>
               <Link
                 to={`/contracts/${contract.id}/payments/${escrowed.id}/receipt`}
                 className="inline-block mt-2 text-sm font-bold underline hover:no-underline"
               >
-                View receipt
+                {t('cd.viewReceipt')}
               </Link>
             </div>
           )}
 
           {released && (
             <div className="mt-6 p-4 bg-green-50 border border-green-100 rounded-lg text-sm text-green-800">
-              Payment released to the seller on {new Date(released.releasedAt).toLocaleString()}.
+              {t('cd.released', { date: formatDate(released.releasedAt, { dateStyle: 'medium', timeStyle: 'short' }) })}
             </div>
           )}
 
           {refunded && (
             <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
-              Payment refunded to the buyer. Contract cancelled.
+              {t('cd.refunded')}
             </div>
           )}
 
@@ -247,7 +249,7 @@ function ContractDetail() {
               onClick={goSign}
               className="mt-6 w-full bg-green-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-green-700 transition"
             >
-              Sign contract
+              {t('cd.signContract')}
             </button>
           )}
 
@@ -256,36 +258,36 @@ function ContractDetail() {
               onClick={() => navigate(`/contracts/${contract.id}/checkout`)}
               className="mt-3 w-full bg-yellow-500 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-yellow-600 transition"
             >
-              {contract.type === 'RENT' ? 'Lock security deposit' : 'Complete payment'}
+              {contract.type === 'RENT' ? t('cd.lockDeposit') : t('cd.completePayment')}
             </button>
           )}
 
           {lastFailed && !escrowed && !released && (
             <p className="mt-3 text-sm text-red-700">
-              Last payment attempt failed: {lastFailed.failureReason || 'card declined.'}
+              {t('cd.lastFailed', { reason: lastFailed.failureReason || t('cd.cardDeclined') })}
             </p>
           )}
 
           {contract.storedContractId && (
             <button
               onClick={downloadSigned}
-              className="mt-3 w-full bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition"
+              className="mt-3 w-full bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition"
             >
-              Download signed PDF
+              {t('cd.downloadSigned')}
             </button>
           )}
 
           {canConfirmDelivery && (
             <div className="mt-6 p-4 bg-emerald-50 border border-emerald-100 rounded-lg text-sm text-emerald-900">
-              <p className="font-bold mb-2">Hand-over</p>
+              <p className="font-bold mb-2">{t('cd.handover')}</p>
               <ul className="space-y-1 mb-3">
-                <li>Owner delivered: {contract.ownerDeliveredAt ? new Date(contract.ownerDeliveredAt).toLocaleString() : 'Not yet'}</li>
-                <li>Receiver received: {contract.receiverReceivedAt ? new Date(contract.receiverReceivedAt).toLocaleString() : 'Not yet'}</li>
+                <li>{t('cd.ownerDelivered', { date: contract.ownerDeliveredAt ? formatDate(contract.ownerDeliveredAt, { dateStyle: 'medium', timeStyle: 'short' }) : t('cd.notYet') })}</li>
+                <li>{t('cd.receiverReceived', { date: contract.receiverReceivedAt ? formatDate(contract.receiverReceivedAt, { dateStyle: 'medium', timeStyle: 'short' }) : t('cd.notYet') })}</li>
               </ul>
               {myConfirmedAt ? (
                 <p className="text-emerald-700">
-                  You confirmed {isOwner ? 'delivery' : 'reception'}.
-                  {!bothConfirmed && ' Waiting for the other party.'}
+                  {isOwner ? t('cd.youConfirmedDelivery') : t('cd.youConfirmedReception')}
+                  {!bothConfirmed && ` ${t('cd.waitingOther')}`}
                 </p>
               ) : (
                 <button
@@ -293,7 +295,7 @@ function ContractDetail() {
                   disabled={confirming}
                   className={`w-full font-bold py-2.5 px-6 rounded-lg text-white ${confirming ? 'bg-emerald-400' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                 >
-                  {confirming ? 'Saving…' : isOwner ? 'Mark as delivered' : 'Mark as received'}
+                  {confirming ? t('cd.saving') : isOwner ? t('cd.markDelivered') : t('cd.markReceived')}
                 </button>
               )}
             </div>
@@ -312,32 +314,32 @@ function ContractDetail() {
                 onClick={() => setShowReviewForm(true)}
                 className="mt-3 w-full bg-yellow-500 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-yellow-600 transition"
               >
-                Leave a review
+                {t('cd.leaveReview')}
               </button>
             )
           )}
 
           {reviewDone && (
-            <p className="mt-3 text-sm font-semibold text-emerald-700">Thanks! Your review was submitted.</p>
+            <p className="mt-3 text-sm font-semibold text-emerald-700">{t('cd.reviewThanks')}</p>
           )}
 
           {canReview && alreadyReviewed && !reviewDone && (
-            <p className="mt-3 text-sm font-semibold text-gray-500">You already reviewed this transaction.</p>
+            <p className="mt-3 text-sm font-semibold text-gray-500">{t('cd.alreadyReviewed')}</p>
           )}
         </div>
 
         {/* PDF PREVIEW */}
         <div className="lg:w-1/2">
-          <h2 className="text-xl font-bold text-gray-800 mb-3">Document</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-3">{t('cd.document')}</h2>
           {pdfUrl ? (
             <iframe
-              title="Contract document"
+              title={t('cd.document')}
               src={pdfUrl}
               className="w-full h-[600px] border border-gray-200 rounded-xl bg-gray-50"
             />
           ) : (
             <div className="w-full h-[600px] border border-gray-200 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
-              Preview not available
+              {t('cd.previewNa')}
             </div>
           )}
         </div>

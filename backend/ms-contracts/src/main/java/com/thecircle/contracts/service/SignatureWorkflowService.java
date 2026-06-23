@@ -1,5 +1,6 @@
 package com.thecircle.contracts.service;
 
+import com.thecircle.contracts.client.UsersClient;
 import com.thecircle.contracts.dto.*;
 import com.thecircle.contracts.model.StoredContract;
 import org.slf4j.Logger;
@@ -46,6 +47,7 @@ public class SignatureWorkflowService {
     private final ContractService contractService;
     private final OtpDeliveryChannel otpDelivery;
     private final com.thecircle.contracts.client.GamificationClient gamificationClient;
+    private final com.thecircle.contracts.client.UsersClient usersClient;
 
     @Value("${signature.otp.length:6}")
     private int otpLength;
@@ -64,13 +66,15 @@ public class SignatureWorkflowService {
                                     ContractStorageService storageService,
                                     ContractService contractService,
                                     OtpDeliveryChannel otpDelivery,
-                                    com.thecircle.contracts.client.GamificationClient gamificationClient) {
+                                    com.thecircle.contracts.client.GamificationClient gamificationClient,
+                                    com.thecircle.contracts.client.UsersClient usersClient) {
         this.pdfService = pdfService;
         this.signatureService = signatureService;
         this.storageService = storageService;
         this.contractService = contractService;
         this.otpDelivery = otpDelivery;
         this.gamificationClient = gamificationClient;
+        this.usersClient = usersClient;
     }
 
     public SignRequestResponseDto requestOtp(SignRequestDto req) {
@@ -104,7 +108,9 @@ public class SignatureWorkflowService {
             log.warn("OTP_EXPOSE_DEV enabled — OTP for {}: {}", req.getSignerEmail(), rawOtp);
         } else {
             try {
-                otpDelivery.send(req.getSignerEmail(), rawOtp, resolveSignerName(req.getContract(), req.getSignerEmail()));
+                otpDelivery.send(req.getSignerEmail(), rawOtp,
+                        resolveSignerName(req.getContract(), req.getSignerEmail()),
+                        resolveSignerLocale(req.getContract(), req.getSignerRole()));
             } catch (RuntimeException ex) {
                 sessions.remove(sessionId);
                 log.error("Failed to send OTP email to {}", req.getSignerEmail(), ex);
@@ -172,7 +178,8 @@ public class SignatureWorkflowService {
         try {
             // Fill signer names from ms-users so the signed PDF is not anonymous.
             contractService.enrichSigners(session.contract, session.signerEmail);
-            byte[] pdf = pdfService.generatePdf(session.contract);
+            byte[] pdf = pdfService.generatePdf(session.contract,
+                    resolveSignerLocale(session.contract, session.signerRole));
             if (session.visualOptions != null) {
                 pdf = signatureService.applyVisualSignature(pdf, session.visualOptions, buildSignerMap(session.contract));
             }
@@ -246,6 +253,26 @@ public class SignatureWorkflowService {
             return secondary.getFullName();
         }
         return null;
+    }
+
+    /**
+     * Best-effort lookup of the signing party's preferred language so the OTP
+     * email is localized. RECEIVER maps to receiverId, OWNER to ownerId (mirrors
+     * enrichSigners). Returns null on any gap so ms-notifications falls back to
+     * English; a users-service hiccup never blocks signing.
+     */
+    private String resolveSignerLocale(ContractDto contract, SignerRole role) {
+        if (contract == null || role == null) return null;
+        String userId = role == SignerRole.RECEIVER ? contract.getReceiverId() : contract.getOwnerId();
+        if (userId == null || userId.isBlank()) return null;
+        try {
+            UsersClient.UserProfile profile = usersClient.getProfile(userId);
+            return profile != null ? profile.language() : null;
+        } catch (RuntimeException ex) {
+            log.warn("Could not resolve signer locale for contract {}: {}",
+                    contract.getContractId(), ex.getMessage());
+            return null;
+        }
     }
 
     private String generateOtp() {

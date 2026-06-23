@@ -8,7 +8,10 @@ const CONTRACT_STATUS_LABELS = {
   CANCELLED: 'Cancelled',
 };
 
-export function contractStatusLabel(status) {
+// Pass the i18next `t` to get a localized label; without it, falls back to the
+// English map (keeps non-React callers working).
+export function contractStatusLabel(status, t) {
   if (!status) return '—';
-  return CONTRACT_STATUS_LABELS[status] || status;
+  const fallback = CONTRACT_STATUS_LABELS[status] || status;
+  return t ? t(`contractStatus.${status}`, { defaultValue: fallback }) : fallback;
 }

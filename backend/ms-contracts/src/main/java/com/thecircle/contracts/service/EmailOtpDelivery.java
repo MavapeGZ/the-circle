@@ -35,7 +35,9 @@ public class EmailOtpDelivery implements OtpDeliveryChannel {
     }
 
     @Override
-    public void send(String destination, String otp, String signerFullName) {
+    public void send(String destination, String otp, String signerFullName, String locale) {
+        // Dormant SMTP fallback (HttpOtpDelivery is @Primary). Locale-aware body is
+        // handled by ms-notifications; this plain-text fallback stays English-only.
         SimpleMailMessage msg = new SimpleMailMessage();
         msg.setFrom(from);
         msg.setTo(destination);
