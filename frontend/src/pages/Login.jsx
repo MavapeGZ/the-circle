@@ -109,7 +109,7 @@ function Login() {
   return (
     <div className="flex justify-center items-center mt-20">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md border">
-        <h2 className="text-3xl font-bold text-center text-blue-600 mb-6">
+        <h2 className="text-3xl font-bold text-center text-indigo-600 mb-6">
           {step === STEP_CREDENTIALS ? 'Sign In' : 'Verify Sign-in'}
         </h2>
 
@@ -128,10 +128,10 @@ function Login() {
         {error && <p className="bg-red-100 text-red-600 p-3 rounded mb-4 text-center">{error}</p>}
 
         {accountNotFound && (
-          <div className="bg-blue-50 text-blue-800 p-3 rounded mb-4 text-center border border-blue-200">
+          <div className="bg-indigo-50 text-indigo-800 p-3 rounded mb-4 text-center border border-indigo-200">
             <p className="mb-2">Don't have an account yet?</p>
             <Link to="/register"
-              className="inline-block bg-blue-600 text-white font-bold px-4 py-2 rounded hover:bg-blue-700 transition">
+              className="inline-block bg-indigo-600 text-white font-bold px-4 py-2 rounded hover:bg-indigo-700 transition">
               Create an account
             </Link>
           </div>
@@ -143,7 +143,7 @@ function Login() {
               <label className="block text-gray-700 font-semibold mb-2">Email</label>
               <input
                 type="email" required
-                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={email} onChange={(e) => setEmail(e.target.value)}
               />
             </div>
@@ -151,19 +151,19 @@ function Login() {
               <label className="block text-gray-700 font-semibold mb-2">Password</label>
               <input
                 type="password" required
-                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={password} onChange={(e) => setPassword(e.target.value)}
               />
             </div>
             <button type="submit" disabled={submitting}
-              className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition disabled:opacity-60">
+              className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition disabled:opacity-60">
               {submitting ? 'Signing in…' : 'Sign In'}
             </button>
             <p className="text-center text-sm text-gray-600">
-              <Link to="/forgot-password" className="text-blue-500 hover:underline">Forgot your password?</Link>
+              <Link to="/forgot-password" className="text-indigo-500 hover:underline">Forgot your password?</Link>
             </p>
             <p className="mt-2 text-center text-gray-600">
-              Don't have an account? <Link to="/register" className="text-blue-500 hover:underline">Sign Up</Link>
+              Don't have an account? <Link to="/register" className="text-indigo-500 hover:underline">Sign Up</Link>
             </p>
           </form>
         )}
@@ -173,11 +173,11 @@ function Login() {
             <p className="text-gray-600 text-center">{otpMessage}</p>
             <input
               type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required
-              className="w-full p-3 border rounded text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-3 border rounded text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
             />
             <button type="submit" disabled={submitting}
-              className="bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition disabled:opacity-60">
+              className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition disabled:opacity-60">
               {submitting ? 'Verifying…' : 'Verify'}
             </button>
             <button type="button"

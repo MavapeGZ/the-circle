@@ -40,14 +40,14 @@ export default function ReviewForm({ targetUserId, contractId, onSubmitted, onCa
         maxLength={1000}
         rows={3}
         placeholder="Share how the transaction went (optional)"
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
       />
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={submitting}
-          className={`px-4 py-2 rounded-lg font-bold text-white ${submitting ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+          className={`px-4 py-2 rounded-lg font-bold text-white ${submitting ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}
         >
           {submitting ? 'Submitting...' : 'Submit review'}
         </button>

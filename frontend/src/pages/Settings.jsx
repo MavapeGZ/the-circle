@@ -3,10 +3,12 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import api, { resolveAssetUrl, extractApiError } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { ZONE_OPTIONS } from '../constants/zones';
+import usePageTitle from '../hooks/usePageTitle';
 
 const TABS = ['profile', 'security', 'payments', 'verification', 'notifications', 'account'];
 
 function Settings() {
+  usePageTitle('Settings');
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, uploadKycDocuments, updateUser } = useContext(AuthContext);
@@ -262,7 +264,7 @@ function Settings() {
               key={tab}
               onClick={() => handleTabChange(tab)}
               className={`text-left px-4 py-3 rounded-lg font-bold capitalize transition-colors ${
-                activeTab === tab ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                activeTab === tab ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
               {tab}
@@ -305,7 +307,7 @@ function Settings() {
                       type="button"
                       disabled={avatarUploading}
                       onClick={() => avatarInputRef.current?.click()}
-                      className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition disabled:opacity-60"
+                      className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60"
                     >
                       {avatarUploading ? 'Uploading…' : settings.avatarUrl ? 'Change picture' : 'Upload picture'}
                     </button>
@@ -331,7 +333,7 @@ function Settings() {
                     type="text"
                     value={settings.firstName}
                     onChange={(e) => setSettings({ ...settings, firstName: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
                     required
                   />
                 </div>
@@ -341,7 +343,7 @@ function Settings() {
                     type="text"
                     value={settings.lastName}
                     onChange={(e) => setSettings({ ...settings, lastName: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
                     required
                   />
                 </div>
@@ -354,7 +356,6 @@ function Settings() {
                   disabled
                   className="w-full border border-gray-200 bg-gray-50 text-gray-500 rounded-lg p-2.5 cursor-not-allowed"
                 />
-                <p className="text-xs text-gray-500 mt-1">Email changing is out of scope for the current version.</p>
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">ID Number</label>
@@ -362,7 +363,7 @@ function Settings() {
                   type="text"
                   value={settings.idNumber || ''}
                   onChange={(e) => setSettings({ ...settings, idNumber: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
                   placeholder="National ID / passport number"
                 />
                 <p className="text-xs text-gray-500 mt-1">Required on signed contracts.</p>
@@ -373,7 +374,7 @@ function Settings() {
                   type="text"
                   value={settings.address || ''}
                   onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
                   placeholder="Street, number, city, postal code"
                 />
                 <p className="text-xs text-gray-500 mt-1">Required on signed contracts.</p>
@@ -383,7 +384,7 @@ function Settings() {
                 <select
                   value={settings.zone || ''}
                   onChange={(e) => setSettings({ ...settings, zone: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 bg-white"
                 >
                   <option value="">Select your area</option>
                   {ZONE_OPTIONS.map((zone) => (
@@ -394,7 +395,7 @@ function Settings() {
                 </select>
                 <p className="text-xs text-gray-500 mt-1">This is a broad area used for catalog search filtering, not an exact location.</p>
               </div>
-              <button type="submit" className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition">
+              <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition">
                 Save Profile
               </button>
             </form>
@@ -411,7 +412,7 @@ function Settings() {
                     type="password"
                     value={passwords.current}
                     onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
                     required
                   />
                 </div>
@@ -421,11 +422,11 @@ function Settings() {
                     type="password"
                     value={passwords.new}
                     onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
                     required
                   />
                 </div>
-                <button type="submit" className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition">
+                <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition">
                   Update Password
                 </button>
               </form>
@@ -486,13 +487,13 @@ function Settings() {
                   value={ibanInput}
                   onChange={(e) => setIbanInput(formatIban(e.target.value))}
                   placeholder="ES00 0000 0000 0000 0000 0000"
-                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 font-mono tracking-wider"
+                  className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 font-mono tracking-wider"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Spaces are ignored. Leave empty and submit to remove the saved IBAN.
                 </p>
               </div>
-              <button type="submit" className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition">
+              <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition">
                 {settings.ibanLast4 ? 'Update IBAN' : 'Save IBAN'}
               </button>
             </form>
@@ -515,7 +516,7 @@ function Settings() {
               )}
 
               {kycStatus === 'PENDING_REVIEW' && (
-                <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800">
+                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-lg text-sm text-indigo-800">
                   Your documents have been received and are under review. You can keep using The Circle
                   in the meantime.
                 </div>
@@ -537,7 +538,7 @@ function Settings() {
                     <input
                       type="file" accept="image/*,application/pdf"
                       onChange={(e) => setKycFront(e.target.files?.[0] || null)}
-                      className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white file:font-bold hover:file:bg-blue-700"
+                      className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:text-white file:font-bold hover:file:bg-indigo-700"
                     />
                   </div>
                   <div>
@@ -545,11 +546,11 @@ function Settings() {
                     <input
                       type="file" accept="image/*,application/pdf"
                       onChange={(e) => setKycBack(e.target.files?.[0] || null)}
-                      className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white file:font-bold hover:file:bg-blue-700"
+                      className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:text-white file:font-bold hover:file:bg-indigo-700"
                     />
                   </div>
                   <button type="submit" disabled={kycSubmitting}
-                    className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition disabled:opacity-60">
+                    className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60">
                     {kycSubmitting ? 'Uploading…' : 'Submit Documents'}
                   </button>
                 </form>
@@ -574,7 +575,7 @@ function Settings() {
                     checked={settings.marketingEmailsOptIn}
                     onChange={(e) => setSettings({ ...settings, marketingEmailsOptIn: e.target.checked })}
                   />
-                  <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-focus:ring-4 peer-focus:ring-blue-300 transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
+                  <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600 peer-focus:ring-4 peer-focus:ring-indigo-300 transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
                 </label>
               </div>
 
@@ -590,11 +591,11 @@ function Settings() {
                     checked={settings.systemEmailsOptIn}
                     onChange={(e) => setSettings({ ...settings, systemEmailsOptIn: e.target.checked })}
                   />
-                  <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-focus:ring-4 peer-focus:ring-blue-300 transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
+                  <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600 peer-focus:ring-4 peer-focus:ring-indigo-300 transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
                 </label>
               </div>
 
-              <button type="submit" className="bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 transition">
+              <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition">
                 Save Preferences
               </button>
             </form>
@@ -628,7 +629,7 @@ function Settings() {
 function KycStatusBadge({ status }) {
   const map = {
     VERIFIED: { label: 'Verified', cls: 'bg-green-100 text-green-700' },
-    PENDING_REVIEW: { label: 'Pending review', cls: 'bg-blue-100 text-blue-700' },
+    PENDING_REVIEW: { label: 'Pending review', cls: 'bg-indigo-100 text-indigo-700' },
     REJECTED: { label: 'Rejected', cls: 'bg-red-100 text-red-700' },
     UNVERIFIED: { label: 'Not verified', cls: 'bg-gray-100 text-gray-600' },
   };

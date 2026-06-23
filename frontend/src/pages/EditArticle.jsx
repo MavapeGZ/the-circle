@@ -133,7 +133,7 @@ function EditArticle() {
             id="title"
             name="title"
             required
-            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             value={formData.title}
             onChange={handleChange}
           />
@@ -147,7 +147,7 @@ function EditArticle() {
             name="description"
             required
             rows="4"
-            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
             value={formData.description}
             onChange={handleChange}
           />
@@ -161,7 +161,7 @@ function EditArticle() {
           <select
             id="productType"
             name="productType"
-            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
             value={formData.productType}
             onChange={handleChange}
           >
@@ -185,7 +185,7 @@ function EditArticle() {
               min="0"
               step="0.01"
               required
-              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               value={formData.price}
               onChange={handleChange}
             />
@@ -200,7 +200,7 @@ function EditArticle() {
             id="image"
             accept="image/*"
             onChange={handleImageChange}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
           />
           {imagePreview && (
             <div className="mt-4">
@@ -213,7 +213,7 @@ function EditArticle() {
           type="submit"
           disabled={saving}
           className={`w-full py-3 px-4 text-white font-bold rounded shadow-md transition ${
-            saving ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+            saving ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
           }`}
         >
           {saving ? 'Saving changes...' : 'Save Changes'}

@@ -128,11 +128,11 @@ function Checkout() {
         <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">{error}</div>
       )}
 
-      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 text-sm text-blue-800">
+      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6 text-sm text-indigo-800">
         <p><span className="font-bold">Contract:</span> {contract.id}</p>
         <p><span className="font-bold">Type:</span> {contractTypeLabel(contract.type)}</p>
         <p><span className="font-bold">{amountLabel}:</span> {amount?.toFixed ? amount.toFixed(2) : amount} €</p>
-        <p className="mt-2 text-xs text-blue-700">
+        <p className="mt-2 text-xs text-indigo-700">
           Funds are held in escrow and only released to the seller once they sign. If the seller does
           not sign within 7 days, the money is refunded automatically.
         </p>
@@ -145,7 +145,7 @@ function Checkout() {
             type="text"
             value={card.holderName}
             onChange={(e) => setCard({ ...card, holderName: e.target.value })}
-            className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
             placeholder="Name as it appears on the card"
             required
           />
@@ -158,7 +158,7 @@ function Checkout() {
             inputMode="numeric"
             value={card.number}
             onChange={(e) => setCard({ ...card, number: formatCardNumber(e.target.value) })}
-            className={`w-full border rounded-lg p-2.5 font-mono tracking-wider focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full border rounded-lg p-2.5 font-mono tracking-wider focus:ring-2 focus:ring-indigo-500 ${
               card.number && !isLuhnValid ? 'border-red-300' : 'border-gray-300'
             }`}
             placeholder="4242 4242 4242 4242"
@@ -181,7 +181,7 @@ function Checkout() {
               value={card.expiry}
               onChange={(e) => setCard({ ...card, expiry: formatExpiry(e.target.value) })}
               maxLength={5}
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
               placeholder="MM/YY"
               required
             />
@@ -193,7 +193,7 @@ function Checkout() {
               inputMode="numeric"
               value={card.cvc}
               onChange={(e) => setCard({ ...card, cvc: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
               placeholder="123"
               required
             />
@@ -204,7 +204,7 @@ function Checkout() {
           type="submit"
           disabled={!canSubmit}
           className={`w-full py-3 px-4 text-white font-bold rounded-lg shadow-md transition ${
-            canSubmit ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-300 cursor-not-allowed'
+            canSubmit ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-300 cursor-not-allowed'
           }`}
         >
           {submitting ? 'Processing…' : `Pay ${amount?.toFixed ? amount.toFixed(2) : amount} €`}

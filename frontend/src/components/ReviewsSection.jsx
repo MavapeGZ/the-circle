@@ -45,7 +45,7 @@ export default function ReviewsSection({ userId, average, count }) {
             <li key={r.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
               <div className="flex items-center justify-between gap-3">
                 {r.reviewerPublicId ? (
-                  <Link to={`/users/${r.reviewerPublicId}`} className="font-bold text-gray-800 hover:text-blue-700">
+                  <Link to={`/users/${r.reviewerPublicId}`} className="font-bold text-gray-800 hover:text-indigo-700">
                     {r.reviewerName || `User ${r.reviewerId}`}
                   </Link>
                 ) : (

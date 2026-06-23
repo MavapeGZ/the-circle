@@ -27,7 +27,7 @@ export default function ArticleCard({ article, sellerProfile }) {
         );
       case 'DEMAND':
         return (
-          <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full border border-blue-300">
+          <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full border border-indigo-300">
             DEMAND
           </span>
         );
@@ -63,7 +63,7 @@ export default function ArticleCard({ article, sellerProfile }) {
       <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-3">
         {article.authorId && sellerProfile?.publicId ? (
           <Link to={`/users/${sellerProfile.publicId}`} className="flex items-center gap-3 min-w-0 group">
-            <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-black overflow-hidden shrink-0">
+            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-black overflow-hidden shrink-0">
               {sellerProfile?.avatarUrl ? (
                 <img src={resolveAssetUrl(sellerProfile.avatarUrl)} alt={sellerName} className="h-full w-full object-cover" />
               ) : (
@@ -71,13 +71,13 @@ export default function ArticleCard({ article, sellerProfile }) {
               )}
             </div>
             <div className="min-w-0">
-              <p className="font-bold text-gray-900 truncate group-hover:text-blue-700">{sellerName}</p>
+              <p className="font-bold text-gray-900 truncate group-hover:text-indigo-700">{sellerName}</p>
               <p className="text-xs text-gray-500 truncate">{sellerZone}</p>
             </div>
           </Link>
         ) : (
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-black overflow-hidden shrink-0">
+            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-black overflow-hidden shrink-0">
               <span>{sellerInitials}</span>
             </div>
             <div className="min-w-0">
