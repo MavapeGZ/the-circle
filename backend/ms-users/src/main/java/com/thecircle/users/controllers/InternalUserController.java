@@ -70,7 +70,8 @@ public class InternalUserController {
         User u = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         return ResponseEntity.ok(new UserIdentityDto(
-                u.getId(), u.getEmail(), u.getFirstName(), u.getLastName(), u.getAddress(), u.getIdNumber(), u.getZone()));
+                u.getId(), u.getEmail(), u.getFirstName(), u.getLastName(), u.getAddress(), u.getIdNumber(),
+                u.getZone(), u.getLanguage()));
     }
 
     /**

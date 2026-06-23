@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api, { extractApiError } from '../services/api';
 import usePageTitle from '../hooks/usePageTitle';
 
@@ -8,7 +9,8 @@ const PRICELESS_TYPES = ['DONATION', 'DEMAND'];
 const GUARANTEE_MAX = 20.0;
 
 function CreateArticle() {
-  usePageTitle('Publish');
+  usePageTitle('title.publish');
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -46,7 +48,7 @@ function CreateArticle() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        setError('The image is too large. Maximum size is 2MB.');
+        setError(t('article.error.imageTooLarge'));
         return;
       }
       setError('');
@@ -70,7 +72,7 @@ function CreateArticle() {
       if (isRental) {
         guaranteeAmount = parseFloat(formData.guaranteeAmount);
         if (Number.isNaN(guaranteeAmount) || guaranteeAmount <= 0 || guaranteeAmount > GUARANTEE_MAX) {
-          setError(`Security deposit must be between 0.01€ and ${GUARANTEE_MAX}€.`);
+          setError(t('create.error.deposit', { max: GUARANTEE_MAX }));
           setLoading(false);
           return;
         }
@@ -91,12 +93,12 @@ function CreateArticle() {
       console.error('Error uploading article:', err);
       const status = err?.response?.status;
       if (status === 401 || status === 403) {
-        setError('You must be logged in to publish an article.');
+        setError(t('create.error.loginRequired'));
       } else if (status === 422) {
         setMissingIban(true);
-        setError(extractApiError(err, 'Missing payout information. Please add an IBAN in Settings before publishing paid items.'));
+        setError(extractApiError(err, t('create.error.missingIban')));
       } else {
-        setError(extractApiError(err, 'Failed to publish the article. Please check your connection and try again.'));
+        setError(extractApiError(err, t('create.error.generic')));
       }
     } finally {
       setLoading(false);
@@ -106,7 +108,7 @@ function CreateArticle() {
   return (
     <div className="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg border border-gray-100">
       <h1 className="text-3xl font-extrabold text-gray-800 mb-6 text-center">
-        Publish an Article
+        {t('create.title')}
       </h1>
 
       {error && (
@@ -118,7 +120,7 @@ function CreateArticle() {
               state={{ tab: 'payments' }}
               className="inline-block mt-3 text-sm font-bold underline hover:no-underline"
             >
-              Go to Settings → Payments
+              {t('create.goPayments')}
             </Link>
           )}
         </div>
@@ -129,7 +131,7 @@ function CreateArticle() {
         {/* TITLE */}
         <div>
           <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-1">
-            Title <span className="text-red-500">*</span>
+            {t('article.field.title')} <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -137,7 +139,7 @@ function CreateArticle() {
             name="title"
             required
             maxLength={140}
-            placeholder="e.g., Mountain Bike in good condition"
+            placeholder={t('article.field.titlePlaceholder')}
             className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             value={formData.title}
             onChange={handleChange}
@@ -148,7 +150,7 @@ function CreateArticle() {
         {/* DESCRIPTION */}
         <div>
           <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1">
-            Description <span className="text-red-500">*</span>
+            {t('article.field.description')} <span className="text-red-500">*</span>
           </label>
           <textarea
             id="description"
@@ -156,7 +158,7 @@ function CreateArticle() {
             required
             rows="4"
             maxLength={4000}
-            placeholder="Describe the item, its condition, and any other relevant details..."
+            placeholder={t('article.field.descriptionPlaceholder')}
             className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
             value={formData.description}
             onChange={handleChange}
@@ -167,7 +169,7 @@ function CreateArticle() {
         {/* PRODUCT TYPE */}
         <div>
           <label htmlFor="productType" className="block text-sm font-semibold text-gray-700 mb-1">
-            Product Type <span className="text-red-500">*</span>
+            {t('article.field.productType')} <span className="text-red-500">*</span>
           </label>
           <select
             id="productType"
@@ -176,10 +178,10 @@ function CreateArticle() {
             value={formData.productType}
             onChange={handleChange}
           >
-            <option value="SYMBOLIC_SALE">Symbolic Sale</option>
-            <option value="SYMBOLIC_RENTAL">Symbolic Rental</option>
-            <option value="DONATION">Donation (Free)</option>
-            <option value="DEMAND">Demand</option>
+            <option value="SYMBOLIC_SALE">{t('article.type.sale')}</option>
+            <option value="SYMBOLIC_RENTAL">{t('article.type.rental')}</option>
+            <option value="DONATION">{t('article.type.donation')}</option>
+            <option value="DEMAND">{t('article.type.demand')}</option>
           </select>
         </div>
 
@@ -187,7 +189,7 @@ function CreateArticle() {
         {!PRICELESS_TYPES.includes(formData.productType) && (
           <div>
             <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-1">
-              Price (€) <span className="text-red-500">*</span>
+              {t('article.field.price')} <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -208,7 +210,7 @@ function CreateArticle() {
         {formData.productType === 'SYMBOLIC_RENTAL' && (
           <div>
             <label htmlFor="guaranteeAmount" className="block text-sm font-semibold text-gray-700 mb-1">
-              Security deposit (€) <span className="text-red-500">*</span>
+              {t('create.field.deposit')} <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -218,13 +220,13 @@ function CreateArticle() {
               max={GUARANTEE_MAX}
               step="0.01"
               required
-              placeholder="e.g. 10.00"
+              placeholder={t('create.depositPlaceholder')}
               className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               value={formData.guaranteeAmount}
               onChange={handleChange}
             />
             <p className="text-xs text-gray-500 mt-1">
-              Refundable deposit held during the rental. Capped at {GUARANTEE_MAX}€.
+              {t('create.depositHelp', { max: GUARANTEE_MAX })}
             </p>
           </div>
         )}
@@ -232,7 +234,7 @@ function CreateArticle() {
         {/* IMAGE UPLOAD */}
         <div>
           <label htmlFor="image" className="block text-sm font-semibold text-gray-700 mb-1">
-            Image (Max 2MB)
+            {t('create.field.image')}
           </label>
           <input
             type="file"
@@ -245,7 +247,7 @@ function CreateArticle() {
 
           {imagePreview && (
             <div className="mt-4">
-              <p className="text-xs text-gray-500 mb-2">Image Preview:</p>
+              <p className="text-xs text-gray-500 mb-2">{t('create.imagePreview')}</p>
               <img
                 src={imagePreview}
                 alt="Preview"
@@ -263,7 +265,7 @@ function CreateArticle() {
             loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
           }`}
         >
-          {loading ? 'Publishing...' : 'Publish Article'}
+          {loading ? t('create.publishing') : t('create.publish')}
         </button>
       </form>
     </div>

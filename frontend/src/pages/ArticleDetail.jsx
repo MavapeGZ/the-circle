@@ -1,12 +1,14 @@
 import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api, { resolveAssetUrl, extractApiError } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import { usePreferences } from '../context/PreferencesContext';
 import BadgeList from '../components/BadgeList';
 import { ZONE_OPTIONS } from '../constants/zones';
 
-function zoneLabel(zone) {
-  return ZONE_OPTIONS.find((option) => option.value === zone)?.label || zone || 'Not shared';
+function zoneLabel(zone, fallback) {
+  return ZONE_OPTIONS.find((option) => option.value === zone)?.label || zone || fallback;
 }
 
 // Strip angle brackets when embedding a (possibly legacy) article title into the
@@ -18,6 +20,8 @@ function cleanTitle(title) {
 }
 
 function ArticleDetail() {
+  const { t } = useTranslation();
+  const { formatPrice, formatDate } = usePreferences();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -54,7 +58,7 @@ function ArticleDetail() {
         }
       } catch (err) {
         console.error(err);
-        setError('Article not found or error loading details.');
+        setError(t('detail.error'));
       } finally {
         setLoading(false);
       }
@@ -64,7 +68,7 @@ function ArticleDetail() {
   }, [id]);
 
   const handleDelete = async () => {
-    const confirmed = globalThis.confirm('Are you sure you want to delete this article? This action cannot be undone.');
+    const confirmed = globalThis.confirm(t('detail.deleteConfirm'));
     if (confirmed) {
       setIsDeleting(true);
       try {
@@ -72,32 +76,33 @@ function ArticleDetail() {
         navigate('/catalog');
       } catch (err) {
         console.error('Error deleting:', err);
-        alert('Failed to delete the article. Please try again.');
+        alert(t('detail.deleteFailed'));
         setIsDeleting(false);
       }
     }
   };
 
-  // Maps a catalog product type to its action label and the contract type the
-  // backend expects when the deal is created. DEMAND listings are not acquirable.
+  // Maps a catalog product type to its action (label kept in English for the
+  // stored contract conditions; actionKey drives the localized button) and the
+  // contract type the backend expects. DEMAND listings are not acquirable.
   const ACQUIRE = {
-    SYMBOLIC_SALE: { label: 'Buy', contractType: 'SALE' },
-    SYMBOLIC_RENTAL: { label: 'Rent', contractType: 'RENT' },
-    DONATION: { label: 'Request', contractType: 'CESSION_PERMANENT' },
+    SYMBOLIC_SALE: { label: 'Buy', actionKey: 'buy', contractType: 'SALE' },
+    SYMBOLIC_RENTAL: { label: 'Rent', actionKey: 'rent', contractType: 'RENT' },
+    DONATION: { label: 'Request', actionKey: 'request', contractType: 'CESSION_PERMANENT' },
   };
 
   const RENT_OPTIONS = [
-    { days: 7, label: '1 week' },
-    { days: 14, label: '2 weeks' },
-    { days: 30, label: '1 month' },
-    { days: 90, label: '3 months' },
+    { days: 7, label: t('rent.1week') },
+    { days: 14, label: t('rent.2weeks') },
+    { days: 30, label: t('rent.1month') },
+    { days: 90, label: t('rent.3months') },
   ];
 
   // Creates the contract, then sends the buyer to the OTP signing screen with the
   // freshly created contract so it does not have to be re-fetched.
   const handleAcquire = async () => {
     if (!currentUser?.id) {
-      alert('You must be logged in to acquire this article.');
+      alert(t('detail.loginAcquire'));
       navigate('/login');
       return;
     }
@@ -131,7 +136,7 @@ function ArticleDetail() {
       });
     } catch (err) {
       console.error('Error creating contract:', err);
-      alert(extractApiError(err, 'Could not start the deal. Please try again.'));
+      alert(extractApiError(err, t('detail.dealFailed')));
       setAcquiring(false);
     }
   };
@@ -140,7 +145,7 @@ function ArticleDetail() {
   // and the demand's author receives it. We sign first as the OWNER party.
   const handleFulfillDemand = async () => {
     if (!currentUser?.id) {
-      alert('You must be logged in to offer this item.');
+      alert(t('detail.loginOffer'));
       navigate('/login');
       return;
     }
@@ -162,7 +167,7 @@ function ArticleDetail() {
       });
     } catch (err) {
       console.error('Error creating contract:', err);
-      alert(extractApiError(err, 'Could not start the deal. Please try again.'));
+      alert(extractApiError(err, t('detail.dealFailed')));
       setAcquiring(false);
     }
   };
@@ -180,12 +185,12 @@ function ArticleDetail() {
       navigate(`/messages/${res.data.id}`);
     } catch (err) {
       console.error('Error starting conversation:', err);
-      alert(extractApiError(err, 'Could not start the conversation. Please try again.'));
+      alert(extractApiError(err, t('detail.chatFailed')));
       setContacting(false);
     }
   };
 
-  if (loading) return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">Loading article...</div>;
+  if (loading) return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">{t('detail.loading')}</div>;
   if (error) return <div className="text-center mt-20 text-xl text-red-600 font-bold">{error}</div>;
   if (!article) return null;
 
@@ -194,25 +199,25 @@ function ArticleDetail() {
       case 'DONATION':
         return (
           <span className="bg-purple-100 text-purple-800 text-xs font-extrabold px-3 py-1 rounded-full border border-purple-300 shadow-sm">
-            🎁 Donation — Free
+            🎁 {t('product.donation')}
           </span>
         );
       case 'DEMAND':
         return (
           <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full border border-indigo-300">
-            DEMAND
+            {t('product.demand')}
           </span>
         );
       case 'SYMBOLIC_SALE':
         return (
           <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full border border-green-300">
-            SALE
+            {t('product.sale')}
           </span>
         );
       case 'SYMBOLIC_RENTAL':
         return (
           <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full border border-green-300">
-            RENTAL
+            {t('product.rental')}
           </span>
         );
       default:
@@ -220,9 +225,7 @@ function ArticleDetail() {
     }
   };
 
-  const formattedDate = new Date(article.createdAt).toLocaleDateString('en-US', {
-    day: '2-digit', month: 'long', year: 'numeric'
-  });
+  const formattedDate = formatDate(article.createdAt, { day: '2-digit', month: 'long', year: 'numeric' });
 
   const isOwner = currentUser && String(currentUser.id) === String(article.authorId);
   // Legacy articles have no status; treat them as available.
@@ -239,7 +242,7 @@ function ArticleDetail() {
       {/* LEFT COLUMN */}
       <div className="lg:col-span-2">
         <Link to="/catalog" className="inline-flex items-center text-indigo-600 hover:text-indigo-800 mb-6 font-semibold">
-          &larr; Back to Catalog
+          &larr; {t('detail.back')}
         </Link>
 
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
@@ -247,7 +250,7 @@ function ArticleDetail() {
             <img src={article.imageBase64} alt={article.title} className="w-full h-96 object-contain bg-gray-100" />
           ) : (
             <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-400">
-              <span>No image available</span>
+              <span>{t('detail.noImage')}</span>
             </div>
           )}
 
@@ -256,7 +259,7 @@ function ArticleDetail() {
               <div className="flex gap-2">
                 {renderBadge()}
                 <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">
-                  {zoneLabel(article.zone)}
+                  {zoneLabel(article.zone, t('common.notShared'))}
                 </span>
                 {article.category && (
                   <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">
@@ -265,27 +268,27 @@ function ArticleDetail() {
                 )}
                 {article.status === 'RESERVED' && (
                   <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full border border-yellow-300">
-                    Reserved
+                    {t('common.reserved')}
                   </span>
                 )}
                 {article.status === 'SOLD' && (
                   <span className="bg-gray-800 text-white text-xs font-bold px-3 py-1 rounded-full">
-                    Sold
+                    {t('detail.sold')}
                   </span>
                 )}
               </div>
-              <span className="text-gray-500 text-sm">Published on {formattedDate}</span>
+              <span className="text-gray-500 text-sm">{t('detail.publishedOn', { date: formattedDate })}</span>
             </div>
 
             <div className="flex justify-between items-start mb-6">
               <h1 className="text-3xl font-extrabold text-gray-900 w-3/4">{article.title}</h1>
               <span className="text-2xl font-black text-gray-800">
-                {article.price === 0 ? 'FREE' : `${article.price} €`}
+                {article.price === 0 ? t('detail.free') : formatPrice(article.price)}
               </span>
             </div>
 
             <div className="mb-8">
-              <h3 className="text-lg font-bold text-gray-800 mb-2">Description</h3>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">{t('detail.description')}</h3>
               <p className="text-gray-600 whitespace-pre-wrap leading-relaxed">{article.description}</p>
             </div>
           </div>
@@ -296,7 +299,7 @@ function ArticleDetail() {
       <div className="space-y-6 lg:mt-12">
 
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">About the owner</h3>
+          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">{t('detail.aboutOwner')}</h3>
 
           {owner ? (
             <Link to={`/users/${owner.publicId}`} className="block mb-6 group">
@@ -313,25 +316,25 @@ function ArticleDetail() {
                     {owner.displayName}
                   </h4>
                   <div className="flex flex-wrap items-center gap-2 mt-1 text-xs font-semibold text-gray-500">
-                    <span className="px-2 py-1 rounded-full bg-gray-100">{zoneLabel(owner.approximateZone)}</span>
-                    <span className="px-2 py-1 rounded-full bg-gray-100">{owner.points} points</span>
+                    <span className="px-2 py-1 rounded-full bg-gray-100">{zoneLabel(owner.approximateZone, t('common.notShared'))}</span>
+                    <span className="px-2 py-1 rounded-full bg-gray-100">{t('detail.points', { count: owner.points })}</span>
                     <span className="px-2 py-1 rounded-full bg-gray-100">
-                      Joined {owner.memberSince ? new Date(owner.memberSince).toLocaleDateString() : 'Unknown'}
+                      {owner.memberSince ? t('detail.joined', { date: formatDate(owner.memberSince) }) : t('detail.joinedUnknown')}
                     </span>
                   </div>
                 </div>
               </div>
             </Link>
           ) : (
-            <div className="text-gray-500 text-sm mb-6 animate-pulse">Loading owner profile...</div>
+            <div className="text-gray-500 text-sm mb-6 animate-pulse">{t('detail.loadingOwner')}</div>
           )}
 
           {owner?.badges?.length ? (
             <div className="mb-6">
-              <BadgeList badges={owner.badges} emptyMessage="This seller has no badges yet." />
+              <BadgeList badges={owner.badges} emptyMessage={t('detail.noBadgesList')} />
             </div>
           ) : owner ? (
-            <p className="text-sm text-gray-500 mb-6">This seller has not earned any badges yet.</p>
+            <p className="text-sm text-gray-500 mb-6">{t('detail.noBadges')}</p>
           ) : null}
 
           <hr className="border-gray-100 mb-6" />
@@ -342,7 +345,7 @@ function ArticleDetail() {
               disabled={contacting}
               className={`w-full mb-3 py-3 font-bold rounded-lg shadow-sm transition border ${contacting ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-indigo-700 border-indigo-300 hover:bg-indigo-50'}`}
             >
-              {contacting ? 'Opening chat…' : '💬 Contact'}
+              {contacting ? t('detail.openingChat') : t('detail.contact')}
             </button>
           )}
 
@@ -352,14 +355,14 @@ function ArticleDetail() {
                 onClick={() => navigate(`/catalog/edit/${article.id}`)}
                 className="w-full py-3 bg-gray-100 text-gray-700 font-bold rounded-lg shadow-sm hover:bg-gray-200 transition"
               >
-                Edit My Article
+                {t('detail.editMy')}
               </button>
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
                 className={`w-full py-3 font-bold rounded-lg shadow-sm transition text-white ${isDeleting ? 'bg-red-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'}`}
               >
-                {isDeleting ? 'Deleting...' : 'Delete Article'}
+                {isDeleting ? t('detail.deleting') : t('detail.delete')}
               </button>
             </div>
           ) : canAcquire ? (
@@ -384,7 +387,7 @@ function ArticleDetail() {
                     value={deposit}
                     onChange={(e) => setDeposit(e.target.value)}
                     disabled={acquiring}
-                    placeholder={`Deposit (${article.price || 0} €)`}
+                    placeholder={t('detail.depositPlaceholder', { price: formatPrice(article.price || 0) })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500"
                   />
                 </>
@@ -394,7 +397,7 @@ function ArticleDetail() {
                 disabled={acquiring}
                 className={`w-full py-4 font-extrabold rounded-lg shadow-md transition text-white text-lg ${acquiring ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 hover:scale-[1.02]'}`}
               >
-                {acquiring ? 'Processing...' : `${acquireCfg.label} & Sign`}
+                {acquiring ? t('detail.processing') : t('detail.acquireSign', { action: t(`detail.action.${acquireCfg.actionKey}`) })}
               </button>
             </div>
           ) : canFulfill ? (
@@ -403,23 +406,23 @@ function ArticleDetail() {
               disabled={acquiring}
               className={`w-full py-4 font-extrabold rounded-lg shadow-md transition text-white text-lg ${acquiring ? 'bg-indigo-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 hover:scale-[1.02]'}`}
             >
-              {acquiring ? 'Processing...' : 'Offer this item & Sign'}
+              {acquiring ? t('detail.processing') : t('detail.offerSign')}
             </button>
           ) : !isAvailable ? (
             <p className="text-gray-500 text-sm font-semibold">
               {article.status === 'SOLD'
-                ? 'This article has already been sold.'
-                : 'This article is currently reserved.'}
+                ? t('detail.soldMsg')
+                : t('detail.reservedMsg')}
             </p>
           ) : (
-            <p className="text-gray-500 text-sm">This article is not available for acquisition.</p>
+            <p className="text-gray-500 text-sm">{t('detail.unavailable')}</p>
           )}
         </div>
 
         {!isOwner && (canAcquire || canFulfill) && (
           <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-sm text-indigo-800">
-            <p className="font-bold mb-1">Safe Transaction</p>
-            <p>Your request will initiate a digital agreement secured by an OTP electronic signature.</p>
+            <p className="font-bold mb-1">{t('detail.safeTitle')}</p>
+            <p>{t('detail.safeText')}</p>
           </div>
         )}
       </div>

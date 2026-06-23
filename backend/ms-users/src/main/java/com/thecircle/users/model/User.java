@@ -87,6 +87,24 @@ public class User implements UserDetails {
     @Column(name = "system_emails_opt_in", nullable = false, columnDefinition = "boolean not null default true")
     private boolean systemEmailsOptIn = true;
 
+    // Locale preferences. Persisted per user and applied throughout the session
+    // and in transactional emails / contract PDFs. `language` is an ISO 639-1
+    // code (es|en); `currency` an ISO 4217 code (EUR|USD|GBP) used for display
+    // conversion only — legal/contract amounts stay in EUR. `timezone` is an
+    // IANA zone id used to format displayed timestamps. Defaults match the
+    // Spanish-first product; English is the missing-key fallback bundle.
+    @Builder.Default
+    @Column(name = "language", nullable = false, length = 8, columnDefinition = "varchar(8) not null default 'es'")
+    private String language = "es";
+
+    @Builder.Default
+    @Column(name = "currency", nullable = false, length = 3, columnDefinition = "varchar(3) not null default 'EUR'")
+    private String currency = "EUR";
+
+    @Builder.Default
+    @Column(name = "timezone", nullable = false, length = 64, columnDefinition = "varchar(64) not null default 'Europe/Madrid'")
+    private String timezone = "Europe/Madrid";
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 

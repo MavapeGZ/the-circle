@@ -1,5 +1,6 @@
 import { useState, useContext } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
 import { extractApiError } from '../services/api';
 
@@ -9,15 +10,8 @@ const STEP_OTP = 'otp';
 const FLOW_LOGIN_OTP = 'login-otp';
 const FLOW_EMAIL_VERIFICATION = 'email-verification';
 
-// Message shown when the user was redirected here from a guarded action.
-const AUTH_REQUIRED_MESSAGES = {
-  'publish-article': 'You must be logged in to publish an article.',
-  'edit-article': 'You must be logged in to edit an article.',
-  'view-contracts': 'You must be logged in to view your contracts.',
-  settings: 'You must be logged in to access your settings.',
-};
-
 function Login() {
+  const { t } = useTranslation();
   const { login, verifyLoginOtp, verifyEmail } = useContext(AuthContext);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -28,8 +22,9 @@ function Login() {
   const nextParam = searchParams.get('next');
   const redirectTo = nextParam && nextParam.startsWith('/') ? nextParam : '/';
 
+  // Message shown when the user was redirected here from a guarded action.
   const authRequiredMessage = authRequired
-    ? AUTH_REQUIRED_MESSAGES[authRequired] || 'You must be logged in to continue.'
+    ? t(`auth.required.${authRequired}`, { defaultValue: t('auth.required.default') })
     : '';
 
   const [step, setStep] = useState(STEP_CREDENTIALS);
@@ -56,16 +51,16 @@ function Login() {
       } else if (data.requiresOtp && data.sessionId) {
         setFlow(FLOW_LOGIN_OTP);
         setSessionId(data.sessionId);
-        setOtpMessage(data.message || 'Enter the sign-in code we sent to your email.');
+        setOtpMessage(data.message || t('auth.otp.enterLogin'));
         setStep(STEP_OTP);
       } else if (data.requiresEmailVerification && data.sessionId) {
         // Account never verified; resume signup verification flow.
         setFlow(FLOW_EMAIL_VERIFICATION);
         setSessionId(data.sessionId);
-        setOtpMessage(data.message || 'Your email is not verified yet. Enter the code we just sent.');
+        setOtpMessage(data.message || t('auth.otp.enterVerify'));
         setStep(STEP_OTP);
       } else {
-        setError('Unexpected server response. Please try again.');
+        setError(t('auth.error.unexpected'));
       }
     } catch (err) {
       const status = err?.response?.status;
@@ -77,11 +72,11 @@ function Login() {
       if (status === 400) {
         // Format-level validation (blank/invalid email, missing password). Safe to
         // surface — it says nothing about whether the account exists.
-        setError(extractApiError(err, 'Please check your email and password.'));
+        setError(extractApiError(err, t('auth.error.checkCreds')));
       } else if (status === 404 || status === 401) {
-        setError('The account does not exist or the credentials are incorrect.');
+        setError(t('auth.error.badCreds'));
       } else {
-        setError('Could not sign in. Please try again.');
+        setError(t('auth.error.generic'));
       }
     } finally {
       setSubmitting(false);
@@ -100,7 +95,7 @@ function Login() {
       }
       navigate(redirectTo);
     } catch (err) {
-      setError('Invalid or expired code. Try again.');
+      setError(t('auth.error.invalidCode'));
     } finally {
       setSubmitting(false);
     }
@@ -110,12 +105,12 @@ function Login() {
     <div className="flex justify-center items-center mt-20">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md border">
         <h2 className="text-3xl font-bold text-center text-indigo-600 mb-6">
-          {step === STEP_CREDENTIALS ? 'Sign In' : 'Verify Sign-in'}
+          {step === STEP_CREDENTIALS ? t('auth.login.title') : t('auth.verify.title')}
         </h2>
 
         {sessionExpired && !error && (
           <p className="bg-amber-100 text-amber-700 p-3 rounded mb-4 text-center">
-            Your session has expired. Please sign in again to continue.
+            {t('auth.sessionExpired')}
           </p>
         )}
 
@@ -129,10 +124,10 @@ function Login() {
 
         {accountNotFound && (
           <div className="bg-indigo-50 text-indigo-800 p-3 rounded mb-4 text-center border border-indigo-200">
-            <p className="mb-2">Don't have an account yet?</p>
+            <p className="mb-2">{t('auth.noAccountYet')}</p>
             <Link to="/register"
               className="inline-block bg-indigo-600 text-white font-bold px-4 py-2 rounded hover:bg-indigo-700 transition">
-              Create an account
+              {t('auth.createAccount')}
             </Link>
           </div>
         )}
@@ -140,7 +135,7 @@ function Login() {
         {step === STEP_CREDENTIALS && (
           <form onSubmit={submitCredentials} className="flex flex-col gap-4">
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">Email</label>
+              <label className="block text-gray-700 font-semibold mb-2">{t('auth.email')}</label>
               <input
                 type="email" required
                 className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -148,7 +143,7 @@ function Login() {
               />
             </div>
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">Password</label>
+              <label className="block text-gray-700 font-semibold mb-2">{t('auth.password')}</label>
               <input
                 type="password" required
                 className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -157,13 +152,13 @@ function Login() {
             </div>
             <button type="submit" disabled={submitting}
               className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition disabled:opacity-60">
-              {submitting ? 'Signing in…' : 'Sign In'}
+              {submitting ? t('auth.signingIn') : t('auth.signIn')}
             </button>
             <p className="text-center text-sm text-gray-600">
-              <Link to="/forgot-password" className="text-indigo-500 hover:underline">Forgot your password?</Link>
+              <Link to="/forgot-password" className="text-indigo-500 hover:underline">{t('auth.forgot')}</Link>
             </p>
             <p className="mt-2 text-center text-gray-600">
-              Don't have an account? <Link to="/register" className="text-indigo-500 hover:underline">Sign Up</Link>
+              {t('auth.noAccount')} <Link to="/register" className="text-indigo-500 hover:underline">{t('auth.signUp')}</Link>
             </p>
           </form>
         )}
@@ -178,12 +173,12 @@ function Login() {
             />
             <button type="submit" disabled={submitting}
               className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition disabled:opacity-60">
-              {submitting ? 'Verifying…' : 'Verify'}
+              {submitting ? t('auth.verifying') : t('auth.verify')}
             </button>
             <button type="button"
               onClick={() => { setStep(STEP_CREDENTIALS); setOtp(''); setSessionId(''); }}
               className="text-sm text-gray-500 hover:underline">
-              Back to sign-in
+              {t('auth.backToSignIn')}
             </button>
           </form>
         )}

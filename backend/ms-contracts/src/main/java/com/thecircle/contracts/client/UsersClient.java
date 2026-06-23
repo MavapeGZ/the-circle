@@ -37,7 +37,7 @@ public class UsersClient {
 
     /** Identity projection from ms-users' internal endpoint. */
     public record UserProfile(Long id, String email, String firstName, String lastName,
-                              String address, String idNumber) {
+                              String address, String idNumber, String zone, String language) {
         public String fullName() {
             String first = firstName != null ? firstName.trim() : "";
             String last = lastName != null ? lastName.trim() : "";

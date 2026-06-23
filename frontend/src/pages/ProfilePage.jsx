@@ -1,14 +1,16 @@
 import { useContext, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api, { resolveAssetUrl } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import { usePreferences } from '../context/PreferencesContext';
 import BadgeList from '../components/BadgeList';
 import ReviewsSection from '../components/ReviewsSection';
 import { ZONE_OPTIONS } from '../constants/zones';
 import usePageTitle from '../hooks/usePageTitle';
 
-function zoneLabel(zone) {
-  return ZONE_OPTIONS.find((option) => option.value === zone)?.label || zone || 'Not shared';
+function zoneLabel(zone, fallback) {
+  return ZONE_OPTIONS.find((option) => option.value === zone)?.label || zone || fallback;
 }
 
 function initials(name) {
@@ -21,7 +23,9 @@ function initials(name) {
 }
 
 export default function ProfilePage() {
-  usePageTitle('Profile');
+  usePageTitle('title.profile');
+  const { t } = useTranslation();
+  const { formatDate } = usePreferences();
   const { id: profileId } = useParams();
   const { user } = useContext(AuthContext);
 
@@ -59,7 +63,7 @@ export default function ProfilePage() {
       } catch (err) {
         if (mounted) {
           const status = err?.response?.status;
-          setError(status === 404 ? 'User not found.' : 'Could not load profile.');
+          setError(status === 404 ? t('profile.notFound') : t('profile.loadError'));
         }
       } finally {
         if (mounted) setLoading(false);
@@ -78,17 +82,17 @@ export default function ProfilePage() {
   if (!user && !profileId) {
     return (
       <div className="max-w-3xl mx-auto mt-16 p-4 text-center">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-4">Your profile</h1>
-        <p className="text-gray-600 mb-6">Sign in to view and manage your own public profile.</p>
+        <h1 className="text-3xl font-extrabold text-gray-900 mb-4">{t('profile.yourTitle')}</h1>
+        <p className="text-gray-600 mb-6">{t('profile.signInPrompt')}</p>
         <Link to="/login" className="inline-flex px-6 py-3 rounded-full bg-indigo-600 text-white font-bold shadow hover:bg-indigo-700 transition-colors">
-          Go to login
+          {t('profile.goLogin')}
         </Link>
       </div>
     );
   }
 
   if (loading) {
-    return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">Loading profile...</div>;
+    return <div className="text-center mt-20 text-xl animate-pulse text-gray-500">{t('profile.loading')}</div>;
   }
 
   if (error) {
@@ -123,20 +127,20 @@ export default function ProfilePage() {
 
           <div className="flex-1 space-y-3">
             <div>
-              <p className="text-indigo-200 text-sm font-semibold uppercase tracking-[0.25em]">Public profile</p>
+              <p className="text-indigo-200 text-sm font-semibold uppercase tracking-[0.25em]">{t('profile.public')}</p>
               <h1 className="text-4xl font-extrabold mt-1">{profile.displayName}</h1>
             </div>
 
             <div className="flex flex-wrap gap-3 text-sm text-indigo-50">
-              <span className="rounded-full bg-white/10 px-3 py-1 border border-white/10">Zone: {zoneLabel(profile.approximateZone)}</span>
-              <span className="rounded-full bg-white/10 px-3 py-1 border border-white/10">Points: {profile.points}</span>
-              <span className="rounded-full bg-white/10 px-3 py-1 border border-white/10">Member since {profile.memberSince ? new Date(profile.memberSince).toLocaleDateString() : 'Unknown'}</span>
+              <span className="rounded-full bg-white/10 px-3 py-1 border border-white/10">{t('profile.zone', { zone: zoneLabel(profile.approximateZone, t('common.notShared')) })}</span>
+              <span className="rounded-full bg-white/10 px-3 py-1 border border-white/10">{t('profile.points', { points: profile.points })}</span>
+              <span className="rounded-full bg-white/10 px-3 py-1 border border-white/10">{profile.memberSince ? t('profile.memberSince', { date: formatDate(profile.memberSince) }) : t('profile.unknown')}</span>
             </div>
 
             {isOwnProfile && (
               <div className="flex gap-3 pt-2">
                 <Link to="/settings" className="inline-flex items-center rounded-full bg-white text-indigo-900 px-4 py-2 font-bold shadow hover:bg-indigo-50 transition-colors">
-                  Edit settings
+                  {t('profile.editSettings')}
                 </Link>
               </div>
             )}
@@ -148,30 +152,30 @@ export default function ProfilePage() {
         <article className="lg:col-span-2 bg-white rounded-3xl shadow-lg border border-gray-100 p-6">
           <div className="flex items-center justify-between gap-4 mb-5">
             <div>
-              <h2 className="text-2xl font-extrabold text-gray-900">Badges</h2>
-              <p className="text-sm text-gray-500">Hover a badge to see its description and the date it was earned. Dimmed badges are not earned yet.</p>
+              <h2 className="text-2xl font-extrabold text-gray-900">{t('profile.badges')}</h2>
+              <p className="text-sm text-gray-500">{t('profile.badgesHelp')}</p>
             </div>
             <span className="flex flex-col items-center justify-center shrink-0 rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-100 px-4 py-2 text-center shadow-sm">
               <span className="text-2xl font-extrabold leading-none text-indigo-700">{earnedCount}</span>
-              <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-indigo-500">earned</span>
+              <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-indigo-500">{t('profile.earned')}</span>
             </span>
           </div>
 
-          <BadgeList badges={mergedBadges} emptyMessage="No badges available yet." />
+          <BadgeList badges={mergedBadges} emptyMessage={t('profile.noBadges')} />
         </article>
 
         <aside className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 space-y-5">
           <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-2">About</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-2">{t('profile.about')}</h2>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between gap-4">
-                <dt className="text-gray-500">Zone</dt>
-                <dd className="font-semibold text-gray-900 text-right">{zoneLabel(profile.approximateZone)}</dd>
+                <dt className="text-gray-500">{t('profile.aboutZone')}</dt>
+                <dd className="font-semibold text-gray-900 text-right">{zoneLabel(profile.approximateZone, t('common.notShared'))}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-gray-500">Member since</dt>
+                <dt className="text-gray-500">{t('profile.aboutMemberSince')}</dt>
                 <dd className="font-semibold text-gray-900 text-right">
-                  {profile.memberSince ? new Date(profile.memberSince).toLocaleDateString() : 'Unknown'}
+                  {profile.memberSince ? formatDate(profile.memberSince) : t('profile.unknown')}
                 </dd>
               </div>
             </dl>
@@ -179,8 +183,8 @@ export default function ProfilePage() {
 
           {isOwnProfile && (
             <div className="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-sm text-indigo-900">
-              <p className="font-bold mb-1">This is your public profile</p>
-              <p>Only your display name, zone and gamification info are shown here. Private contact details stay in Settings.</p>
+              <p className="font-bold mb-1">{t('profile.ownProfileTitle')}</p>
+              <p>{t('profile.ownProfileText')}</p>
             </div>
           )}
         </aside>

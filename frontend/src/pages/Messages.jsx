@@ -1,17 +1,20 @@
 import { useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api, { extractApiError } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import { usePreferences } from '../context/PreferencesContext';
 import usePageTitle from '../hooks/usePageTitle';
 
 const POLL_MS = 5000;
 
-// Transaction-type chip styling, mirroring the catalog badges.
+// Transaction-type chip styling, mirroring the catalog badges. `key` resolves to
+// the localized label at render time.
 const TYPE_BADGE = {
-  DONATION: { label: 'Donation', cls: 'bg-purple-100 text-purple-800 border-purple-300' },
-  DEMAND: { label: 'Demand', cls: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
-  SYMBOLIC_SALE: { label: 'Sale', cls: 'bg-green-100 text-green-800 border-green-300' },
-  SYMBOLIC_RENTAL: { label: 'Rental', cls: 'bg-green-100 text-green-800 border-green-300' },
+  DONATION: { key: 'msg.type.donation', cls: 'bg-purple-100 text-purple-800 border-purple-300' },
+  DEMAND: { key: 'msg.type.demand', cls: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
+  SYMBOLIC_SALE: { key: 'msg.type.sale', cls: 'bg-green-100 text-green-800 border-green-300' },
+  SYMBOLIC_RENTAL: { key: 'msg.type.rental', cls: 'bg-green-100 text-green-800 border-green-300' },
 };
 
 // Small image placeholder (same icon as the catalog cards) for articles with no photo.
@@ -31,7 +34,9 @@ function ArticleThumb({ image, title }) {
 // Inbox + thread chat view. Conversations are about a catalog article and stay
 // open before, during and after a deal. Real-time is approximated with polling.
 export default function Messages() {
-  usePageTitle('Messages');
+  usePageTitle('title.messages');
+  const { t } = useTranslation();
+  const { formatPrice } = usePreferences();
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
@@ -80,9 +85,9 @@ export default function Messages() {
       const { data } = await api.get(`/chat/conversations/${id}/messages`);
       setMessages(data || []);
     } catch (err) {
-      setError(extractApiError(err, 'Could not load this conversation.'));
+      setError(extractApiError(err, t('msg.loadError')));
     }
-  }, []);
+  }, [t]);
 
   // Poll the conversation list.
   useEffect(() => {
@@ -115,7 +120,7 @@ export default function Messages() {
       await loadMessages(conversationId);
       loadConversations();
     } catch (err) {
-      setError(extractApiError(err, 'Could not send the message.'));
+      setError(extractApiError(err, t('msg.sendError')));
     } finally {
       setSending(false);
     }
@@ -124,9 +129,9 @@ export default function Messages() {
   if (!user) {
     return (
       <div className="max-w-3xl mx-auto mt-16 p-4 text-center">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-4">Messages</h1>
-        <p className="text-gray-600 mb-6">Sign in to view your conversations.</p>
-        <Link to="/login" className="inline-flex px-6 py-3 rounded-full bg-indigo-600 text-white font-bold shadow hover:bg-indigo-700">Go to login</Link>
+        <h1 className="text-3xl font-extrabold text-gray-900 mb-4">{t('msg.title')}</h1>
+        <p className="text-gray-600 mb-6">{t('msg.signInPrompt')}</p>
+        <Link to="/login" className="inline-flex px-6 py-3 rounded-full bg-indigo-600 text-white font-bold shadow hover:bg-indigo-700">{t('msg.goLogin')}</Link>
       </div>
     );
   }
@@ -135,12 +140,12 @@ export default function Messages() {
 
   return (
     <div className="max-w-6xl mx-auto mt-8 p-4">
-      <h1 className="text-3xl font-extrabold text-gray-900 mb-4">Messages</h1>
+      <h1 className="text-3xl font-extrabold text-gray-900 mb-4">{t('msg.title')}</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[70vh]">
         {/* Inbox */}
         <aside className="md:col-span-1 bg-white rounded-2xl shadow border border-gray-100 overflow-y-auto">
           {conversations.length === 0 ? (
-            <p className="p-4 text-gray-500 text-sm">No conversations yet. Start one from an article page.</p>
+            <p className="p-4 text-gray-500 text-sm">{t('msg.noConversations')}</p>
           ) : (
             <ul>
               {conversations.map((c) => {
@@ -153,12 +158,12 @@ export default function Messages() {
                       className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 ${isActive ? 'bg-indigo-50' : ''}`}
                     >
                       <div className="flex justify-between items-center gap-2">
-                        <span className="font-bold text-gray-800 truncate">{m.otherName || 'User'}</span>
+                        <span className="font-bold text-gray-800 truncate">{m.otherName || t('msg.user')}</span>
                         {c.unreadCount > 0 && (
                           <span className="shrink-0 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">{c.unreadCount}</span>
                         )}
                       </div>
-                      <div className="text-xs text-gray-500 truncate">{m.title || 'Article'}</div>
+                      <div className="text-xs text-gray-500 truncate">{m.title || t('msg.article')}</div>
                       {c.lastMessage && <div className="text-sm text-gray-600 truncate mt-0.5">{c.lastMessage}</div>}
                     </button>
                   </li>
@@ -171,15 +176,15 @@ export default function Messages() {
         {/* Thread */}
         <section className="md:col-span-2 bg-white rounded-2xl shadow border border-gray-100 flex flex-col">
           {!conversationId ? (
-            <div className="flex-1 flex items-center justify-center text-gray-400">Select a conversation</div>
+            <div className="flex-1 flex items-center justify-center text-gray-400">{t('msg.selectConversation')}</div>
           ) : (
             <>
               <header className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-bold text-gray-800 truncate">{meta[conversationId]?.otherName || 'Conversation'}</p>
+                  <p className="font-bold text-gray-800 truncate">{meta[conversationId]?.otherName || t('msg.conversation')}</p>
                   {active && (
                     <Link to={`/catalog/${active.articleId}`} className="text-xs text-indigo-600 hover:underline truncate block">
-                      About: {meta[conversationId]?.title || 'article'}
+                      {t('msg.about', { title: meta[conversationId]?.title || t('msg.articleLower') })}
                     </Link>
                   )}
                 </div>
@@ -191,9 +196,9 @@ export default function Messages() {
                     <Link to={`/catalog/${active.articleId}`} className="flex items-center gap-3 shrink-0">
                       <div className="flex flex-col items-end gap-1">
                         {badge && (
-                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${badge.cls}`}>{badge.label}</span>
+                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${badge.cls}`}>{t(badge.key)}</span>
                         )}
-                        {hasPrice && <span className="text-sm font-extrabold text-gray-800">{m.price} €</span>}
+                        {hasPrice && <span className="text-sm font-extrabold text-gray-800">{formatPrice(m.price)}</span>}
                       </div>
                       <ArticleThumb image={m.image} title={m.title} />
                     </Link>
@@ -225,7 +230,7 @@ export default function Messages() {
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   maxLength={4000}
-                  placeholder="Write a message…"
+                  placeholder={t('msg.placeholder')}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500"
                 />
                 <button
@@ -233,7 +238,7 @@ export default function Messages() {
                   disabled={sending || !draft.trim()}
                   className={`px-5 py-2 rounded-full font-bold text-white ${sending || !draft.trim() ? 'bg-indigo-300' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                 >
-                  Send
+                  {t('msg.send')}
                 </button>
               </form>
             </>

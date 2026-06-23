@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { useContext, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
 import api, { resolveAssetUrl } from '../services/api';
 import { countContractsNeedingAction } from '../utils/contractAction';
@@ -25,6 +26,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 // Navigation lives inside BrowserRouter so it can use useNavigate to redirect.
 function NavBar() {
   const { user, logout, contractsRefreshNonce } = useContext(AuthContext);
+  const { t } = useTranslation();
   const navigate = useNavigate();
   // Mobile menu toggle. On small screens the inline links would crowd into each
   // other (e.g. "Catalog" colliding with "Login"), so they collapse behind a
@@ -90,12 +92,12 @@ function NavBar() {
   // Shared link set, reused for the desktop row and the mobile dropdown.
   const mainLinks = (
     <>
-      <Link to="/" onClick={closeMenu} className={navLinkClass}>Home</Link>
-      <Link to="/catalog" onClick={closeMenu} className={navLinkClass}>Catalog</Link>
-      {user && <Link to="/create" onClick={closeMenu} className={navLinkClass}>Publish</Link>}
+      <Link to="/" onClick={closeMenu} className={navLinkClass}>{t('nav.home')}</Link>
+      <Link to="/catalog" onClick={closeMenu} className={navLinkClass}>{t('nav.catalog')}</Link>
+      {user && <Link to="/create" onClick={closeMenu} className={navLinkClass}>{t('nav.publish')}</Link>}
       {user && (
         <Link to="/contracts" onClick={closeMenu} className={`${navLinkClass} inline-flex items-center gap-1.5`}>
-          Contracts
+          {t('nav.contracts')}
           {contractsPending > 0 && (
             <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 leading-none">
               {contractsPending > 99 ? '99+' : contractsPending}
@@ -105,7 +107,7 @@ function NavBar() {
       )}
       {user && (
         <Link to="/messages" onClick={closeMenu} className={`${navLinkClass} inline-flex items-center gap-1.5`}>
-          Messages
+          {t('nav.messages')}
           {unreadTotal > 0 && (
             <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 leading-none">
               {unreadTotal > 99 ? '99+' : unreadTotal}
@@ -126,20 +128,20 @@ function NavBar() {
             <span>{userInitials}</span>
           )}
         </span>
-        <span className="md:hidden font-bold">Profile</span>
+        <span className="md:hidden font-bold">{t('nav.profile')}</span>
       </Link>
-      <Link to="/settings" onClick={closeMenu} className={navLinkClass}>Settings</Link>
+      <Link to="/settings" onClick={closeMenu} className={navLinkClass}>{t('nav.settings')}</Link>
       <button
         onClick={handleLogout}
         className="font-bold bg-red-500 px-4 py-2 rounded hover:bg-red-600 transition-colors shadow-sm text-left"
       >
-        Logout
+        {t('nav.logout')}
       </button>
     </>
   ) : (
     <>
-      <Link to="/login" onClick={closeMenu} className={navLinkClass}>Login</Link>
-      <Link to="/register" onClick={closeMenu} className="font-bold bg-amber-400 text-indigo-950 px-4 py-2 rounded hover:bg-amber-300 transition-colors shadow-sm">Register</Link>
+      <Link to="/login" onClick={closeMenu} className={navLinkClass}>{t('nav.login')}</Link>
+      <Link to="/register" onClick={closeMenu} className="font-bold bg-amber-400 text-indigo-950 px-4 py-2 rounded hover:bg-amber-300 transition-colors shadow-sm">{t('nav.register')}</Link>
     </>
   );
 

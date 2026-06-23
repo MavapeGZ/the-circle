@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api, { extractApiError } from '../services/api';
 
 // Product types that have no price (free / priority). DEMAND is priority, so no price selection.
 const PRICELESS_TYPES = ['DONATION', 'DEMAND'];
 
 function EditArticle() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -42,7 +44,7 @@ function EditArticle() {
         }
       } catch (err) {
         console.error(err);
-        setError('Error loading article data.');
+        setError(t('edit.error.load'));
       } finally {
         setLoading(false);
       }
@@ -70,7 +72,7 @@ function EditArticle() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        setError('The image is too large. Maximum size is 2MB.');
+        setError(t('article.error.imageTooLarge'));
         return;
       }
       setError('');
@@ -103,19 +105,19 @@ function EditArticle() {
       navigate(`/catalog/${id}`);
     } catch (err) {
       console.error('Error updating article:', err);
-      setError(extractApiError(err, 'Failed to update the article. Please try again.'));
+      setError(extractApiError(err, t('edit.error.update')));
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <div className="text-center mt-20 text-xl text-gray-500 animate-pulse">Loading article data...</div>;
+  if (loading) return <div className="text-center mt-20 text-xl text-gray-500 animate-pulse">{t('edit.loading')}</div>;
 
   return (
     <div className="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg border border-gray-100">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-extrabold text-gray-800">Edit Article</h1>
-        <Link to={`/catalog/${id}`} className="text-sm text-gray-500 hover:text-gray-700">Cancel</Link>
+        <h1 className="text-3xl font-extrabold text-gray-800">{t('edit.title')}</h1>
+        <Link to={`/catalog/${id}`} className="text-sm text-gray-500 hover:text-gray-700">{t('edit.cancel')}</Link>
       </div>
       
       {error && (
@@ -127,7 +129,7 @@ function EditArticle() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* TITLE */}
         <div>
-          <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-1">Title</label>
+          <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-1">{t('article.field.title')}</label>
           <input
             type="text"
             id="title"
@@ -141,7 +143,7 @@ function EditArticle() {
 
         {/* DESCRIPTION */}
         <div>
-          <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+          <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-1">{t('article.field.description')}</label>
           <textarea
             id="description"
             name="description"
@@ -156,7 +158,7 @@ function EditArticle() {
         {/* PRODUCT TYPE */}
         <div>
           <label htmlFor="productType" className="block text-sm font-semibold text-gray-700 mb-1">
-            Product Type <span className="text-red-500">*</span>
+            {t('article.field.productType')} <span className="text-red-500">*</span>
           </label>
           <select
             id="productType"
@@ -165,10 +167,10 @@ function EditArticle() {
             value={formData.productType}
             onChange={handleChange}
           >
-            <option value="SYMBOLIC_SALE">Symbolic Sale</option>
-            <option value="SYMBOLIC_RENTAL">Symbolic Rental</option>
-            <option value="DONATION">Donation (Free)</option>
-            <option value="DEMAND">Demand</option>
+            <option value="SYMBOLIC_SALE">{t('article.type.sale')}</option>
+            <option value="SYMBOLIC_RENTAL">{t('article.type.rental')}</option>
+            <option value="DONATION">{t('article.type.donation')}</option>
+            <option value="DEMAND">{t('article.type.demand')}</option>
           </select>
         </div>
 
@@ -176,7 +178,7 @@ function EditArticle() {
         {!PRICELESS_TYPES.includes(formData.productType) && (
           <div>
             <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-1">
-              Price (€) <span className="text-red-500">*</span>
+              {t('article.field.price')} <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -194,7 +196,7 @@ function EditArticle() {
 
         {/* IMAGE UPLOAD */}
         <div>
-          <label htmlFor="image" className="block text-sm font-semibold text-gray-700 mb-1">Change Image (Optional)</label>
+          <label htmlFor="image" className="block text-sm font-semibold text-gray-700 mb-1">{t('edit.changeImage')}</label>
           <input
             type="file"
             id="image"
@@ -216,7 +218,7 @@ function EditArticle() {
             saving ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
           }`}
         >
-          {saving ? 'Saving changes...' : 'Save Changes'}
+          {saving ? t('edit.saving') : t('edit.save')}
         </button>
       </form>
     </div>
