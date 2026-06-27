@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -277,12 +278,14 @@ public class AuthController {
     }
 
     private void attachDeviceCookie(HttpServletResponse response, String token) {
-        Cookie cookie = new Cookie(DeviceCookieService.COOKIE_NAME, token);
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setMaxAge((int) java.time.Duration.ofDays(deviceCookieMaxAgeDays).getSeconds());
-        cookie.setSecure(deviceCookieSecure);
-        response.addCookie(cookie);
+        // SameSite=None so the cookie survives the cross-site request from the
+        // Vercel-hosted SPA to this API (different domains). None mandates Secure,
+        // so the two are tied together: prod (HTTPS) uses None+Secure, local dev
+        // (HTTP, same-site) falls back to Lax. Without this the browser defaults
+        // to Lax and drops tc_device on /api/auth/login, so every login re-prompts
+        // for the OTP even on a previously trusted device.
+        setCookie(response, DeviceCookieService.COOKIE_NAME, token, "/",
+                (int) java.time.Duration.ofDays(deviceCookieMaxAgeDays).getSeconds(), deviceCookieSecure);
     }
 
     private String readRefreshCookie(HttpServletRequest request) {
@@ -297,20 +300,33 @@ public class AuthController {
     }
 
     private void attachRefreshCookie(HttpServletResponse response, String token) {
-        Cookie cookie = new Cookie(REFRESH_COOKIE_NAME, token);
-        cookie.setHttpOnly(true);
-        cookie.setPath(REFRESH_COOKIE_PATH);
-        cookie.setMaxAge((int) java.time.Duration.ofDays(refreshCookieMaxAgeDays).getSeconds());
-        cookie.setSecure(refreshCookieSecure);
-        response.addCookie(cookie);
+        // Same cross-site reasoning as the device cookie: the SPA on Vercel calls
+        // /api/auth/refresh cross-domain, so the cookie needs SameSite=None+Secure
+        // (prod) to be sent; Lax (dev) covers the same-site localhost case.
+        setCookie(response, REFRESH_COOKIE_NAME, token, REFRESH_COOKIE_PATH,
+                (int) java.time.Duration.ofDays(refreshCookieMaxAgeDays).getSeconds(), refreshCookieSecure);
     }
 
     private void clearRefreshCookie(HttpServletResponse response) {
-        Cookie cookie = new Cookie(REFRESH_COOKIE_NAME, "");
-        cookie.setHttpOnly(true);
-        cookie.setPath(REFRESH_COOKIE_PATH);
-        cookie.setMaxAge(0);
-        cookie.setSecure(refreshCookieSecure);
-        response.addCookie(cookie);
+        setCookie(response, REFRESH_COOKIE_NAME, "", REFRESH_COOKIE_PATH, 0, refreshCookieSecure);
+    }
+
+    /**
+     * Writes an httpOnly cookie with an explicit SameSite attribute. SameSite is
+     * {@code None} when {@code secure} is set (cross-site prod over HTTPS) and
+     * {@code Lax} otherwise (same-site local dev over HTTP, where None would be
+     * rejected for lacking Secure). Uses {@link ResponseCookie} because
+     * {@link Cookie} offers no portable SameSite setter here.
+     */
+    private void setCookie(HttpServletResponse response, String name, String value,
+                           String path, int maxAgeSeconds, boolean secure) {
+        ResponseCookie cookie = ResponseCookie.from(name, value)
+                .httpOnly(true)
+                .secure(secure)
+                .path(path)
+                .maxAge(maxAgeSeconds)
+                .sameSite(secure ? "None" : "Lax")
+                .build();
+        response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString());
     }
 }

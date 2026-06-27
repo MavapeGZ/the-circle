@@ -71,6 +71,11 @@ function NavBar() {
 
   const closeMenu = () => setMenuOpen(false);
 
+  // Combined alert count surfaced on the collapsed hamburger so mobile users see
+  // new chat/contract activity without opening the menu. Both default to 0 when
+  // logged out, so the badge only shows for a signed-in user with real activity.
+  const mobileBadgeTotal = unreadTotal + contractsPending;
+
   const handleLogout = async () => {
     closeMenu();
     await logout();
@@ -157,13 +162,17 @@ function NavBar() {
         <div className="hidden md:flex gap-4 items-center">{mainLinks}</div>
         <div className="hidden md:flex gap-4 items-center">{authLinks}</div>
 
-        {/* Mobile: hamburger toggle. */}
+        {/* Mobile: hamburger toggle. Per-link badges (unread chat / pending
+            contracts) are hidden while collapsed, so mirror their total on the
+            button itself — otherwise a small-screen user never sees the alert. */}
         <button
           type="button"
-          aria-label="Toggle navigation menu"
+          aria-label={mobileBadgeTotal > 0
+            ? `Toggle navigation menu, ${mobileBadgeTotal} new notifications`
+            : 'Toggle navigation menu'}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((open) => !open)}
-          className="md:hidden inline-flex items-center justify-center p-2 rounded hover:bg-indigo-900 transition-colors"
+          className="md:hidden relative inline-flex items-center justify-center p-2 rounded hover:bg-indigo-900 transition-colors"
         >
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             {menuOpen ? (
@@ -172,6 +181,11 @@ function NavBar() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             )}
           </svg>
+          {!menuOpen && mobileBadgeTotal > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center leading-none">
+              {mobileBadgeTotal > 99 ? '99+' : mobileBadgeTotal}
+            </span>
+          )}
         </button>
       </div>
 
@@ -188,7 +202,7 @@ function NavBar() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <NavBar />
 
       {/* Application routes */}

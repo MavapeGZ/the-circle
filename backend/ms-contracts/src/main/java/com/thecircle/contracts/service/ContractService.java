@@ -404,33 +404,51 @@ public class ContractService {
     }
 
     /**
-     * Fills the PDF signer blocks from ms-users so the rendered contract shows real
-     * names instead of [N/A]. Best-effort: a failed lookup leaves that block empty.
-     * primarySigner = receiver (the buyer who signs), secondarySigner = owner.
+     * The two party profiles fetched while enriching a contract. Lets a caller
+     * reuse the already-fetched profiles (e.g. to read a signer's language) instead
+     * of hitting ms-users again. primarySigner = receiver, secondarySigner = owner.
      */
-    public void enrichSigners(ContractDto dto, String signerEmail) {
-        if (dto == null) return;
-        if (dto.getReceiverId() != null) {
-            dto.setPrimarySigner(buildSigner(usersClient.getProfile(dto.getReceiverId()), signerEmail));
-        }
-        if (dto.getOwnerId() != null) {
-            dto.setSecondarySigner(buildSigner(usersClient.getProfile(dto.getOwnerId()), null));
+    public record SignerProfiles(UsersClient.UserProfile receiver, UsersClient.UserProfile owner) {
+        /** Preferred language tag of the given role, or null if unknown. Mirrors {@link #getUserLanguage}. */
+        public String languageFor(SignerRole role) {
+            if (role == null) return null;
+            UsersClient.UserProfile profile = role == SignerRole.OWNER ? owner : receiver;
+            return profile != null ? profile.language() : null;
         }
     }
 
     /**
+     * Fills the PDF signer blocks from ms-users so the rendered contract shows real
+     * names instead of [N/A]. Best-effort: a failed lookup leaves that block empty.
+     * primarySigner = receiver (the buyer who signs), secondarySigner = owner.
+     * Returns the fetched profiles so the caller can reuse them (e.g. for locale)
+     * without re-querying ms-users.
+     */
+    public SignerProfiles enrichSigners(ContractDto dto, String signerEmail) {
+        if (dto == null) return new SignerProfiles(null, null);
+        UsersClient.UserProfile receiver = null;
+        UsersClient.UserProfile owner = null;
+        if (dto.getReceiverId() != null) {
+            receiver = usersClient.getProfile(dto.getReceiverId());
+            dto.setPrimarySigner(buildSigner(receiver, signerEmail));
+        }
+        if (dto.getOwnerId() != null) {
+            owner = usersClient.getProfile(dto.getOwnerId());
+            dto.setSecondarySigner(buildSigner(owner, null));
+        }
+        return new SignerProfiles(receiver, owner);
+    }
+
+    /**
      * Best-effort lookup of a user's preferred language tag (e.g. "es"/"en") to
-     * localize the rendered PDF. Returns null on any gap so the PDF renderer
-     * falls back to English; a users-service hiccup never blocks PDF download.
+     * localize the rendered PDF or email. Returns null on any gap so the renderer
+     * falls back to English; a users-service hiccup never blocks signing. Single
+     * shared helper for the {@code getProfile → language} lookup.
      */
     public String getUserLanguage(String userId) {
         if (userId == null || userId.isBlank()) return null;
-        try {
-            UsersClient.UserProfile profile = usersClient.getProfile(userId);
-            return profile != null ? profile.language() : null;
-        } catch (RuntimeException ex) {
-            return null;
-        }
+        UsersClient.UserProfile profile = usersClient.getProfile(userId);
+        return profile != null ? profile.language() : null;
     }
 
     private SignerDto buildSigner(UsersClient.UserProfile profile, String fallbackEmail) {

@@ -47,7 +47,6 @@ function MyContracts() {
   // not raw ids. Each id is fetched once and cached.
   useEffect(() => {
     if (contracts.length === 0) return;
-    const fullName = (u) => [u?.firstName, u?.lastName].filter(Boolean).join(' ').trim();
 
     const itemIds = [...new Set(contracts.map((c) => c.itemId).filter(Boolean))];
     itemIds.forEach((id) => {
@@ -61,7 +60,7 @@ function MyContracts() {
     userIds.forEach((id) => {
       if (userNames[id] !== undefined) return;
       api.get(`/users/${id}`)
-        .then((r) => setUserNames((prev) => ({ ...prev, [id]: fullName(r.data) || `User ${id}` })))
+        .then((r) => setUserNames((prev) => ({ ...prev, [id]: r.data?.displayName || `User ${id}` })))
         .catch(() => setUserNames((prev) => ({ ...prev, [id]: `User ${id}` })));
     });
   }, [contracts]); // eslint-disable-line react-hooks/exhaustive-deps
