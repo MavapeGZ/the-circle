@@ -396,6 +396,7 @@ function ArticleDetail() {
               <button
                 onClick={handleAcquire}
                 disabled={acquiring}
+                data-testid="article-acquire-button"
                 className={`w-full py-4 font-extrabold rounded-lg shadow-md transition text-white text-lg ${acquiring ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 hover:scale-[1.02]'}`}
               >
                 {acquiring ? t('detail.processing') : t('detail.acquireSign', { action: t(`detail.action.${acquireCfg.actionKey}`) })}

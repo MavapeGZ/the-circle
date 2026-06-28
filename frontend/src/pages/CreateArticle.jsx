@@ -134,7 +134,7 @@ function CreateArticle() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" data-testid="article-create-form">
 
         {/* TITLE */}
         <div>
@@ -147,6 +147,7 @@ function CreateArticle() {
             name="title"
             required
             maxLength={140}
+            data-testid="article-title"
             placeholder={t('article.field.titlePlaceholder')}
             className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             value={formData.title}
@@ -166,6 +167,7 @@ function CreateArticle() {
             required
             rows="4"
             maxLength={4000}
+            data-testid="article-description"
             placeholder={t('article.field.descriptionPlaceholder')}
             className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
             value={formData.description}
@@ -182,6 +184,7 @@ function CreateArticle() {
           <select
             id="productType"
             name="productType"
+            data-testid="article-product-type"
             className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
             value={formData.productType}
             onChange={handleChange}
@@ -206,6 +209,7 @@ function CreateArticle() {
               min="0"
               step="0.01"
               required
+              data-testid="article-price"
               placeholder="0.00"
               className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               value={formData.price}
@@ -228,6 +232,7 @@ function CreateArticle() {
               max={fromEur(GUARANTEE_MAX_EUR)}
               step="0.01"
               required
+              data-testid="article-deposit"
               placeholder={t('create.depositPlaceholder')}
               className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               value={formData.guaranteeAmount}
@@ -249,6 +254,7 @@ function CreateArticle() {
             id="image"
             name="image"
             accept="image/*"
+            data-testid="article-image"
             onChange={handleImageChange}
             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
           />
@@ -269,6 +275,7 @@ function CreateArticle() {
         <button
           type="submit"
           disabled={loading}
+          data-testid="article-submit"
           className={`w-full py-3 px-4 text-white font-bold rounded shadow-md transition ${
             loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
           }`}
