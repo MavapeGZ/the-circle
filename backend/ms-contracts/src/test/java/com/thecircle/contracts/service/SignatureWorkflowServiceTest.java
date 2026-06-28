@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,6 +51,10 @@ class SignatureWorkflowServiceTest {
         ReflectionTestUtils.setField(service, "otpTtlSeconds", 600);
         ReflectionTestUtils.setField(service, "maxAttempts", 5);
         ReflectionTestUtils.setField(service, "exposeOtp", false);
+        // confirm() enriches signer profiles to pick the OTP/PDF locale; only the
+        // happy/retry paths reach it, hence lenient.
+        lenient().when(contractService.enrichSigners(any(), any()))
+                .thenReturn(new ContractService.SignerProfiles(null, null));
     }
 
     // --- helpers ---

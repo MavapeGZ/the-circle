@@ -69,6 +69,9 @@ class UserControllerTest {
     @Mock
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
+    @Mock
+    private com.thecircle.users.service.ReviewService reviewService;
+
     @InjectMocks
     private UserController userController;
 
