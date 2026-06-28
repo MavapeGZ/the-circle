@@ -40,6 +40,9 @@ public class AuthService {
     private final PasswordResetTokenStore passwordResetTokenStore;
     private final RefreshTokenService refreshTokenService;
 
+    @Value("${auth.otp.expose-in-response:false}")
+    private boolean exposeOtpInResponse;
+
     // i18n subject keys; ms-notifications resolves the localized subject per the
     // recipient's language. (Replaces the previous hardcoded @Value subjects.)
     private static final String VERIFY_SUBJECT_KEY = "email.subject.verify";
@@ -79,6 +82,7 @@ public class AuthService {
 
         return AuthenticationResponse.builder()
                 .sessionId(issued.sessionId)
+            .otp(exposeOtpInResponse ? issued.rawOtp : null)
                 .requiresEmailVerification(true)
                 .message("Verification code sent to " + user.getEmail())
                 .build();
@@ -118,6 +122,7 @@ public class AuthService {
             sendOtpEmail(user, issued, VERIFY_SUBJECT_KEY, "account-verification");
             return LoginOutcome.intermediate(AuthenticationResponse.builder()
                     .sessionId(issued.sessionId)
+                    .otp(exposeOtpInResponse ? issued.rawOtp : null)
                     .requiresEmailVerification(true)
                     .message("Email not verified. Verification code re-sent.")
                     .build());
@@ -136,6 +141,7 @@ public class AuthService {
         sendOtpEmail(user, issued, LOGIN_SUBJECT_KEY, "login-otp");
         return LoginOutcome.intermediate(AuthenticationResponse.builder()
                 .sessionId(issued.sessionId)
+            .otp(exposeOtpInResponse ? issued.rawOtp : null)
                 .requiresOtp(true)
                 .message("Sign-in code sent to " + user.getEmail())
                 .build());

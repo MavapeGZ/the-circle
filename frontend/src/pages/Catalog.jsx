@@ -115,10 +115,11 @@ function Catalog() {
       </div>
 
       {/* SEARCH BAR */}
-      <form onSubmit={handleSearch} className="bg-white p-4 rounded-xl shadow-md border border-gray-200 flex flex-col md:flex-row gap-4 mb-10">
+      <form onSubmit={handleSearch} className="bg-white p-4 rounded-xl shadow-md border border-gray-200 flex flex-col md:flex-row gap-4 mb-10" data-testid="catalog-search-form">
         <input
           type="text"
           aria-label={t('catalog.searchAria')}
+          data-testid="catalog-search-query"
           placeholder={t('catalog.searchPlaceholder')}
           className="flex-grow p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
           value={query}
@@ -127,6 +128,7 @@ function Catalog() {
 
         <select
           aria-label={t('catalog.filterTypeAria')}
+          data-testid="catalog-search-type"
           className="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           value={productType}
           onChange={(e) => setProductType(e.target.value)}
@@ -140,6 +142,7 @@ function Catalog() {
 
         <select
           aria-label={t('catalog.filterAreaAria')}
+          data-testid="catalog-search-zone"
           className="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
           value={zone}
           onChange={(e) => setZone(e.target.value)}
@@ -154,6 +157,7 @@ function Catalog() {
 
         <button
           type="submit"
+          data-testid="catalog-search-submit"
           className="bg-indigo-600 text-white font-bold py-3 px-8 rounded hover:bg-indigo-700 transition"
         >
           {t('catalog.search')}
@@ -170,11 +174,11 @@ function Catalog() {
           {error}
         </div>
       ) : articles.length === 0 ? (
-        <div className="text-center py-20 text-gray-500 text-xl">
+        <div className="text-center py-20 text-gray-500 text-xl" data-testid="catalog-empty-state">
           {t('catalog.noResults')}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="catalog-results-grid">
           {articles.map((article) => (
             <ArticleCard
               key={article.id}

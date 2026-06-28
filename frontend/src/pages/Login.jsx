@@ -133,11 +133,11 @@ function Login() {
         )}
 
         {step === STEP_CREDENTIALS && (
-          <form onSubmit={submitCredentials} className="flex flex-col gap-4">
+          <form onSubmit={submitCredentials} className="flex flex-col gap-4" data-testid="login-credentials-form">
             <div>
               <label className="block text-gray-700 font-semibold mb-2">{t('auth.email')}</label>
               <input
-                type="email" required
+                type="email" required data-testid="login-email"
                 className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={email} onChange={(e) => setEmail(e.target.value)}
               />
@@ -145,12 +145,12 @@ function Login() {
             <div>
               <label className="block text-gray-700 font-semibold mb-2">{t('auth.password')}</label>
               <input
-                type="password" required
+                type="password" required data-testid="login-password"
                 className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={password} onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <button type="submit" disabled={submitting}
+            <button type="submit" disabled={submitting} data-testid="login-submit"
               className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition disabled:opacity-60">
               {submitting ? t('auth.signingIn') : t('auth.signIn')}
             </button>
@@ -164,14 +164,14 @@ function Login() {
         )}
 
         {step === STEP_OTP && (
-          <form onSubmit={submitOtp} className="flex flex-col gap-4">
+          <form onSubmit={submitOtp} className="flex flex-col gap-4" data-testid="login-otp-form">
             <p className="text-gray-600 text-center">{otpMessage}</p>
             <input
-              type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required
+              type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required data-testid="login-otp"
               className="w-full p-3 border rounded text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
             />
-            <button type="submit" disabled={submitting}
+            <button type="submit" disabled={submitting} data-testid="login-otp-submit"
               className="bg-indigo-600 text-white font-bold p-3 rounded hover:bg-indigo-700 transition disabled:opacity-60">
               {submitting ? t('auth.verifying') : t('auth.verify')}
             </button>

@@ -118,12 +118,15 @@ Full reference (current state + how-to) lives in
 ### Frontend
 
 - Not set up yet. Agreed stack: **Vitest + @testing-library/react +
-  jest-dom + jsdom**, unit/integration only (no E2E for now). See issue
+  jest-dom + jsdom**, unit/integration only. See issue
   #20 for the exact config to add (`vite.config.js` `test` block,
   `src/test/setup.js`, npm scripts).
-- Once installed, co-locate tests as `Component.test.jsx`; start with the
-  pure functions in `src/utils/*`, then `src/services/api.js` (mock
-  `axios`), then hooks/components. Run `npm run test` from `frontend/`.
+- Browser E2E lives in the top-level `e2e/` Maven module. Run it with
+  `cd e2e && mvn test` or `npm run test:e2e` from the repo root.
+- Once installed, co-locate unit tests as `Component.test.jsx`; start
+  with the pure functions in `src/utils/*`, then `src/services/api.js`
+  (mock `axios`), then hooks/components. Run `npm run test` from
+  `frontend/` once the frontend suite is added.
 
 ### CI
 

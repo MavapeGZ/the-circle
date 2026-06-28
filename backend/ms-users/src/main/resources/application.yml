@@ -78,6 +78,8 @@ signature:
     login-subject: ${OTP_LOGIN_SUBJECT:The Circle - Sign-in code}
 
 auth:
+  otp:
+    expose-in-response: ${AUTH_OTP_EXPOSE_DEV:false}
   device:
     cookie:
       max-age-days: ${DEVICE_COOKIE_MAX_AGE_DAYS:90}
@@ -89,3 +91,12 @@ auth:
       # /api/auth. Set REFRESH_COOKIE_SECURE=true behind HTTPS in production.
       max-age-days: ${REFRESH_COOKIE_MAX_AGE_DAYS:30}
       secure: ${REFRESH_COOKIE_SECURE:false}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local,dev
+auth:
+  otp:
+    expose-in-response: true
