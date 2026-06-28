@@ -83,6 +83,47 @@ again.
   path. Double-check `SecurityConfig` and the gateway routes when in
   doubt.
 
+## Testing
+
+Full reference (current state + how-to) lives in
+[issue #20](https://github.com/MavapeGZ/the-circle/issues/20). Summary:
+
+### Backend
+
+- Maven multi-module, Spring Boot 3.2.12 / Java 21. Test framework is
+  JUnit 5 + Mockito + AssertJ, all from `spring-boot-starter-test`. H2
+  (`scope=test`) backs persistence tests.
+- Tests mirror the target package under `src/test/java`; name them
+  `<ClassUnderTest>Test`; name methods `method_condition_expectedResult`.
+- Pick one of the three patterns already in the codebase:
+  - **Pure unit:** `@ExtendWith(MockitoExtension.class)` + `@Mock` /
+    `@InjectMocks` (services, controller logic).
+  - **Web slice:** `@WebMvcTest(Controller.class)` + `MockMvc` +
+    `@MockBean` (HTTP status, JSON, validation).
+  - **JPA slice:** `@DataJpaTest` against in-memory H2 (repositories).
+  - DTO constraints can be tested with a raw `jakarta.validation.Validator`,
+    no Spring context.
+- `api-gateway` has no test dependency yet; add `spring-boot-starter-test`
+  to its `pom.xml` before writing the first test there.
+- Run:
+  ```bash
+  cd backend && mvn test                         # all modules
+  cd backend && mvn -pl ms-contracts test        # one module
+  cd backend && mvn -pl ms-contracts test -Dtest=ContractServiceTest
+  ```
+
+### Frontend
+
+- Not set up yet. Agreed stack: **Vitest + @testing-library/react +
+  jest-dom + jsdom**, unit/integration only (no E2E for now). See issue
+  #20 for the exact config to add (`vite.config.js` `test` block,
+  `src/test/setup.js`, npm scripts).
+- Once installed, co-locate tests as `Component.test.jsx`; start with the
+  pure functions in `src/utils/*`, then `src/services/api.js` (mock
+  `axios`), then hooks/components. Run `npm run test` from `frontend/`.
+
+All tests and test documentation are written in English.
+
 ## Database migrations
 
 - The project currently uses Hibernate `ddl-auto=update`. That means
