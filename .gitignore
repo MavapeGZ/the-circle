@@ -68,3 +68,7 @@ claude_debug.log
 
 # Startup scripts
 start-dev.ps1
+
+# data
+data/avatars/*
+data/kyc/*

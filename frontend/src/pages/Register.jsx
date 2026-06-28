@@ -91,14 +91,14 @@ function Register() {
         {error && <p className="bg-red-100 text-red-600 p-3 rounded my-3 text-center">{error}</p>}
 
         {step === STEP_ACCOUNT && (
-          <form onSubmit={submitAccount} className="flex flex-col gap-4">
-            <Field label={t('register.field.firstName')} name="firstName" value={formData.firstName} onChange={onAccountChange} />
-            <Field label={t('register.field.lastName')} name="lastName" value={formData.lastName} onChange={onAccountChange} />
-            <Field label={t('register.field.email')} name="email" type="email" value={formData.email} onChange={onAccountChange} />
-            <Field label={t('register.field.idNumber')} name="idNumber" value={formData.idNumber} onChange={onAccountChange} />
-            <Field label={t('register.field.address')} name="address" value={formData.address} onChange={onAccountChange} />
-            <Field label={t('register.field.password')} name="password" type="password" value={formData.password} onChange={onAccountChange} minLength={8} />
-            <SubmitButton disabled={submitting}>{submitting ? t('register.sendingCode') : t('register.continue')}</SubmitButton>
+          <form onSubmit={submitAccount} className="flex flex-col gap-4" data-testid="register-account-form">
+            <Field label={t('register.field.firstName')} name="firstName" value={formData.firstName} onChange={onAccountChange} dataTestId="register-first-name" />
+            <Field label={t('register.field.lastName')} name="lastName" value={formData.lastName} onChange={onAccountChange} dataTestId="register-last-name" />
+            <Field label={t('register.field.email')} name="email" type="email" value={formData.email} onChange={onAccountChange} dataTestId="register-email" />
+            <Field label={t('register.field.idNumber')} name="idNumber" value={formData.idNumber} onChange={onAccountChange} dataTestId="register-id-number" />
+            <Field label={t('register.field.address')} name="address" value={formData.address} onChange={onAccountChange} dataTestId="register-address" />
+            <Field label={t('register.field.password')} name="password" type="password" value={formData.password} onChange={onAccountChange} minLength={8} dataTestId="register-password" />
+            <SubmitButton disabled={submitting} dataTestId="register-account-submit">{submitting ? t('register.sendingCode') : t('register.continue')}</SubmitButton>
             <p className="text-center text-gray-600 text-sm">
               {t('register.haveAccount')} <Link to="/login" className="text-green-500 hover:underline">{t('register.signIn')}</Link>
             </p>
@@ -106,16 +106,16 @@ function Register() {
         )}
 
         {step === STEP_OTP && (
-          <form onSubmit={submitOtp} className="flex flex-col gap-4">
+          <form onSubmit={submitOtp} className="flex flex-col gap-4" data-testid="register-otp-form">
             <p className="text-gray-600 text-center">
               {t('register.otp.sentPrefix')} <strong>{formData.email}</strong>.
             </p>
             <input
-              type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+              type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} data-testid="register-otp"
               className="w-full p-3 border rounded text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-green-500"
               value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} required
             />
-            <SubmitButton disabled={submitting}>{submitting ? t('register.verifying') : t('register.verifyEmail')}</SubmitButton>
+            <SubmitButton disabled={submitting} dataTestId="register-otp-submit">{submitting ? t('register.verifying') : t('register.verifyEmail')}</SubmitButton>
             <button type="button" className="text-sm text-gray-500 hover:underline"
                     onClick={() => setStep(STEP_ACCOUNT)}>
               {t('register.differentEmail')}
@@ -124,13 +124,13 @@ function Register() {
         )}
 
         {step === STEP_KYC && (
-          <form onSubmit={submitKyc} className="flex flex-col gap-4">
+          <form onSubmit={submitKyc} className="flex flex-col gap-4" data-testid="register-kyc-form">
             <p className="text-gray-600 text-center">
               {t('register.kyc.intro')}
             </p>
-            <IdField label={t('register.kyc.front')} file={frontFile} onChange={setFrontFile} fallbackName="dni-front" />
-            <IdField label={t('register.kyc.back')} file={backFile} onChange={setBackFile} fallbackName="dni-back" />
-            <SubmitButton disabled={submitting}>{submitting ? t('register.uploading') : t('register.submitDocs')}</SubmitButton>
+            <IdField label={t('register.kyc.front')} file={frontFile} onChange={setFrontFile} fallbackName="dni-front" dataTestId="register-kyc-front" />
+            <IdField label={t('register.kyc.back')} file={backFile} onChange={setBackFile} fallbackName="dni-back" dataTestId="register-kyc-back" />
+            <SubmitButton disabled={submitting} dataTestId="register-kyc-submit">{submitting ? t('register.uploading') : t('register.submitDocs')}</SubmitButton>
             <button type="button" className="text-sm text-gray-500 hover:underline"
                     onClick={() => navigate('/')}>
               {t('register.skip')}
@@ -139,10 +139,10 @@ function Register() {
         )}
 
         {step === STEP_DONE && (
-          <div className="flex flex-col gap-4 text-center">
+          <div className="flex flex-col gap-4 text-center" data-testid="register-done-panel">
             <p className="text-green-700 font-semibold">{kycMessage}</p>
             <p className="text-gray-600">{t('register.done.continue')}</p>
-            <button onClick={() => navigate('/')}
+            <button onClick={() => navigate('/')} data-testid="register-done-home"
                     className="bg-green-600 text-white font-bold p-3 rounded hover:bg-green-700 transition">
               {t('register.goHome')}
             </button>
@@ -182,19 +182,19 @@ function StepIndicator({ step }) {
   );
 }
 
-function Field({ label, name, value, onChange, type = 'text', minLength }) {
+function Field({ label, name, value, onChange, type = 'text', minLength, dataTestId }) {
   return (
     <div>
       <label className="block text-gray-700 font-semibold mb-2">{label}</label>
       <input
-        type={type} name={name} value={value} onChange={onChange} required minLength={minLength}
+        type={type} name={name} value={value} onChange={onChange} required minLength={minLength} data-testid={dataTestId}
         className="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-green-500"
       />
     </div>
   );
 }
 
-function IdField({ label, file, onChange, fallbackName }) {
+function IdField({ label, file, onChange, fallbackName, dataTestId }) {
   const { t } = useTranslation();
   const [mode, setMode] = useState('idle');
   const [cameraError, setCameraError] = useState('');
@@ -292,6 +292,7 @@ function IdField({ label, file, onChange, fallbackName }) {
           onChange(e.target.files?.[0] || null);
           e.target.value = '';
         }}
+        data-testid={dataTestId}
         className="hidden"
       />
 
@@ -321,9 +322,9 @@ function IdField({ label, file, onChange, fallbackName }) {
   );
 }
 
-function SubmitButton({ disabled, children }) {
+function SubmitButton({ disabled, children, dataTestId }) {
   return (
-    <button type="submit" disabled={disabled}
+    <button type="submit" disabled={disabled} data-testid={dataTestId}
             className="bg-green-600 text-white font-bold p-3 rounded hover:bg-green-700 transition disabled:opacity-60">
       {children}
     </button>

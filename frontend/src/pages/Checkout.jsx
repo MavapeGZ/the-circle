@@ -141,11 +141,12 @@ function Checkout() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 space-y-5">
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 space-y-5" data-testid="checkout-form">
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-1">{t('checkout.cardholder')}</label>
           <input
             type="text"
+            data-testid="checkout-holder-name"
             value={card.holderName}
             onChange={(e) => setCard({ ...card, holderName: e.target.value })}
             className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
@@ -159,6 +160,7 @@ function Checkout() {
           <input
             type="text"
             inputMode="numeric"
+            data-testid="checkout-card-number"
             value={card.number}
             onChange={(e) => setCard({ ...card, number: formatCardNumber(e.target.value) })}
             className={`w-full border rounded-lg p-2.5 font-mono tracking-wider focus:ring-2 focus:ring-indigo-500 ${
@@ -181,6 +183,7 @@ function Checkout() {
             <input
               type="text"
               inputMode="numeric"
+              data-testid="checkout-expiry"
               value={card.expiry}
               onChange={(e) => setCard({ ...card, expiry: formatExpiry(e.target.value) })}
               maxLength={5}
@@ -194,6 +197,7 @@ function Checkout() {
             <input
               type="text"
               inputMode="numeric"
+              data-testid="checkout-cvc"
               value={card.cvc}
               onChange={(e) => setCard({ ...card, cvc: e.target.value.replace(/\D/g, '').slice(0, 4) })}
               className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
@@ -205,6 +209,7 @@ function Checkout() {
 
         <button
           type="submit"
+          data-testid="checkout-submit"
           disabled={!canSubmit}
           className={`w-full py-3 px-4 text-white font-bold rounded-lg shadow-md transition ${
             canSubmit ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-300 cursor-not-allowed'
