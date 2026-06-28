@@ -17,6 +17,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,15 +43,17 @@ class ContractDeliveryTest {
     // mirroring what the JPQL UPDATEs do in production so the service's re-read
     // (findById) reflects the confirmation.
     private void wireAtomicUpdates(Contract c) {
-        when(repository.markOwnerDelivered(eq("c1"), any())).thenAnswer(inv -> {
+        // lenient: single-party paths only hit a subset of these atomic updates,
+        // so not every stub is exercised by every test that wires them.
+        lenient().when(repository.markOwnerDelivered(eq("c1"), any())).thenAnswer(inv -> {
             if (c.getOwnerDeliveredAt() == null) c.setOwnerDeliveredAt(inv.getArgument(1));
             return 1;
         });
-        when(repository.markReceiverReceived(eq("c1"), any())).thenAnswer(inv -> {
+        lenient().when(repository.markReceiverReceived(eq("c1"), any())).thenAnswer(inv -> {
             if (c.getReceiverReceivedAt() == null) c.setReceiverReceivedAt(inv.getArgument(1));
             return 1;
         });
-        when(repository.markDeliveredIfBothConfirmed(eq("c1"), any(), any())).thenAnswer(inv -> {
+        lenient().when(repository.markDeliveredIfBothConfirmed(eq("c1"), any(), any())).thenAnswer(inv -> {
             if (c.getStatus() == ContractStatus.ACTIVE
                     && c.getOwnerDeliveredAt() != null && c.getReceiverReceivedAt() != null) {
                 c.setStatus(ContractStatus.DELIVERED);

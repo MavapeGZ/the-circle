@@ -103,8 +103,11 @@ Full reference (current state + how-to) lives in
   - **JPA slice:** `@DataJpaTest` against in-memory H2 (repositories).
   - DTO constraints can be tested with a raw `jakarta.validation.Validator`,
     no Spring context.
-- `api-gateway` has no test dependency yet; add `spring-boot-starter-test`
-  to its `pom.xml` before writing the first test there.
+- `api-gateway` now has `spring-boot-starter-test` and route tests
+  (`GatewayApplicationTest` context smoke + `GatewayRoutesConfigTest`
+  asserting each route id, `Path` predicate and target URI). Route URIs
+  assert the in-code defaults, so don't set `MS_*_URL` env vars when
+  running these locally.
 - Run:
   ```bash
   cd backend && mvn test                         # all modules
@@ -121,6 +124,13 @@ Full reference (current state + how-to) lives in
 - Once installed, co-locate tests as `Component.test.jsx`; start with the
   pure functions in `src/utils/*`, then `src/services/api.js` (mock
   `axios`), then hooks/components. Run `npm run test` from `frontend/`.
+
+### CI
+
+- `.github/workflows/ci.yml` runs on every PR to `main` (and pushes to
+  `main`): a **backend** job (`mvn -B test`, JDK 21) and a **frontend**
+  job (`npm ci` + `npm run build`). Add a `npm run test` step to the
+  frontend job once a test suite exists.
 
 All tests and test documentation are written in English.
 
