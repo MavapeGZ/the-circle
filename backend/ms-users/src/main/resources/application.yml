@@ -93,10 +93,14 @@ auth:
       secure: ${REFRESH_COOKIE_SECURE:false}
 
 ---
+# Developer-machine convenience ONLY. Exposing the OTP in the HTTP response
+# bypasses email verification / 2FA, so it is restricted to the 'local' profile
+# and additionally enforced by OtpExposureGuard at startup. Never add 'dev' or
+# any deployed profile here.
 spring:
   config:
     activate:
-      on-profile: local,dev
+      on-profile: local
 auth:
   otp:
     expose-in-response: true

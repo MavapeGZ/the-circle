@@ -82,7 +82,7 @@ public class AuthService {
 
         return AuthenticationResponse.builder()
                 .sessionId(issued.sessionId)
-            .otp(exposeOtpInResponse ? issued.rawOtp : null)
+                .otp(exposeOtpInResponse ? issued.rawOtp : null)
                 .requiresEmailVerification(true)
                 .message("Verification code sent to " + user.getEmail())
                 .build();
@@ -141,7 +141,7 @@ public class AuthService {
         sendOtpEmail(user, issued, LOGIN_SUBJECT_KEY, "login-otp");
         return LoginOutcome.intermediate(AuthenticationResponse.builder()
                 .sessionId(issued.sessionId)
-            .otp(exposeOtpInResponse ? issued.rawOtp : null)
+                .otp(exposeOtpInResponse ? issued.rawOtp : null)
                 .requiresOtp(true)
                 .message("Sign-in code sent to " + user.getEmail())
                 .build());

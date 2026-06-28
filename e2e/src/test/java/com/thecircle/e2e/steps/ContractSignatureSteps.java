@@ -36,8 +36,8 @@ public class ContractSignatureSteps {
     private static final String RENT_PRICE = "0";
     private static final String RENT_DEPOSIT = "5";
     private static final String VALID_IBAN = "ES91 2100 0418 4502 0005 1332";
-    private static final String API_BASE_URL = "http://localhost:8080/api";
-    private static final String CONTRACTS_SERVICE_BASE_URL = "http://localhost:8083/api";
+    private static final String API_BASE_URL = Config.apiBaseUrl();
+    private static final String CONTRACTS_SERVICE_BASE_URL = Config.contractsApiBaseUrl();
 
     private String aliceEmail;
     private String bobEmail;
@@ -570,10 +570,8 @@ public class ContractSignatureSteps {
 
     private Path resourcePath(String resource) {
         try {
-            if ("/fixtures/kyc-front.png".equals(resource) || "/fixtures/kyc-back.png".equals(resource)) {
-                return Path.of("..", "frontend", "public", "icons", "favicon-96x96.png").toAbsolutePath().normalize();
-            }
-            return Path.of(Objects.requireNonNull(getClass().getResource(resource)).toURI());
+            return Path.of(Objects.requireNonNull(getClass().getResource(resource),
+                    "Missing test resource " + resource).toURI());
         } catch (URISyntaxException e) {
             throw new IllegalStateException("Cannot resolve test resource " + resource, e);
         }

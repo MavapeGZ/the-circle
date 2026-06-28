@@ -7,6 +7,8 @@ import org.openqa.selenium.WebDriver;
 import java.time.Duration;
 
 public class Hooks {
+    // Single shared driver — scenarios MUST run serially (the default). Switch
+    // WORLD to a ThreadLocal before enabling parallel Cucumber execution.
     public static final ScenarioWorld WORLD = new ScenarioWorld();
 
     @Before

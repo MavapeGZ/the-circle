@@ -55,6 +55,7 @@ public class AuthFlowSteps {
         fill(By.cssSelector("[data-testid='register-id-number']"), "12345678Z");
         fill(By.cssSelector("[data-testid='register-address']"), "E2E test street 1");
         fill(By.cssSelector("[data-testid='register-password']"), PASSWORD);
+        clearCapturedAuthResponse();
         click(By.cssSelector("[data-testid='register-account-submit']"));
 
         waitForPage().until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("[data-testid='register-otp-form']")));
@@ -94,6 +95,7 @@ public class AuthFlowSteps {
         installAuthResponseCapture();
         fill(By.cssSelector("[data-testid='login-email']"), email);
         fill(By.cssSelector("[data-testid='login-password']"), PASSWORD);
+        clearCapturedAuthResponse();
         click(By.cssSelector("[data-testid='login-submit']"));
         waitForPage().until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("[data-testid='login-otp-form']")));
         lastOtp = captureOtp();
@@ -143,6 +145,10 @@ public class AuthFlowSteps {
                 """);
     }
 
+    private void clearCapturedAuthResponse() {
+        ((JavascriptExecutor) driver()).executeScript("window.__e2eAuthResponse = null;");
+    }
+
     private String captureOtp() {
         Object response = waitForPage().until(driver -> {
             Object value = ((JavascriptExecutor) driver).executeScript("return window.__e2eAuthResponse;");
@@ -172,10 +178,8 @@ public class AuthFlowSteps {
 
     private Path resourcePath(String resource) {
         try {
-            if ("/fixtures/kyc-front.png".equals(resource) || "/fixtures/kyc-back.png".equals(resource)) {
-                return Path.of("..", "frontend", "public", "icons", "favicon-96x96.png").toAbsolutePath().normalize();
-            }
-            return Path.of(Objects.requireNonNull(getClass().getResource(resource)).toURI());
+            return Path.of(Objects.requireNonNull(getClass().getResource(resource),
+                    "Missing test resource " + resource).toURI());
         } catch (URISyntaxException e) {
             throw new IllegalStateException("Cannot resolve test resource " + resource, e);
         }
