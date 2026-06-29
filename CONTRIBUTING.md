@@ -117,23 +117,33 @@ Full reference (current state + how-to) lives in
 
 ### Frontend
 
-- Not set up yet. Agreed stack: **Vitest + @testing-library/react +
-  jest-dom + jsdom**, unit/integration only. See issue
-  #20 for the exact config to add (`vite.config.js` `test` block,
-  `src/test/setup.js`, npm scripts).
-- Browser E2E lives in the top-level `e2e/` Maven module. Run it with
-  `cd e2e && mvn test` or `npm run test:e2e` from the repo root.
-- Once installed, co-locate unit tests as `Component.test.jsx`; start
-  with the pure functions in `src/utils/*`, then `src/services/api.js`
-  (mock `axios`), then hooks/components. Run `npm run test` from
-  `frontend/` once the frontend suite is added.
+- Stack: **Vitest + @testing-library/react + jest-dom + jsdom**,
+  unit/integration only. Config lives in the `test` block of
+  `frontend/vite.config.js`; global setup (jest-dom matchers, cleanup)
+  in `frontend/src/test/setup.js`.
+- Co-locate tests next to the code as `Component.test.jsx` /
+  `module.test.js`. Existing suites cover the pure functions in
+  `src/utils/*`, the `usePageTitle` hook, and `src/services/api.js`
+  (with `axios` mocked) — mirror those when adding more.
+- Run from `frontend/`:
+  ```bash
+  npm run test            # single run
+  npm run test:watch      # watch mode
+  npm run test:coverage   # with coverage
+  ```
+- Browser E2E lives in the top-level `e2e/` Maven module (Cucumber +
+  Selenium 4, Java 21). Start the stack, then run `cd e2e && mvn test`,
+  or `npm run test:e2e` from the repo root. `npm run test:e2e:auto`
+  (PowerShell) / `:auto:linux` (bash) boot the stack and run the suite
+  in one step.
 
 ### CI
 
 - `.github/workflows/ci.yml` runs on every PR to `main` (and pushes to
   `main`): a **backend** job (`mvn -B test`, JDK 21) and a **frontend**
-  job (`npm ci` + `npm run build`). Add a `npm run test` step to the
-  frontend job once a test suite exists.
+  job (`npm ci` → `npm run test` → `npm run build`, Node 20). Tests and
+  build are separate steps on purpose, so a failing test fails the job
+  independently of the production bundle. E2E is not part of CI.
 
 All tests and test documentation are written in English.
 
