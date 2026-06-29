@@ -47,7 +47,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # No frontend test suite exists yet (see issue #20 / CONTRIBUTING "Testing").
-      # A `npm run test` step should be added here once Vitest lands.
+      # Tests and build are separate steps on purpose: a failing test must fail
+      # the job, but it is verified independently of the production bundle.
+      - name: Run tests
+        run: npm run test
+
       - name: Build
         run: npm run build

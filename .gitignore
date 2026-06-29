@@ -33,7 +33,8 @@ dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
+# package-lock.json is committed on purpose: CI runs `npm ci`, which requires a
+# checked-in lockfile for reproducible installs.
 yarn.lock
 pnpm-lock.yaml
 
