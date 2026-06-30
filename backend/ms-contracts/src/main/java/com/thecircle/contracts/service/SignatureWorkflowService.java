@@ -170,6 +170,10 @@ public class SignatureWorkflowService {
                     "This signing session has already been used. Please start a new signing flow if you need to sign again.");
         }
 
+        // Resolve the signing role up front so we can stamp this party's signature
+        // onto the rendered document before generating it.
+        SignerRole role = session.signerRole != null ? session.signerRole : SignerRole.RECEIVER;
+
         StoredContract sc;
         try {
             // Fill signer names from ms-users so the signed PDF is not anonymous.
@@ -177,6 +181,10 @@ public class SignatureWorkflowService {
             // re-querying ms-users for the same signer.
             ContractService.SignerProfiles profiles =
                     contractService.enrichSigners(session.contract, session.signerEmail);
+            // Stamp this signer's timestamp (and carry over the counterparty's, if
+            // they already signed) so the signature zone renders the custom digital
+            // signature now, and a fully-signed contract shows both side by side.
+            stampSignatureTimestamps(session.contract, role, LocalDateTime.now());
             byte[] pdf = pdfService.generatePdf(session.contract,
                     profiles.languageFor(session.signerRole));
             if (session.visualOptions != null) {
@@ -192,7 +200,6 @@ public class SignatureWorkflowService {
 
         // Record this party's signature and link the stored PDF. The contract turns
         // ACTIVE only once both receiver and owner have signed.
-        SignerRole role = session.signerRole != null ? session.signerRole : SignerRole.RECEIVER;
         ContractDto updated = contractService.markSigned(session.contract.getContractId(), sc.getId(), role);
 
         boolean fullySigned = updated != null && updated.getStatus() == ContractStatus.ACTIVE;
@@ -272,6 +279,31 @@ public class SignatureWorkflowService {
             sb.append(RANDOM.nextInt(10));
         }
         return sb.toString();
+    }
+
+    /**
+     * Sets the signing party's signature timestamp on the contract used to render
+     * the PDF, carrying over the counterparty's already-persisted timestamp so a
+     * fully-signed document shows both signatures. Best-effort: a failed lookup
+     * just means the counterparty's prior signature may not appear on this render.
+     */
+    private void stampSignatureTimestamps(ContractDto contract, SignerRole role, LocalDateTime now) {
+        if (contract == null) return;
+        ContractDto persisted = contract.getContractId() != null
+                ? contractService.get(contract.getContractId()) : null;
+        if (persisted != null) {
+            if (contract.getReceiverSignedAt() == null) {
+                contract.setReceiverSignedAt(persisted.getReceiverSignedAt());
+            }
+            if (contract.getOwnerSignedAt() == null) {
+                contract.setOwnerSignedAt(persisted.getOwnerSignedAt());
+            }
+        }
+        if (role == SignerRole.OWNER) {
+            contract.setOwnerSignedAt(now);
+        } else {
+            contract.setReceiverSignedAt(now);
+        }
     }
 
     private Map<String, SignerDto> buildSignerMap(ContractDto contract) {
