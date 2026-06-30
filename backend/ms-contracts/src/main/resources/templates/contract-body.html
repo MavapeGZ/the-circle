@@ -1,0 +1,65 @@
+<div class="lang-body" xmlns:th="http://www.thymeleaf.org" th:fragment="body">
+
+    <div class="lang-banner" th:text="#{contract.languageName}">VERSION</div>
+    <div class="doc-title" th:text="#{contract.documentTitle}">CONTRACT</div>
+    <div class="doc-subtitle" th:text="#{contract.subtitle}">Through The Circle</div>
+
+    <!-- REUNIDOS -->
+    <div class="section-title" th:text="#{contract.recitals.heading}">PARTIES</div>
+    <p th:text="#{contract.recital.partyA(${aName},${aDni},${aAddress})}">Party A...</p>
+    <p th:text="#{contract.recital.partyB(${bName},${bDni},${bAddress})}">Party B...</p>
+    <p th:text="#{contract.recital.capacity}">Both parties...</p>
+
+    <!-- EXPONEN -->
+    <div class="section-title" th:text="#{contract.expound.heading}">RECITALS</div>
+    <p th:with="typeNoun=#{__${typeNounKey}__}" th:text="#{contract.expound.purpose(${typeNoun})}">I. ...</p>
+    <p th:text="#{contract.expound.legitimacy}">II. ...</p>
+    <p th:text="#{contract.expound.agreement}">...</p>
+
+    <!-- CLÁUSULAS -->
+    <div class="section-title" th:text="#{contract.clauses.heading}">CLAUSES</div>
+
+    <p class="clause-title" th:text="#{contract.clause.object.title}">One.</p>
+    <p th:with="typeNoun=#{__${typeNounKey}__}" th:text="#{contract.clause.object.body(${typeNoun},${itemLabel})}">...</p>
+
+    <p class="clause-title" th:text="#{contract.clause.price.title}">Two.</p>
+    <p th:text="#{contract.clause.price.body(${priceText})}">...</p>
+
+    <p class="clause-title" th:text="#{contract.clause.obligations.title}">Three.</p>
+    <p th:text="#{contract.clause.obligations.body}">...</p>
+
+    <p class="clause-title" th:text="#{contract.clause.dataprotection.title}">Four.</p>
+    <p th:text="#{contract.clause.dataprotection.body}">...</p>
+
+    <p class="clause-title" th:text="#{contract.clause.esignature.title}">Five.</p>
+    <p th:text="#{contract.clause.esignature.body}">...</p>
+
+    <p class="clause-title" th:text="#{contract.clause.law.title}">Six.</p>
+    <p th:text="#{contract.clause.law.body}">...</p>
+
+    <!-- DATOS DE LA OPERACIÓN -->
+    <div class="section-title" th:text="#{contract.details.heading}">Transaction details</div>
+    <table class="details">
+        <tr>
+            <td class="k" th:text="#{contract.details.type}">Type</td>
+            <td th:text="#{__${typeKey}__}">—</td>
+        </tr>
+        <tr>
+            <td class="k" th:text="#{contract.details.item}">Item</td>
+            <td th:text="${itemLabel}">—</td>
+        </tr>
+        <tr>
+            <td class="k" th:text="#{contract.details.price}">Amount</td>
+            <td th:text="${priceText}">—</td>
+        </tr>
+        <tr th:if="${startDate != null}">
+            <td class="k" th:text="#{contract.details.startDate}">Start</td>
+            <td th:text="${startDate}">—</td>
+        </tr>
+        <tr th:if="${endDate != null}">
+            <td class="k" th:text="#{contract.details.endDate}">End</td>
+            <td th:text="${endDate}">—</td>
+        </tr>
+    </table>
+
+</div>

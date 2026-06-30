@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <title>The Circle — Contrato / Contract</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 28mm 18mm 22mm 18mm;
+            @bottom-center { content: element(footer); }
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Contract', Arial, sans-serif;
+            font-size: 10.5px;
+            line-height: 1.45;
+            color: #1f2937;
+        }
+        .header { border-bottom: 2px solid #111827; padding-bottom: 10px; margin-bottom: 6px; }
+        .header table { width: 100%; }
+        .logo { height: 42px; }
+        .meta { font-size: 8.5px; color: #4b5563; text-align: right; }
+        .master-title { text-align: center; font-size: 15px; font-weight: bold; letter-spacing: 1px; margin: 16px 0 4px; color: #111827; }
+        .master-note { text-align: center; font-size: 8px; color: #6b7280; font-style: italic; margin-bottom: 8px; }
+        .lang-body { padding-top: 4px; }
+        .lang-banner { text-align: center; font-size: 8.5px; font-weight: bold; letter-spacing: 2px; color: #ffffff;
+            background: #111827; padding: 3px 0; margin: 6px 0 10px; }
+        .doc-title { text-align: center; font-size: 14px; font-weight: bold; letter-spacing: 1px; margin: 6px 0 2px; }
+        .doc-subtitle { text-align: center; font-size: 8.5px; color: #6b7280; margin-bottom: 12px; }
+        .section-title { font-size: 10px; font-weight: bold; letter-spacing: 1px; color: #111827;
+            border-bottom: 1px solid #d1d5db; padding-bottom: 3px; margin: 16px 0 8px; }
+        p { margin: 0 0 7px; text-align: justify; }
+        .clause-title { font-weight: bold; margin: 9px 0 2px; }
+        .details { width: 100%; border-collapse: collapse; margin-top: 4px; }
+        .details td { border: 1px solid #d1d5db; padding: 5px 8px; vertical-align: top; }
+        .details td.k { background: #f3f4f6; font-weight: bold; width: 32%; }
+        .page-break { page-break-before: always; }
+        .sign-section-title { font-size: 11px; font-weight: bold; letter-spacing: 1px; color: #111827;
+            border-bottom: 1px solid #9ca3af; padding-bottom: 4px; margin: 4px 0 10px; }
+        .sign-table { width: 100%; border-collapse: separate; border-spacing: 12px 0; margin-top: 6px; }
+        .sign-cell { width: 50%; vertical-align: top; }
+        .sign-box { border: 1px solid #9ca3af; border-radius: 6px; padding: 10px; min-height: 150px; }
+        .sign-box.pending { border-style: dashed; color: #9ca3af; }
+        .sign-role { font-size: 8px; letter-spacing: 1px; color: #6b7280; }
+        .sign-mark { border-top: 1px dashed #cbd5e1; margin-top: 8px; padding-top: 8px; }
+        .sign-logo { height: 22px; margin-bottom: 4px; }
+        .sign-name { font-weight: bold; font-size: 11px; color: #111827; }
+        .sign-dni { font-size: 9px; color: #374151; }
+        .sign-ts { font-size: 9px; color: #374151; margin-top: 4px; }
+        .sign-badge { font-size: 8px; color: #047857; margin-top: 6px; }
+        .sign-verified { font-size: 8px; color: #6b7280; }
+        .sign-pending-text { font-size: 9px; font-style: italic; margin-top: 40px; text-align: center; }
+        .note { font-size: 8px; color: #6b7280; margin-top: 8px; }
+        #footer { font-size: 7.5px; color: #9ca3af; text-align: center; position: running(footer); }
+    </style>
+</head>
+<body>
+
+<div id="footer">The Circle · Documento privado entre las partes firmantes / Private contract between the signing parties</div>
+
+<div class="header">
+    <table>
+        <tr>
+            <td style="width:60%;">
+                <img class="logo" th:src="${logoDataUri}" alt="The Circle"/>
+            </td>
+            <td class="meta">
+                <div>Referencia / Reference: <strong th:text="${contractRef}">—</strong></div>
+                <div>Fecha / Date: <strong th:text="${issueDate}">—</strong></div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<div class="master-title">CONTRATO ENTRE PARTICULARES · PRIVATE CONTRACT BETWEEN INDIVIDUALS</div>
+<div class="master-note">Documento redactado en español e inglés; ambas versiones son igualmente auténticas. ·
+    Document drafted in Spanish and English; both versions are equally authentic.</div>
+
+<!-- Primary-language legal body first, then the other language on a new page. -->
+<div th:utext="${firstBody}">[body 1]</div>
+<div class="page-break" th:utext="${secondBody}">[body 2]</div>
+
+<!-- Shared signature zone (language-neutral data, bilingual labels). -->
+<div class="page-break">
+    <div class="sign-section-title">FIRMAS DE LAS PARTES · SIGNATURES OF THE PARTIES</div>
+    <table class="sign-table">
+        <tr>
+            <!-- Party A -->
+            <td class="sign-cell">
+                <div th:classappend="${aSigned} ? '' : ' pending'" class="sign-box">
+                    <div class="sign-role">PARTE A · PARTY A</div>
+                    <div class="sign-name" th:text="${aName}">—</div>
+                    <div class="sign-dni">DNI/NIF · ID: <span th:text="${aDni}">—</span></div>
+                    <div th:if="${aSigned}" class="sign-mark">
+                        <img class="sign-logo" th:src="${logoDataUri}" alt=""/>
+                        <div class="sign-ts">Firmado el / Signed on: <strong th:text="${aSignedOn}">—</strong></div>
+                        <div class="sign-badge">Firma electrónica avanzada · Advanced e-signature — eIDAS (UE/EU 910/2014)</div>
+                        <div class="sign-verified">Identidad verificada mediante OTP · Identity verified via OTP</div>
+                    </div>
+                    <div th:unless="${aSigned}" class="sign-pending-text">Pendiente de firma · Pending signature</div>
+                </div>
+            </td>
+            <!-- Party B -->
+            <td class="sign-cell">
+                <div th:classappend="${bSigned} ? '' : ' pending'" class="sign-box">
+                    <div class="sign-role">PARTE B · PARTY B</div>
+                    <div class="sign-name" th:text="${bName}">—</div>
+                    <div class="sign-dni">DNI/NIF · ID: <span th:text="${bDni}">—</span></div>
+                    <div th:if="${bSigned}" class="sign-mark">
+                        <img class="sign-logo" th:src="${logoDataUri}" alt=""/>
+                        <div class="sign-ts">Firmado el / Signed on: <strong th:text="${bSignedOn}">—</strong></div>
+                        <div class="sign-badge">Firma electrónica avanzada · Advanced e-signature — eIDAS (UE/EU 910/2014)</div>
+                        <div class="sign-verified">Identidad verificada mediante OTP · Identity verified via OTP</div>
+                    </div>
+                    <div th:unless="${bSigned}" class="sign-pending-text">Pendiente de firma · Pending signature</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+    <p class="note">Documento firmado electrónicamente; la validez de cada firma queda acreditada por el sello de tiempo y la
+        identificación del firmante. · Document signed electronically; the validity of each signature is evidenced by the
+        timestamp and the signer's identification.</p>
+</div>
+
+</body>
+</html>
