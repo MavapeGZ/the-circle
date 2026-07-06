@@ -5,7 +5,9 @@ import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 import com.thecircle.contracts.dto.ContractDto;
 import com.thecircle.contracts.dto.ContractType;
 import com.thecircle.contracts.dto.SignerDto;
+import org.jsoup.Jsoup;
 import org.jsoup.helper.W3CDom;
+import org.jsoup.nodes.Document;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -16,7 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
@@ -51,9 +53,16 @@ public class ContractPdfService {
 
     private final SpringTemplateEngine templateEngine;
     private final String logoDataUri;
+    private final Clock clock;
 
     public ContractPdfService(SpringTemplateEngine templateEngine) {
+        this(templateEngine, Clock.systemDefaultZone());
+    }
+
+    /** Visible for testing: a fixed Clock makes the rendered issue date deterministic. */
+    ContractPdfService(SpringTemplateEngine templateEngine, Clock clock) {
         this.templateEngine = templateEngine;
+        this.clock = clock;
         this.logoDataUri = loadLogoDataUri();
     }
 
@@ -112,7 +121,7 @@ public class ContractPdfService {
 
         ctx.setVariable("logoDataUri", logoDataUri);
         ctx.setVariable("contractRef", text(dto.getContractId(), na));
-        ctx.setVariable("issueDate", LocalDateTime.now().format(TS));
+        ctx.setVariable("issueDate", LocalDateTime.now(clock).format(TS));
 
         ctx.setVariable("aName", signerName(a, na));
         ctx.setVariable("aDni", signerId(a, na));
@@ -130,8 +139,8 @@ public class ContractPdfService {
     }
 
     private byte[] htmlToPdf(String html) throws IOException {
-        org.jsoup.nodes.Document jsoupDoc = org.jsoup.Jsoup.parse(html);
-        jsoupDoc.outputSettings().syntax(org.jsoup.nodes.Document.OutputSettings.Syntax.xml);
+        Document jsoupDoc = Jsoup.parse(html);
+        jsoupDoc.outputSettings().syntax(Document.OutputSettings.Syntax.xml);
         org.w3c.dom.Document w3cDoc = new W3CDom().fromJsoup(jsoupDoc);
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {

@@ -97,6 +97,12 @@ function SignContract() {
       setBanner({ type: 'error', text: t('sign.enterEmail') });
       return;
     }
+    // Without a resolved role the backend would default the signer to RECEIVER,
+    // so refuse to submit when the current user is neither party on the contract.
+    if (!role) {
+      setBanner({ type: 'error', text: t('sign.roleUnknown') });
+      return;
+    }
     setSubmitting(true);
     setBanner(null);
     try {
@@ -258,7 +264,7 @@ function SignContract() {
               </div>
               <button
                 type="submit"
-                disabled={submitting || loadingContract || !contract}
+                disabled={submitting || loadingContract || !contract || !role}
                 data-testid="sign-request-submit"
                 className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >

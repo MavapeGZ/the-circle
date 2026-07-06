@@ -1,3 +1,11 @@
+# ============================================================================
+# LOCAL / DEMO STACK ONLY — NOT a production deployment template.
+# It pins SPRING_PROFILES_ACTIVE=local and sets AUTH_OTP_EXPOSE_DEV /
+# OTP_EXPOSE_DEV=true, which return OTP codes in HTTP responses (E2E reads them
+# from the JSON body). OtpExposureGuard permits this *because* the profile here
+# is 'local'; it cannot protect a deployment that reuses this file. For staging/
+# prod, use a separate compose/profile without these variables.
+# ============================================================================
 x-common: &common
   restart: unless-stopped
   networks: [thecircle]

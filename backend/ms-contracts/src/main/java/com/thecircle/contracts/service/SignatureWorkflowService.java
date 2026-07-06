@@ -171,8 +171,10 @@ public class SignatureWorkflowService {
         }
 
         // Resolve the signing role up front so we can stamp this party's signature
-        // onto the rendered document before generating it.
+        // onto the rendered document before generating it. Capture a single signing
+        // instant so the timestamp printed on the PDF matches the one persisted below.
         SignerRole role = session.signerRole != null ? session.signerRole : SignerRole.RECEIVER;
+        LocalDateTime signedAt = LocalDateTime.now();
 
         StoredContract sc;
         try {
@@ -184,7 +186,7 @@ public class SignatureWorkflowService {
             // Stamp this signer's timestamp (and carry over the counterparty's, if
             // they already signed) so the signature zone renders the custom digital
             // signature now, and a fully-signed contract shows both side by side.
-            stampSignatureTimestamps(session.contract, role, LocalDateTime.now());
+            stampSignatureTimestamps(session.contract, role, signedAt);
             byte[] pdf = pdfService.generatePdf(session.contract,
                     profiles.languageFor(session.signerRole));
             if (session.visualOptions != null) {
@@ -200,7 +202,7 @@ public class SignatureWorkflowService {
 
         // Record this party's signature and link the stored PDF. The contract turns
         // ACTIVE only once both receiver and owner have signed.
-        ContractDto updated = contractService.markSigned(session.contract.getContractId(), sc.getId(), role);
+        ContractDto updated = contractService.markSigned(session.contract.getContractId(), sc.getId(), role, signedAt);
 
         boolean fullySigned = updated != null && updated.getStatus() == ContractStatus.ACTIVE;
 
@@ -209,7 +211,7 @@ public class SignatureWorkflowService {
         resp.setFullySigned(fullySigned);
         resp.setStoredContractId(sc.getId());
         resp.setDownloadUrl(DOWNLOAD_PATH + sc.getId());
-        resp.setSignedAt(LocalDateTime.now());
+        resp.setSignedAt(signedAt);
         resp.setMessage("Contract signed successfully");
         // The deal just closed: award the gamification event (donation/rental/sale)
         // and, when this signer is the rewarded party, return the unlocked badges so
