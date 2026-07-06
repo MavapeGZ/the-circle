@@ -20,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -54,7 +53,7 @@ class KycServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(kycValidationService.validate(userId, front, back)).thenReturn(true);
-        when(jwtService.generateToken(anyMap(), any(User.class))).thenReturn("jwt-token");
+        when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token");
 
         String token = kycService.processKyc(userId, front, back);
 
@@ -163,7 +162,7 @@ class KycServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(kycValidationService.validate(userId, front, back)).thenReturn(true);
-        when(jwtService.generateToken(anyMap(), any(User.class))).thenReturn("jwt-token");
+        when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token");
 
         String token = kycService.processKyc(userId, front, back);
 
@@ -196,7 +195,7 @@ class KycServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(kycValidationService.validate(userId, front, back)).thenReturn(true);
-        when(jwtService.generateToken(anyMap(), any(User.class))).thenReturn("jwt-token");
+        when(jwtService.generateToken(any(User.class))).thenReturn("jwt-token");
 
         String token = kycService.processKyc(userId, front, back);
 

@@ -83,6 +83,70 @@ again.
   path. Double-check `SecurityConfig` and the gateway routes when in
   doubt.
 
+## Testing
+
+Full reference (current state + how-to) lives in
+[issue #20](https://github.com/MavapeGZ/the-circle/issues/20). Summary:
+
+### Backend
+
+- Maven multi-module, Spring Boot 3.2.12 / Java 21. Test framework is
+  JUnit 5 + Mockito + AssertJ, all from `spring-boot-starter-test`. H2
+  (`scope=test`) backs persistence tests.
+- Tests mirror the target package under `src/test/java`; name them
+  `<ClassUnderTest>Test`; name methods `method_condition_expectedResult`.
+- Pick one of the three patterns already in the codebase:
+  - **Pure unit:** `@ExtendWith(MockitoExtension.class)` + `@Mock` /
+    `@InjectMocks` (services, controller logic).
+  - **Web slice:** `@WebMvcTest(Controller.class)` + `MockMvc` +
+    `@MockBean` (HTTP status, JSON, validation).
+  - **JPA slice:** `@DataJpaTest` against in-memory H2 (repositories).
+  - DTO constraints can be tested with a raw `jakarta.validation.Validator`,
+    no Spring context.
+- `api-gateway` now has `spring-boot-starter-test` and route tests
+  (`GatewayApplicationTest` context smoke + `GatewayRoutesConfigTest`
+  asserting each route id, `Path` predicate and target URI). Route URIs
+  assert the in-code defaults, so don't set `MS_*_URL` env vars when
+  running these locally.
+- Run:
+  ```bash
+  cd backend && mvn test                         # all modules
+  cd backend && mvn -pl ms-contracts test        # one module
+  cd backend && mvn -pl ms-contracts test -Dtest=ContractServiceTest
+  ```
+
+### Frontend
+
+- Stack: **Vitest + @testing-library/react + jest-dom + jsdom**,
+  unit/integration only. Config lives in the `test` block of
+  `frontend/vite.config.js`; global setup (jest-dom matchers, cleanup)
+  in `frontend/src/test/setup.js`.
+- Co-locate tests next to the code as `Component.test.jsx` /
+  `module.test.js`. Existing suites cover the pure functions in
+  `src/utils/*`, the `usePageTitle` hook, and `src/services/api.js`
+  (with `axios` mocked) — mirror those when adding more.
+- Run from `frontend/`:
+  ```bash
+  npm run test            # single run
+  npm run test:watch      # watch mode
+  npm run test:coverage   # with coverage
+  ```
+- Browser E2E lives in the top-level `e2e/` Maven module (Cucumber +
+  Selenium 4, Java 21). Start the stack, then run `cd e2e && mvn test`,
+  or `npm run test:e2e` from the repo root. `npm run test:e2e:auto`
+  (PowerShell) / `:auto:linux` (bash) boot the stack and run the suite
+  in one step.
+
+### CI
+
+- `.github/workflows/ci.yml` runs on every PR to `main` (and pushes to
+  `main`): a **backend** job (`mvn -B test`, JDK 21) and a **frontend**
+  job (`npm ci` → `npm run test` → `npm run build`, Node 20). Tests and
+  build are separate steps on purpose, so a failing test fails the job
+  independently of the production bundle. E2E is not part of CI.
+
+All tests and test documentation are written in English.
+
 ## Database migrations
 
 - The project currently uses Hibernate `ddl-auto=update`. That means

@@ -7,7 +7,9 @@ import com.thecircle.contracts.dto.ContractDto;
 import com.thecircle.contracts.dto.ContractStatus;
 import com.thecircle.contracts.dto.ContractType;
 import com.thecircle.contracts.dto.GuaranteeStatus;
+import com.thecircle.contracts.dto.PaymentDto;
 import com.thecircle.contracts.dto.SignerRole;
+import com.thecircle.contracts.client.CatalogClient.ArticleSnapshot;
 import com.thecircle.contracts.model.Contract;
 import com.thecircle.contracts.repository.ContractRepository;
 import com.thecircle.contracts.repository.PaymentRepository;
@@ -30,6 +32,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,6 +48,9 @@ class ContractServiceTest {
 
     @Mock
     private CatalogClient catalogClient;
+
+    @Mock
+    private PaymentService paymentService;
 
     @Mock
     private PaymentRepository paymentRepository;
@@ -90,6 +96,10 @@ class ContractServiceTest {
 
     @Test
     void create_persistsPendingContractWithGeneratedId() {
+        // RENT contracts read the owner-set deposit from the catalog (the request
+        // value is ignored), so the catalog lookup must be stubbed.
+        when(catalogClient.getArticle("item-1"))
+                .thenReturn(new ArticleSnapshot("item-1", 10L, "RENT", 10.0, 50.0));
         echoSave();
         ContractDto dto = service.create(buildRequest());
 
@@ -147,6 +157,9 @@ class ContractServiceTest {
         c.setReceiverSignedAt(LocalDateTime.now().minusMinutes(5));
         when(repository.findById("c1")).thenReturn(Optional.of(c));
         echoSave();
+        // RENT with a deposit requires escrow to clear before going ACTIVE; a
+        // non-null release result signals the escrow settled.
+        when(paymentService.releaseEscrowOnDualSign("c1")).thenReturn(mock(PaymentDto.class));
 
         ContractDto dto = service.markSigned("c1", "sc-2", SignerRole.OWNER);
 

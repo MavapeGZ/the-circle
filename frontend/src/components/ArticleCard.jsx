@@ -64,7 +64,7 @@ export default function ArticleCard({ article, sellerProfile }) {
   const formattedDate = formatDate(article.createdAt);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 border border-gray-100 overflow-hidden flex flex-col h-full">
+    <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow duration-300 border border-gray-100 overflow-hidden flex flex-col h-full" data-testid={`article-card-${article.id}`}>
       <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-3">
         {article.authorId && sellerProfile?.publicId ? (
           <Link to={`/users/${sellerProfile.publicId}`} className="flex items-center gap-3 min-w-0 group">
@@ -125,7 +125,7 @@ export default function ArticleCard({ article, sellerProfile }) {
             </div>
           </div>
 
-          <h3 className="text-xl font-bold text-gray-800 mb-2 line-clamp-2">
+          <h3 className="text-xl font-bold text-gray-800 mb-2 line-clamp-2" data-testid={`article-card-title-${article.id}`}>
             {article.title}
           </h3>
 

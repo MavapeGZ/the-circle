@@ -1,9 +1,18 @@
+# ============================================================================
+# LOCAL / DEMO STACK ONLY — NOT a production deployment template.
+# It pins SPRING_PROFILES_ACTIVE=local and sets AUTH_OTP_EXPOSE_DEV /
+# OTP_EXPOSE_DEV=true, which return OTP codes in HTTP responses (E2E reads them
+# from the JSON body). OtpExposureGuard permits this *because* the profile here
+# is 'local'; it cannot protect a deployment that reuses this file. For staging/
+# prod, use a separate compose/profile without these variables.
+# ============================================================================
 x-common: &common
   restart: unless-stopped
   networks: [thecircle]
 
 x-app-env: &app-env
   JAVA_TOOL_OPTIONS: "-Xmx256m -XX:+UseSerialGC"
+  SPRING_PROFILES_ACTIVE: local
   DB_USER: ${DB_USER}
   DB_PASSWORD: ${DB_PASSWORD}
   JWT_SECRET: ${JWT_SECRET}
@@ -51,9 +60,10 @@ services:
       nofile: { soft: 65536, hard: 65536 }
     healthcheck:
       test: ["CMD-SHELL", "curl -s -f http://127.0.0.1:9200/_cluster/health || exit 1"]
+      start_period: 60s
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 12
 
   api-gateway:
     <<: *common
@@ -91,6 +101,7 @@ services:
       NOTIFICATIONS_BASE_URL: http://ms-notifications:8085
       NOTIFICATIONS_INTERNAL_KEY: ${NOTIFICATIONS_INTERNAL_KEY}
       DEVICE_COOKIE_SECURE: "false"
+      AUTH_OTP_EXPOSE_DEV: "true"
     volumes:
       - ./data/kyc:/data/kyc
       - ./data/avatars:/data/avatars
@@ -129,6 +140,7 @@ services:
       CATALOG_INTERNAL_KEY: ${CATALOG_INTERNAL_KEY}
       CONTRACTS_INTERNAL_KEY: ${CONTRACTS_INTERNAL_KEY}
       NOTIFICATIONS_INTERNAL_KEY: ${NOTIFICATIONS_INTERNAL_KEY}
+      OTP_EXPOSE_DEV: "true"
     depends_on:
       postgres: { condition: service_healthy }
 

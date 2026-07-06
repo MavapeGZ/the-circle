@@ -44,19 +44,22 @@ To develop a functional, secure, and scalable software solution that promotes th
 
 | Component | Technology | Description |
 | :--- | :--- | :--- |
-| **Frontend** | React + Vite | User interface built with JavaScript, HTML, and CSS. |
-| **Backend** | Java | Core server-side logic and API. |
-| **Database** | SQL Database | Relational DBMS (PostgreSQL, MySQL, or similar). |
-| **Search Engine** | Elasticsearch | For fast, scalable search and analytics of offers/demands. |
-| **Document Mgmt.** | *TBD* | Tool for generating and storing digital contracts. |
-| **ID Validation** | Custom / API | Integration with a 3rd-party service or a simplified custom implementation. |
+| **Frontend** | React 18 + Vite + Tailwind CSS | Single-page UI; internationalised (ES/EN) with `react-i18next`. |
+| **Backend** | Java 21 + Spring Boot 3.2 | Maven multi-module microservices. |
+| **API Gateway** | Spring Cloud Gateway | Single entry point and routing for all client requests. |
+| **Database** | PostgreSQL | Relational store, one schema per service. |
+| **Search Engine** | OpenSearch 2.11 | Fast, scalable search of offers/demands. |
+| **Document Mgmt.** | Apache PDFBox | Generates and stores digital contract PDFs (as BLOBs) in `ms-contracts`. |
+| **ID Validation** | Pluggable KYC provider | `ms-users` KYC flow with a mock provider; swappable for a 3rd-party service. |
 | **Version Control**| Git / GitHub | Code tracking and collaborative group development. |
 
 ### Microservices Ecosystem
-* `api-gateway`: Entry point and routing for all client requests.
+* `api-gateway`: Entry point and routing for all client requests (Spring Cloud Gateway).
 * `ms-users`: Identity management, profiles, authentication, and KYC flow.
 * `ms-catalog`: Offers and demands CRUD, integrated with OpenSearch.
 * `ms-contracts`: Automatic PDF generation and OTP signature flows.
+* `ms-gamification`: Points, badges and leaderboard from user activity events.
+* `ms-notifications`: Transactional email delivery (OTP, account and contract notices).
 
 ---
 
@@ -75,7 +78,7 @@ OpenSearch requires a high virtual memory map limit. If the `opensearch` contain
 
 1. Clone the repository:
    ```bash
-   git clone [https://github.com/your-username/the-circle.git](https://github.com/your-username/the-circle.git)
+   git clone https://github.com/MavapeGZ/the-circle.git
    cd the-circle
    ```
 
@@ -86,10 +89,10 @@ OpenSearch requires a high virtual memory map limit. If the `opensearch` contain
    DB_USER=thecircle
    DB_PASSWORD=change-me
    JWT_SECRET=replace-with-a-long-random-secret
-  USERS_INTERNAL_KEY=replace-with-a-shared-internal-key
-  CATALOG_INTERNAL_KEY=replace-with-a-shared-internal-key
-  CONTRACTS_INTERNAL_KEY=replace-with-a-shared-internal-key
-  NOTIFICATIONS_INTERNAL_KEY=replace-with-a-shared-internal-key
+   USERS_INTERNAL_KEY=replace-with-a-shared-internal-key
+   CATALOG_INTERNAL_KEY=replace-with-a-shared-internal-key
+   CONTRACTS_INTERNAL_KEY=replace-with-a-shared-internal-key
+   NOTIFICATIONS_INTERNAL_KEY=replace-with-a-shared-internal-key
    ```
 
    Then start the containers:
@@ -97,16 +100,19 @@ OpenSearch requires a high virtual memory map limit. If the `opensearch` contain
    docker compose up -d
    ```
    
-3. Install frontend dependencies:
+3. Install frontend dependencies and start the dev server:
     ```bash
     cd frontend
     npm install
     npm run dev
     ```
-   
-3. Contributors:
-    - [MavapeGZ](https://github.com/MavapeGZ)
-    - [grodriguez1722](https://github.com/grodriguez1722)
+
+---
+
+## 👥 Contributors
+
+- [MavapeGZ](https://github.com/MavapeGZ)
+- [grodriguez1722](https://github.com/grodriguez1722)
 
 ## Sessions & authentication
 

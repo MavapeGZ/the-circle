@@ -129,7 +129,7 @@ JVM ajustada para entornos modestos: `-Xmx256m -XX:+UseSerialGC` por servicio.
   `status` (AVAILABLE, RESERVED, SOLD, DELETED), `authorId`, `zone`, imagen Base64.
 
 **ms-contracts (`contracts_db`)**
-- `Contract`: `itemId`, `ownerId`, `receiverId`, `type` (SALE/RENT/DONATION/...),
+- `Contract`: `itemId`, `ownerId`, `receiverId`, `type` (SALE/RENT/CESSION_TEMPORARY/CESSION_PERMANENT),
   `status` (ver §7.4), `price`, `guaranteeAmount`, `guaranteeStatus`, marcas de tiempo de
   firma (`ownerSignedAt`/`receiverSignedAt`), de entrega (`ownerDeliveredAt`/
   `receiverReceivedAt`), `storedContractId`.

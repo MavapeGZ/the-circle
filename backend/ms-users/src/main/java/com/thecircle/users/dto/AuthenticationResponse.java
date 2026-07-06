@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 public class AuthenticationResponse {
     private String token;
     private String sessionId;
+    private String otp;
     private Boolean requiresEmailVerification;
     private Boolean requiresOtp;
     private String message;

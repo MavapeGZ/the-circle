@@ -50,24 +50,6 @@ function Start-ServiceWindow($workDir, $command, $title) {
     Start-Process powershell -ArgumentList "-NoExit","-Command","$command" -WorkingDirectory $workDir -WindowStyle Normal
 }
 
-# API Gateway
-Start-ServiceWindow (Join-Path $RepoRoot "backend/api-gateway") "mvn spring-boot:run" "API Gateway"
-
-# ms-users
-Start-ServiceWindow (Join-Path $RepoRoot "backend/ms-users") "mvn spring-boot:run" "ms-users"
-
-# ms-catalog
-Start-ServiceWindow (Join-Path $RepoRoot "backend/ms-catalog") "mvn spring-boot:run" "ms-catalog"
-
-# ms-contracts
-Start-ServiceWindow (Join-Path $RepoRoot "backend/ms-contracts") "mvn spring-boot:run" "ms-contracts"
-
-# ms-gamification
-Start-ServiceWindow (Join-Path $RepoRoot "backend/ms-gamification") "mvn spring-boot:run" "ms-gamification"
-
-# ms-notifications
-Start-ServiceWindow (Join-Path $RepoRoot "backend/ms-notifications") "mvn spring-boot:run" "ms-notifications"
-
 # Frontend
 Start-ServiceWindow (Join-Path $RepoRoot "frontend") "npm run dev" "Frontend (Vite)"
 

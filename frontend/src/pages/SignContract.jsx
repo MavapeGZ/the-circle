@@ -16,13 +16,13 @@ function SignContract() {
   const { contractId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { refreshContracts } = useContext(AuthContext);
+  const { user: currentUser, refreshContracts } = useContext(AuthContext);
 
   // When reached from the catalog "Buy/Rent/Request" flow, the contract and the
   // buyer email arrive in router state, so we skip the lookups below.
   const passedContract = location.state?.contract ?? null;
   const passedEmail = location.state?.signerEmail ?? '';
-  const role = location.state?.role ?? 'RECEIVER'; // RECEIVER (buyer) or OWNER (seller)
+  const passedRole = location.state?.role ?? null;
   // Where the back button returns to (the screen the user came from).
   const backTo = location.state?.from ?? `/contracts/${contractId}`;
 
@@ -30,6 +30,16 @@ function SignContract() {
   const [contract, setContract] = useState(passedContract);
   const [loadingContract, setLoadingContract] = useState(!passedContract);
   const [pdfUrl, setPdfUrl] = useState(null);
+
+  const role = passedRole ?? (
+    contract && currentUser?.id
+      ? (String(currentUser.id) === String(contract.ownerId)
+        ? 'OWNER'
+        : String(currentUser.id) === String(contract.receiverId)
+          ? 'RECEIVER'
+          : null)
+      : null
+  );
 
   const [signerEmail, setSignerEmail] = useState(passedEmail);
   const [sessionId, setSessionId] = useState(null);
@@ -85,6 +95,12 @@ function SignContract() {
     if (e) e.preventDefault();
     if (!signerEmail) {
       setBanner({ type: 'error', text: t('sign.enterEmail') });
+      return;
+    }
+    // Without a resolved role the backend would default the signer to RECEIVER,
+    // so refuse to submit when the current user is neither party on the contract.
+    if (!role) {
+      setBanner({ type: 'error', text: t('sign.roleUnknown') });
       return;
     }
     setSubmitting(true);
@@ -241,13 +257,15 @@ function SignContract() {
                   type="email"
                   value={signerEmail}
                   onChange={(e) => setSignerEmail(e.target.value)}
+                  data-testid="sign-signer-email"
                   className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
                   required
                 />
               </div>
               <button
                 type="submit"
-                disabled={submitting || loadingContract || !contract}
+                disabled={submitting || loadingContract || !contract || !role}
+                data-testid="sign-request-submit"
                 className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? t('sign.sending') : t('sign.sendCode')}
@@ -267,6 +285,7 @@ function SignContract() {
                   maxLength={6}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                  data-testid="sign-otp"
                   className="w-full border border-gray-300 rounded-lg p-2.5 text-center text-2xl tracking-[0.5em] font-mono focus:ring-2 focus:ring-indigo-500"
                   autoFocus
                   required
@@ -275,6 +294,7 @@ function SignContract() {
               <button
                 type="submit"
                 disabled={submitting || otp.length !== 6}
+                data-testid="sign-confirm-submit"
                 className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? t('sign.verifying') : t('sign.signBtn')}
@@ -334,6 +354,7 @@ function SignContract() {
               </div>
               <button
                 onClick={downloadSigned}
+                data-testid="sign-download-signed"
                 className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition"
               >
                 {t('sign.downloadSigned')}

@@ -235,11 +235,20 @@ public class ContractService {
      */
     @Transactional
     public ContractDto markSigned(String contractId, String storedContractId, SignerRole role) {
+        return markSigned(contractId, storedContractId, role, LocalDateTime.now());
+    }
+
+    /**
+     * As {@link #markSigned(String, String, SignerRole)} but stamps an explicit
+     * signing instant, so the timestamp persisted here matches the one rendered
+     * onto the signed PDF instead of drifting by the render duration.
+     */
+    public ContractDto markSigned(String contractId, String storedContractId, SignerRole role, LocalDateTime signedAt) {
         if (contractId == null) return null;
         Contract contract = repository.findById(contractId).orElse(null);
         if (contract == null) return null;
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = signedAt;
         if (role == SignerRole.OWNER) {
             contract.setOwnerSignedAt(now);
         } else {

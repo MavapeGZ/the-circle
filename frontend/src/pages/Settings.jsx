@@ -288,6 +288,7 @@ function Settings() {
             <button
               key={tab}
               onClick={() => handleTabChange(tab)}
+              data-testid={`settings-tab-${tab}`}
               className={`text-left px-4 py-3 rounded-lg font-bold capitalize transition-colors ${
                 activeTab === tab ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
@@ -484,7 +485,7 @@ function Settings() {
 
           {/* PAYMENTS TAB */}
           {activeTab === 'payments' && (
-            <form onSubmit={handleIbanUpdate} className="space-y-6">
+            <form onSubmit={handleIbanUpdate} className="space-y-6" data-testid="settings-payments-form">
               <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">Payout Account</h2>
               <p className="text-sm text-gray-600">
                 When someone pays for one of your listings, funds are released to this IBAN once both
@@ -492,7 +493,7 @@ function Settings() {
                 stored encrypted.
               </p>
               {settings.ibanLast4 ? (
-                <div className="p-4 bg-green-50 border border-green-100 rounded-lg flex justify-between items-center">
+                <div className="p-4 bg-green-50 border border-green-100 rounded-lg flex justify-between items-center" data-testid="settings-iban-current">
                   <div>
                     <p className="text-sm text-gray-500">Current payout IBAN</p>
                     <p className="font-mono text-lg text-gray-800">•••• {settings.ibanLast4}</p>
@@ -512,13 +513,14 @@ function Settings() {
                   value={ibanInput}
                   onChange={(e) => setIbanInput(formatIban(e.target.value))}
                   placeholder="ES00 0000 0000 0000 0000 0000"
+                  data-testid="settings-iban-input"
                   className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 font-mono tracking-wider"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Spaces are ignored. Leave empty and submit to remove the saved IBAN.
                 </p>
               </div>
-              <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition">
+              <button type="submit" data-testid="settings-iban-submit" className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition">
                 {settings.ibanLast4 ? 'Update IBAN' : 'Save IBAN'}
               </button>
             </form>
@@ -548,7 +550,7 @@ function Settings() {
               )}
 
               {(kycStatus === 'UNVERIFIED' || kycStatus === 'REJECTED') && (
-                <form onSubmit={handleKycSubmit} className="space-y-4">
+                <form onSubmit={handleKycSubmit} className="space-y-4" data-testid="settings-kyc-form">
                   {kycStatus === 'REJECTED' && (
                     <div className="p-4 bg-red-50 border border-red-100 rounded-lg text-sm text-red-800">
                       Your previous submission was rejected. Please upload clear photos of your ID and try again.
@@ -561,7 +563,7 @@ function Settings() {
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">ID — Front</label>
                     <input
-                      type="file" accept="image/*,application/pdf"
+                      type="file" accept="image/*,application/pdf" data-testid="settings-kyc-front"
                       onChange={(e) => setKycFront(e.target.files?.[0] || null)}
                       className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:text-white file:font-bold hover:file:bg-indigo-700"
                     />
@@ -569,12 +571,12 @@ function Settings() {
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">ID — Back</label>
                     <input
-                      type="file" accept="image/*,application/pdf"
+                      type="file" accept="image/*,application/pdf" data-testid="settings-kyc-back"
                       onChange={(e) => setKycBack(e.target.files?.[0] || null)}
                       className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:text-white file:font-bold hover:file:bg-indigo-700"
                     />
                   </div>
-                  <button type="submit" disabled={kycSubmitting}
+                  <button type="submit" disabled={kycSubmitting} data-testid="settings-kyc-submit"
                     className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60">
                     {kycSubmitting ? 'Uploading…' : 'Submit Documents'}
                   </button>

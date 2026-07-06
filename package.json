@@ -12,7 +12,10 @@
     "dev:users": "cd backend/ms-users && mvn spring-boot:run",
     "dev:catalog": "cd backend/ms-catalog && mvn spring-boot:run",
     "dev:contracts": "cd backend/ms-contracts && mvn spring-boot:run",
-    "dev:full": "concurrently \"npm:dev:gateway\" \"npm:dev:users\" \"npm:dev:catalog\" \"npm:dev:contracts\" \"npm:dev:frontend\""
+    "dev:full": "concurrently \"npm:dev:gateway\" \"npm:dev:users\" \"npm:dev:catalog\" \"npm:dev:contracts\" \"npm:dev:frontend\"",
+    "test:e2e": "cd e2e && mvn clean test",
+    "test:e2e:auto": "powershell -ExecutionPolicy Bypass -File .\\scr\\run_e2e.ps1",
+    "test:e2e:auto:linux": "bash ./scr/run_e2e.sh"
   },
   "repository": {
     "type": "git",
