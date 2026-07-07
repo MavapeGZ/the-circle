@@ -26,7 +26,7 @@ export default function StarRating({ value = 0, onChange, size = 24, className =
           <>
             <button
               type="button"
-              aria-label={t('starRating.aria', { count: i - 0.5 })}
+              aria-label={t('starRating.aria', { n: i - 0.5 })}
               className="absolute inset-y-0 left-0 w-1/2 cursor-pointer"
               onMouseEnter={() => setHover(i - 0.5)}
               onMouseLeave={() => setHover(null)}
@@ -34,7 +34,7 @@ export default function StarRating({ value = 0, onChange, size = 24, className =
             />
             <button
               type="button"
-              aria-label={t('starRating.aria', { count: i })}
+              aria-label={t('starRating.aria', { n: i })}
               className="absolute inset-y-0 right-0 w-1/2 cursor-pointer"
               onMouseEnter={() => setHover(i)}
               onMouseLeave={() => setHover(null)}

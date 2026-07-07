@@ -55,7 +55,7 @@ public class Article {
     @Field(type = FieldType.Keyword, name = "category")
     private String category;
 
-    @PositiveOrZero(message = "catalog.price.negative")
+    @PositiveOrZero(message = "validation.price.negative")
     @Field(type = FieldType.Double, name = "price")
     private Double price; // Symbolic amount for SELL/RENT; 0.0 for donations/demands
 

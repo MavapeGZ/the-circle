@@ -14,6 +14,11 @@ import org.springframework.stereotype.Component;
  * <p>Every user-facing string surfaced through an exception or a response body
  * goes through here so the same key resolves to the caller's language. Keys and
  * translations live in {@code i18n/messages*.properties}.
+ *
+ * <p>A missing key falls back to the key itself rather than throwing
+ * {@link org.springframework.context.NoSuchMessageException}: a typo should not
+ * turn a 4xx into a 500 for the caller. The literal key surfacing in a response
+ * is an obvious, greppable signal to fix the bundle.
  */
 @Component
 @RequiredArgsConstructor
@@ -23,6 +28,6 @@ public class Messages {
 
     /** Resolves {@code key} for the current request locale, with optional args. */
     public String get(String key, Object... args) {
-        return messageSource.getMessage(key, args, LocaleContextHolder.getLocale());
+        return messageSource.getMessage(key, args, key, LocaleContextHolder.getLocale());
     }
 }
