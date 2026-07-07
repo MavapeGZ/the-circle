@@ -1,9 +1,12 @@
 package com.thecircle.catalog.validation;
 
 /**
- * Shared regexes + English messages for the bean-validation annotations on the
- * article-write payloads. Compile-time constants so they can be referenced from
+ * Shared regexes for the bean-validation annotations on the article-write
+ * payloads. Compile-time constants so they can be referenced from
  * {@code @Pattern(regexp = ...)}.
+ *
+ * <p>Failure messages live in {@code i18n/messages*.properties}: the annotations
+ * carry an i18n key that {@code ValidationErrorHandler} resolves per request.
  */
 public final class ValidationPatterns {
 
@@ -19,5 +22,4 @@ public final class ValidationPatterns {
      * check also covers multi-line text.
      */
     public static final String NO_ANGLE = "(?s)^(?!.*<[a-zA-Z/!]).*$";
-    public static final String NO_ANGLE_MSG = "must not contain HTML tags";
 }

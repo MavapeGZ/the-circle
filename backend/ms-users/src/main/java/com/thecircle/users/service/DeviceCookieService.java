@@ -1,5 +1,6 @@
 package com.thecircle.users.service;
 
+import com.thecircle.users.i18n.Messages;
 import com.thecircle.users.model.KnownDevice;
 import com.thecircle.users.repository.KnownDeviceRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -33,12 +34,14 @@ public class DeviceCookieService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final KnownDeviceRepository repository;
+    private final Messages messages;
 
     @Value("${auth.device.cookie.secret:${jwt.secret}}")
     private String secret;
 
-    public DeviceCookieService(KnownDeviceRepository repository) {
+    public DeviceCookieService(KnownDeviceRepository repository, Messages messages) {
         this.repository = repository;
+        this.messages = messages;
     }
 
     public boolean isKnownDevice(Long userId, String rawCookie) {
@@ -87,15 +90,15 @@ public class DeviceCookieService {
         try {
             id = Long.valueOf(deviceId);
         } catch (NumberFormatException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid device ID format");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("device.idInvalid"));
         }
 
         KnownDevice device = repository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, messages.get("device.notFound")));
 
         if (!device.getUserId().equals(userId)) {
             log.warn("User {} attempted to revoke device {} belonging to another user", userId, deviceId);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to revoke this device");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, messages.get("device.noPermission"));
         }
 
         repository.delete(device);

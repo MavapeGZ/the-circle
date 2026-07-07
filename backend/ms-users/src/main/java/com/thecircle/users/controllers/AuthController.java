@@ -6,6 +6,7 @@ import com.thecircle.users.dto.ForgotPasswordRequest;
 import com.thecircle.users.dto.RegisterRequest;
 import com.thecircle.users.dto.ResetPasswordRequest;
 import com.thecircle.users.dto.VerifyOtpRequest;
+import com.thecircle.users.i18n.Messages;
 import com.thecircle.users.service.AuthService;
 import com.thecircle.users.service.DeviceCookieService;
 import com.thecircle.users.service.NotificationsClient;
@@ -35,6 +36,7 @@ public class AuthController {
 
     private final AuthService service;
     private final PasswordResetRateLimiter passwordResetRateLimiter;
+    private final Messages messages;
 
     @Value("${auth.device.cookie.max-age-days:90}")
     private int deviceCookieMaxAgeDays;
@@ -77,13 +79,13 @@ public class AuthController {
         } catch (NotificationsClient.DeliveryException e) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .body(AuthenticationResponse.builder()
-                            .message("Could not send the verification email. Please try again in a moment.")
+                            .message(messages.get("auth.email.deliveryFailed"))
                             .build());
         } catch (RuntimeException e) {
             log.error("Unexpected error during registration", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(AuthenticationResponse.builder()
-                            .message("Unexpected server error. Please try again.")
+                            .message(messages.get("auth.server.unexpected"))
                             .build());
         }
     }
@@ -100,7 +102,7 @@ public class AuthController {
             attachRefreshCookie(httpResponse, result.refreshToken);
             return ResponseEntity.ok(AuthenticationResponse.builder()
                     .token(result.token)
-                    .message("Email verified")
+                    .message(messages.get("auth.email.verified"))
                     .build());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -123,11 +125,11 @@ public class AuthController {
             return ResponseEntity.ok(outcome.response);
         } catch (AccountNotFoundException | BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(AuthenticationResponse.builder().message("Incorrect email or password.").build());
+                    .body(AuthenticationResponse.builder().message(messages.get("auth.login.badCredentials")).build());
         } catch (NotificationsClient.DeliveryException e) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .body(AuthenticationResponse.builder()
-                            .message("Could not send the sign-in code. Please try again in a moment.")
+                            .message(messages.get("auth.login.deliveryFailed"))
                             .build());
         }
     }
@@ -168,7 +170,7 @@ public class AuthController {
                     clearRefreshCookie(httpResponse);
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                             .body(AuthenticationResponse.builder()
-                                    .message("Your session has expired. Please sign in again.")
+                                    .message(messages.get("auth.session.expired"))
                                     .build());
                 });
     }
@@ -183,7 +185,7 @@ public class AuthController {
             HttpServletResponse httpResponse) {
         service.logout(readRefreshCookie(httpRequest));
         clearRefreshCookie(httpResponse);
-        return ResponseEntity.ok(AuthenticationResponse.builder().message("Logged out").build());
+        return ResponseEntity.ok(AuthenticationResponse.builder().message(messages.get("auth.logout.done")).build());
     }
 
     @PostMapping("/forgot-password")
@@ -197,7 +199,7 @@ public class AuthController {
         if (!passwordResetRateLimiter.tryAcquire(resolveClientIp(httpRequest))) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(AuthenticationResponse.builder()
-                            .message("Too many password reset requests. Please wait a few minutes and try again.")
+                            .message(messages.get("auth.reset.rateLimited"))
                             .build());
         }
         AuthService.ForgotPasswordResult result = service.requestPasswordReset(
@@ -206,7 +208,7 @@ public class AuthController {
         // registered or not is invisible to the caller.
         return ResponseEntity.ok(AuthenticationResponse.builder()
                 .sessionId(result.sessionId)
-                .message("If that email is registered, a reset code is on its way.")
+                .message(messages.get("auth.reset.neutral"))
                 .build());
     }
 
@@ -224,7 +226,7 @@ public class AuthController {
             // short TTL — see PasswordResetTokenStore for the binding rules.
             return ResponseEntity.ok(AuthenticationResponse.builder()
                     .sessionId(result.resetToken)
-                    .message("Code verified. You can now choose a new password.")
+                    .message(messages.get("auth.reset.codeVerified"))
                     .build());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -239,7 +241,7 @@ public class AuthController {
             String sourceIp = resolveClientIp(httpRequest);
             service.resetPassword(request.getResetToken(), request.getNewPassword(), sourceIp);
             return ResponseEntity.ok(AuthenticationResponse.builder()
-                    .message("Password updated. You can now sign in with the new password.")
+                    .message(messages.get("auth.reset.passwordUpdated"))
                     .build());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

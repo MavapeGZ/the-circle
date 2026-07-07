@@ -31,13 +31,16 @@ public class ChatService {
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final CatalogClient catalogClient;
+    private final com.thecircle.contracts.i18n.Messages messages;
 
     public ChatService(ConversationRepository conversationRepository,
                        MessageRepository messageRepository,
-                       CatalogClient catalogClient) {
+                       CatalogClient catalogClient,
+                       com.thecircle.contracts.i18n.Messages messages) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.catalogClient = catalogClient;
+        this.messages = messages;
     }
 
     /**
@@ -54,7 +57,7 @@ public class ChatService {
     public ConversationDto startOrGet(String callerId, String articleId) {
         CatalogClient.ArticleSnapshot article = catalogClient.getArticle(articleId);
         if (article == null || article.authorId() == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Article not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, messages.get("api.chat.articleNotFound"));
         }
         String ownerId = String.valueOf(article.authorId());
         if (ownerId.equals(callerId)) {
@@ -139,9 +142,9 @@ public class ChatService {
 
     private Conversation requireParticipant(String conversationId, String callerId) {
         Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, messages.get("api.chat.conversationNotFound")));
         if (!conversation.isParticipant(callerId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not part of this conversation");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, messages.get("api.chat.notInConversation"));
         }
         return conversation;
     }

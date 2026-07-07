@@ -7,8 +7,9 @@ import { usePreferences } from '../context/PreferencesContext';
 import BadgeList from '../components/BadgeList';
 import { ZONE_OPTIONS } from '../constants/zones';
 
-function zoneLabel(zone, fallback) {
-  return ZONE_OPTIONS.find((option) => option.value === zone)?.label || zone || fallback;
+function zoneLabel(zone, t, fallback) {
+  const known = ZONE_OPTIONS.some((option) => option.value === zone);
+  return known ? t(`zone.${zone}`) : (zone || fallback);
 }
 
 // Strip angle brackets when embedding a (possibly legacy) article title into the
@@ -260,7 +261,7 @@ function ArticleDetail() {
               <div className="flex gap-2">
                 {renderBadge()}
                 <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">
-                  {zoneLabel(article.zone, t('common.notShared'))}
+                  {zoneLabel(article.zone, t, t('common.notShared'))}
                 </span>
                 {article.category && (
                   <span className="bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">
@@ -317,7 +318,7 @@ function ArticleDetail() {
                     {owner.displayName}
                   </h4>
                   <div className="flex flex-wrap items-center gap-2 mt-1 text-xs font-semibold text-gray-500">
-                    <span className="px-2 py-1 rounded-full bg-gray-100">{zoneLabel(owner.approximateZone, t('common.notShared'))}</span>
+                    <span className="px-2 py-1 rounded-full bg-gray-100">{zoneLabel(owner.approximateZone, t, t('common.notShared'))}</span>
                     <span className="px-2 py-1 rounded-full bg-gray-100">{t('detail.points', { count: owner.points })}</span>
                     <span className="px-2 py-1 rounded-full bg-gray-100">
                       {owner.memberSince ? t('detail.joined', { date: formatDate(owner.memberSince) }) : t('detail.joinedUnknown')}

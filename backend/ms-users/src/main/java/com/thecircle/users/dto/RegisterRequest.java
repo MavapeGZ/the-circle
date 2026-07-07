@@ -17,33 +17,33 @@ import lombok.ToString;
 @NoArgsConstructor
 public class RegisterRequest {
 
-    @NotBlank(message = "First name is required")
-    @Pattern(regexp = ValidationPatterns.NAME, message = "First name " + ValidationPatterns.NAME_MSG)
+    @NotBlank(message = "validation.firstName.required")
+    @Pattern(regexp = ValidationPatterns.NAME, message = "validation.firstName.pattern")
     private String firstName;
 
-    @NotBlank(message = "Last name is required")
-    @Pattern(regexp = ValidationPatterns.NAME, message = "Last name " + ValidationPatterns.NAME_MSG)
+    @NotBlank(message = "validation.lastName.required")
+    @Pattern(regexp = ValidationPatterns.NAME, message = "validation.lastName.pattern")
     private String lastName;
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Email must be a valid address")
-    @Size(max = 320, message = "Email must be at most 320 characters")
+    @NotBlank(message = "validation.email.required")
+    @Email(message = "validation.email.invalid")
+    @Size(max = 320, message = "validation.email.size")
     private String email;
 
     // Kept out of toString so accidental log.info("req={}", req) never leaks the
     // plaintext password to stdout, log files or SIEMs. Spring still binds the
     // value through the setter for normal deserialization.
     @ToString.Exclude
-    @NotBlank(message = "Password is required")
-    @Pattern(regexp = ValidationPatterns.PASSWORD, message = "Password " + ValidationPatterns.PASSWORD_MSG)
+    @NotBlank(message = "validation.password.required")
+    @Pattern(regexp = ValidationPatterns.PASSWORD, message = "validation.password.pattern")
     private String password;
 
     // Optional at registration; only structural limits are enforced here.
-    @Size(max = 255, message = "Address must be at most 255 characters")
-    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Address " + ValidationPatterns.NO_ANGLE_MSG)
+    @Size(max = 255, message = "validation.address.size")
+    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "validation.address.noAngle")
     private String address;
 
-    @Size(max = 50, message = "ID number must be at most 50 characters")
-    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "ID number " + ValidationPatterns.NO_ANGLE_MSG)
+    @Size(max = 50, message = "validation.idNumber.size")
+    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "validation.idNumber.noAngle")
     private String idNumber;
 }

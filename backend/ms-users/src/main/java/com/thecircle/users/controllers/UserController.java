@@ -84,6 +84,7 @@ public class UserController {
     private final ContractsClient contractsClient;
     private final GamificationClient gamificationClient;
     private final com.thecircle.users.service.ReviewService reviewService;
+    private final com.thecircle.users.i18n.Messages messages;
 
     @GetMapping("/health")
     public String health() {
@@ -114,8 +115,7 @@ public class UserController {
         }
         String normalized = IbanValidator.normalize(raw);
         if (!IbanValidator.isValid(normalized)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Invalid IBAN format.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("user.iban.invalid"));
         }
         user.setIbanEncrypted(ibanCipher.encrypt(normalized));
         user.setIbanLast4(IbanValidator.last4(normalized));
@@ -173,7 +173,7 @@ public class UserController {
 
     private String normalizeChoice(String value, Set<String> allowed, String field) {
         if (!allowed.contains(value)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid " + field + ".");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("user.field.invalid", field));
         }
         return value;
     }
@@ -189,7 +189,7 @@ public class UserController {
 
         // Current password verification
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("user.password.incorrect"));
         }
 
         // Safely update the password
@@ -266,7 +266,7 @@ public class UserController {
 
     private User getAuthenticatedUser(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, messages.get("common.notAuthenticated"));
         }
         Object principal = authentication.getPrincipal();
         String username = null;
@@ -276,10 +276,10 @@ public class UserController {
             username = s;
         }
         if (username == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid principal");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, messages.get("common.invalidPrincipal"));
         }
         return userRepository.findByEmail(username)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, messages.get("common.userNotFound")));
     }
 
     @PostMapping("/{userId}/kyc")
@@ -290,12 +290,12 @@ public class UserController {
             Authentication authentication) {
         try {
             if (!isOwnerOrAdmin(authentication, userId)) {
-                return ResponseEntity.status(403).body(new KycResponse(false, "Forbidden", null));
+                return ResponseEntity.status(403).body(new KycResponse(false, messages.get("kyc.forbidden"), null));
             }
 
             Optional<User> maybeUser = userRepository.findById(userId);
             if (maybeUser.isEmpty()) {
-                return ResponseEntity.status(404).body(new KycResponse(false, "User not found", null));
+                return ResponseEntity.status(404).body(new KycResponse(false, messages.get("common.userNotFound"), null));
             }
 
             // Validate both documents at the upload boundary: non-empty, <=5 MB,
@@ -306,10 +306,10 @@ public class UserController {
 
             String newJwt = kycService.processKyc(userId, front, back);
             if (newJwt != null) {
-                return ResponseEntity.ok(new KycResponse(true, "User verified", newJwt));
+                return ResponseEntity.ok(new KycResponse(true, messages.get("kyc.verified"), newJwt));
             } else {
                 return ResponseEntity.accepted()
-                        .body(new KycResponse(false, "Document received; verification pending or rejected", null));
+                        .body(new KycResponse(false, messages.get("kyc.pending"), null));
             }
         } catch (IllegalArgumentException e) {
             // File validation failure (empty / too large / wrong type / bad magic bytes).
@@ -317,7 +317,7 @@ public class UserController {
         } catch (Exception e) {
             log.error("KYC verification failed for user {}", userId, e);
             return ResponseEntity.internalServerError()
-                    .body(new KycResponse(false, "Verification failed. Please try again later.", null));
+                    .body(new KycResponse(false, messages.get("kyc.failed"), null));
         }
     }
 
@@ -363,8 +363,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(new AvatarResponse(null, e.getMessage()));
         } catch (Exception e) {
             log.error("Avatar upload failed for user {}", user.getId(), e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Could not save the picture. Please try again.");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, messages.get("user.avatar.saveFailed"));
         }
     }
 
@@ -517,26 +516,26 @@ public class UserController {
     }
 
     public record UpdateProfileRequest(
-            @Pattern(regexp = ValidationPatterns.NAME, message = "First name " + ValidationPatterns.NAME_MSG)
+            @Pattern(regexp = ValidationPatterns.NAME, message = "validation.firstName.pattern")
             String firstName,
-            @Pattern(regexp = ValidationPatterns.NAME, message = "Last name " + ValidationPatterns.NAME_MSG)
+            @Pattern(regexp = ValidationPatterns.NAME, message = "validation.lastName.pattern")
             String lastName,
-            @Size(max = 255, message = "Address must be at most 255 characters")
-            @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Address " + ValidationPatterns.NO_ANGLE_MSG)
+            @Size(max = 255, message = "validation.address.size")
+            @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "validation.address.noAngle")
             String address,
-            @Size(max = 64, message = "Zone must be at most 64 characters")
+            @Size(max = 64, message = "validation.zone.size")
             String zone,
-            @Size(max = 50, message = "ID number must be at most 50 characters")
-            @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "ID number " + ValidationPatterns.NO_ANGLE_MSG)
+            @Size(max = 50, message = "validation.idNumber.size")
+            @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "validation.idNumber.noAngle")
             String idNumber,
             Boolean marketingEmailsOptIn, Boolean systemEmailsOptIn,
-            @Size(max = 8, message = "Language code too long") String language,
-            @Size(max = 3, message = "Currency code too long") String currency,
-            @Size(max = 64, message = "Timezone too long") String timezone) {
+            @Size(max = 8, message = "validation.language.size") String language,
+            @Size(max = 3, message = "validation.currency.size") String currency,
+            @Size(max = 64, message = "validation.timezone.size") String timezone) {
     }
 
     public record UpdateIbanRequest(
-            @Size(max = 34, message = "IBAN must be at most 34 characters")
+            @Size(max = 34, message = "validation.iban.size")
             String iban) {
         // Records auto-generate toString() with every component; that default
         // would dump the full IBAN if an instance is ever logged. Mask it.
@@ -550,10 +549,10 @@ public class UserController {
     }
 
     public record ChangePasswordRequest(
-            @jakarta.validation.constraints.NotBlank(message = "Current password is required")
+            @jakarta.validation.constraints.NotBlank(message = "validation.currentPassword.required")
             String currentPassword,
-            @jakarta.validation.constraints.NotBlank(message = "New password is required")
-            @Pattern(regexp = ValidationPatterns.PASSWORD, message = "Password " + ValidationPatterns.PASSWORD_MSG)
+            @jakarta.validation.constraints.NotBlank(message = "validation.newPassword.required")
+            @Pattern(regexp = ValidationPatterns.PASSWORD, message = "validation.password.pattern")
             String newPassword) {
         @Override
         public String toString() {
@@ -617,7 +616,7 @@ public class UserController {
             return null;
         }
         if (!ALLOWED_ZONES.contains(normalized)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid zone.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("user.zone.invalid"));
         }
         return normalized;
     }

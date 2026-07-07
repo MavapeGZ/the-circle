@@ -1,27 +1,29 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { resolveAssetUrl } from '../services/api';
 
 function isImageUrl(value) {
   return typeof value === 'string' && /^(https?:|data:|\/)/.test(value);
 }
 
-function formatTooltip(badge) {
+function formatTooltip(badge, t) {
   const parts = [badge?.description];
   if (badge?.earnedAt) {
-    parts.push(`Earned on ${new Date(badge.earnedAt).toLocaleDateString()}`);
+    parts.push(t('badge.tooltip.earnedOn', { date: new Date(badge.earnedAt).toLocaleDateString() }));
   } else if (badge?.earned === false) {
-    parts.push('Not earned yet');
+    parts.push(t('badge.tooltip.notEarned'));
   }
   if (badge?.tier) {
-    parts.push(`Tier: ${badge.tier}`);
+    parts.push(t('badge.tooltip.tier', { tier: badge.tier }));
   }
   return parts.filter(Boolean).join(' · ');
 }
 
 export default function BadgeChip({ badge }) {
+  const { t } = useTranslation();
   if (!badge) return null;
 
-  const tooltip = formatTooltip(badge);
+  const tooltip = formatTooltip(badge, t);
   const icon = badge.iconUrl || '🏅';
   // When a catalogue badge has not been earned, render it faded and de-saturated
   // so the user can still see what is available to unlock. `earned === undefined`

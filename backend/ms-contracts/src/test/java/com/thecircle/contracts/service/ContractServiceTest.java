@@ -64,6 +64,9 @@ class ContractServiceTest {
     @Mock
     private SignatureSessionRepository signatureSessionRepository;
 
+    @Mock
+    private com.thecircle.contracts.i18n.Messages messages;
+
     @InjectMocks
     private ContractService service;
 

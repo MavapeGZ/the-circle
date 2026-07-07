@@ -48,6 +48,7 @@ public class PaymentService {
     private final ContractRepository contractRepository;
     private final UsersClient usersClient;
     private final CatalogClient catalogClient;
+    private final com.thecircle.contracts.i18n.Messages messages;
 
     @Value("${payment.escrow.expiry-days:7}")
     private long escrowExpiryDays;
@@ -55,11 +56,13 @@ public class PaymentService {
     public PaymentService(PaymentRepository paymentRepository,
                           ContractRepository contractRepository,
                           UsersClient usersClient,
-                          CatalogClient catalogClient) {
+                          CatalogClient catalogClient,
+                          com.thecircle.contracts.i18n.Messages messages) {
         this.paymentRepository = paymentRepository;
         this.contractRepository = contractRepository;
         this.usersClient = usersClient;
         this.catalogClient = catalogClient;
+        this.messages = messages;
     }
 
     /**
@@ -74,7 +77,7 @@ public class PaymentService {
     @Transactional
     public PaymentDto pay(String contractId, String callerUserId, PaymentRequestDto req) {
         Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contract not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, messages.get("api.contract.notFound")));
 
         if (callerUserId == null || !callerUserId.equals(contract.getReceiverId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
@@ -99,17 +102,17 @@ public class PaymentService {
         }
 
         if (req == null || req.cardNumber() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Card number is required.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.payment.cardRequired"));
         }
         String number = CardValidator.normalize(req.cardNumber());
         if (!CardValidator.luhn(number)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Card number is invalid.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.payment.cardInvalid"));
         }
         if (!CardValidator.expiryNotPast(req.expiry())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Card expiry is invalid or in the past.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.payment.expiryInvalid"));
         }
         if (!CardValidator.cvc(req.cvc())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CVC is invalid.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.payment.cvcInvalid"));
         }
 
         UsersClient.PayoutAccount payout = usersClient.getPayoutAccount(contract.getOwnerId());
@@ -151,7 +154,7 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public List<PaymentDto> listForContract(String contractId, String callerUserId) {
         Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contract not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, messages.get("api.contract.notFound")));
         if (callerUserId == null
                 || (!callerUserId.equals(contract.getOwnerId()) && !callerUserId.equals(contract.getReceiverId()))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,

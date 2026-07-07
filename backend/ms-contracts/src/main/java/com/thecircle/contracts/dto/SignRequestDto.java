@@ -8,17 +8,17 @@ import jakarta.validation.constraints.Size;
 
 public class SignRequestDto {
 
-    @NotBlank(message = "Signer email is required")
-    @Email(message = "Signer email must be a valid address")
-    @Size(max = 320, message = "Signer email must be at most 320 characters")
+    @NotBlank(message = "validation.signerEmail.required")
+    @Email(message = "validation.signerEmail.invalid")
+    @Size(max = 320, message = "validation.signerEmail.size")
     private String signerEmail;
 
-    @Size(max = 20, message = "Signature mode is invalid")
+    @Size(max = 20, message = "validation.signatureMode.size")
     private String signatureMode;
 
     private SignerRole signerRole;
 
-    @NotNull(message = "Contract data is required")
+    @NotNull(message = "validation.contract.required")
     @Valid
     private ContractDto contract;
 

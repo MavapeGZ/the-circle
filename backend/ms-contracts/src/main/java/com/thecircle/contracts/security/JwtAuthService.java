@@ -22,9 +22,12 @@ import javax.crypto.SecretKey;
 public class JwtAuthService {
 
     private final SecretKey key;
+    private final com.thecircle.contracts.i18n.Messages messages;
 
-    public JwtAuthService(@Value("${jwt.secret}") String secret) {
+    public JwtAuthService(@Value("${jwt.secret}") String secret,
+                          com.thecircle.contracts.i18n.Messages messages) {
         this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+        this.messages = messages;
     }
 
     /**
@@ -34,7 +37,7 @@ public class JwtAuthService {
      */
     public String requireUserId(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, messages.get("api.auth.required"));
         }
         try {
             Claims claims = Jwts.parser().verifyWith(key).build()
@@ -45,7 +48,7 @@ public class JwtAuthService {
             }
             return String.valueOf(userId);
         } catch (JwtException | IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, messages.get("api.auth.invalidToken"));
         }
     }
 }

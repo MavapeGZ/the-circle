@@ -1,6 +1,7 @@
 package com.thecircle.users.service;
 
 import com.thecircle.users.dto.ReviewDto;
+import com.thecircle.users.i18n.Messages;
 import com.thecircle.users.model.Review;
 import com.thecircle.users.model.User;
 import com.thecircle.users.repository.ReviewRepository;
@@ -32,36 +33,34 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final UserRepository userRepository;
     private final ContractsClient contractsClient;
+    private final Messages messages;
 
     @Transactional
     public ReviewDto create(Long reviewerId, Long targetUserId, ReviewDto dto) {
         if (reviewerId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, messages.get("common.notAuthenticated"));
         }
         if (reviewerId.equals(targetUserId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot review yourself.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("review.self"));
         }
         double rating = dto.rating();
         // Half-star granularity: rating must be a multiple of 0.5.
         if (Math.abs(rating * 2 - Math.round(rating * 2)) > 1e-9) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Rating must be in steps of 0.5 (e.g. 4 or 4.5).");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("review.ratingStep"));
         }
         String contractId = dto.contractId();
         if (contractId == null || contractId.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A contract is required to leave a review.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("review.contractRequired"));
         }
 
         // Fail closed: only allow the review if ms-contracts confirms a delivered
         // contract between exactly these two users.
         ContractsClient.ContractSummary contract = contractsClient.getContract(contractId);
         if (contract == null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-                    "We could not verify the transaction for this review. Please try again later.");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, messages.get("review.unverifiable"));
         }
         if (!contract.reviewable()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "You can only review once the item has been delivered (or, for rentals, returned).");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, messages.get("review.notDelivered"));
         }
         String reviewer = String.valueOf(reviewerId);
         String target = String.valueOf(targetUserId);
@@ -69,15 +68,13 @@ public class ReviewService {
                 (reviewer.equals(contract.ownerId()) && target.equals(contract.receiverId()))
                         || (reviewer.equals(contract.receiverId()) && target.equals(contract.ownerId()));
         if (!validParties) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "You can only review the other party of your own transaction.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, messages.get("review.wrongParty"));
         }
         if (reviewRepository.existsByReviewerIdAndContractId(reviewerId, contractId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "You have already reviewed this transaction.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, messages.get("review.duplicate"));
         }
         if (userRepository.findById(targetUserId).filter(u -> u.getDeletedAt() == null).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, messages.get("common.userNotFound"));
         }
 
         Review review = new Review();

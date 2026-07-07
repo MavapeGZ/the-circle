@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class VisualSignatureDto {
     public static class SignaturePlacement {
-        @Min(value = 0, message = "Signature page cannot be negative")
+        @Min(value = 0, message = "validation.signaturePage.min")
         private int page = 0;
         private float x = 50f;
         private float y = 100f;

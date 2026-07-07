@@ -1,6 +1,7 @@
 package com.thecircle.users.service;
 
 import com.thecircle.users.dto.ReviewDto;
+import com.thecircle.users.i18n.Messages;
 import com.thecircle.users.model.Review;
 import com.thecircle.users.model.User;
 import com.thecircle.users.repository.ReviewRepository;
@@ -29,6 +30,7 @@ class ReviewServiceTest {
     @Mock ReviewRepository reviewRepository;
     @Mock UserRepository userRepository;
     @Mock ContractsClient contractsClient;
+    @Mock Messages messages;
     @InjectMocks ReviewService reviewService;
 
     private ReviewDto input(String contractId, Double rating) {

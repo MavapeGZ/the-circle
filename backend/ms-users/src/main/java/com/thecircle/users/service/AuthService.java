@@ -4,6 +4,7 @@ import com.thecircle.users.dto.AuthenticationRequest;
 import com.thecircle.users.dto.AuthenticationResponse;
 import com.thecircle.users.dto.RegisterRequest;
 import com.thecircle.users.dto.VerifyOtpRequest;
+import com.thecircle.users.i18n.Messages;
 import com.thecircle.users.model.KycStatus;
 import com.thecircle.users.model.User;
 import com.thecircle.users.repository.UserRepository;
@@ -39,6 +40,7 @@ public class AuthService {
     private final DeviceCookieService deviceCookieService;
     private final PasswordResetTokenStore passwordResetTokenStore;
     private final RefreshTokenService refreshTokenService;
+    private final Messages messages;
 
     @Value("${auth.otp.expose-in-response:false}")
     private boolean exposeOtpInResponse;
@@ -60,7 +62,7 @@ public class AuthService {
         String lastName = request.getLastName() == null ? null : request.getLastName().trim();
 
         if (repository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already in use");
+            throw new IllegalArgumentException(messages.get("auth.register.emailInUse"));
         }
 
         User user = User.builder()
@@ -84,7 +86,7 @@ public class AuthService {
                 .sessionId(issued.sessionId)
                 .otp(exposeOtpInResponse ? issued.rawOtp : null)
                 .requiresEmailVerification(true)
-                .message("Verification code sent to " + user.getEmail())
+                .message(messages.get("auth.register.verificationSent", user.getEmail()))
                 .build();
     }
 
@@ -99,8 +101,7 @@ public class AuthService {
         AuthOtpService.OtpSession session = otpService.consume(
                 request.getSessionId(), request.getOtp(), AuthOtpService.Purpose.EMAIL_VERIFICATION);
         if (session == null) {
-            throw new IllegalArgumentException(
-                    "The verification code does not match or has expired. Please request a new code and try again.");
+            throw new IllegalArgumentException(messages.get("auth.otp.verifyInvalid"));
         }
         User user = repository.findById(session.userId)
                 .orElseThrow(() -> new IllegalStateException("User not found for verification session"));
@@ -124,7 +125,7 @@ public class AuthService {
                     .sessionId(issued.sessionId)
                     .otp(exposeOtpInResponse ? issued.rawOtp : null)
                     .requiresEmailVerification(true)
-                    .message("Email not verified. Verification code re-sent.")
+                    .message(messages.get("auth.login.emailNotVerified"))
                     .build());
         }
 
@@ -143,7 +144,7 @@ public class AuthService {
                 .sessionId(issued.sessionId)
                 .otp(exposeOtpInResponse ? issued.rawOtp : null)
                 .requiresOtp(true)
-                .message("Sign-in code sent to " + user.getEmail())
+                .message(messages.get("auth.login.otpSent", user.getEmail()))
                 .build());
     }
 
@@ -155,8 +156,7 @@ public class AuthService {
         AuthOtpService.OtpSession session = otpService.consume(
                 request.getSessionId(), request.getOtp(), AuthOtpService.Purpose.LOGIN);
         if (session == null) {
-            throw new IllegalArgumentException(
-                    "The sign-in code does not match or has expired. Please request a new code and try again.");
+            throw new IllegalArgumentException(messages.get("auth.otp.loginInvalid"));
         }
         User user = repository.findById(session.userId)
                 .orElseThrow(() -> new IllegalStateException("User not found for sign-in session"));
@@ -308,8 +308,7 @@ public class AuthService {
         AuthOtpService.OtpSession session = otpService.consume(sessionId, otp,
                 AuthOtpService.Purpose.PASSWORD_RESET);
         if (session == null) {
-            throw new IllegalArgumentException(
-                    "The reset code does not match or has expired. Please request a new one and try again.");
+            throw new IllegalArgumentException(messages.get("auth.reset.otpInvalid"));
         }
         String resetToken = passwordResetTokenStore.issue(session.userId, sourceIp);
         return new VerifyResetOtpResult(resetToken);
@@ -325,13 +324,11 @@ public class AuthService {
     @Transactional
     public void resetPassword(String resetToken, String newPassword, String sourceIp) {
         if (newPassword == null || newPassword.length() < 6) {
-            throw new IllegalArgumentException(
-                    "New password must be at least 6 characters long.");
+            throw new IllegalArgumentException(messages.get("auth.reset.passwordTooShort"));
         }
         Long userId = passwordResetTokenStore.consume(resetToken, sourceIp);
         if (userId == null) {
-            throw new IllegalArgumentException(
-                    "Your reset session has expired or was opened from a different device. Please start the password reset again.");
+            throw new IllegalArgumentException(messages.get("auth.reset.sessionExpired"));
         }
         User user = repository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("User not found for password reset token"));

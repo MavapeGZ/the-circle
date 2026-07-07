@@ -46,6 +46,7 @@ public class SignatureWorkflowService {
     private final ContractService contractService;
     private final OtpDeliveryChannel otpDelivery;
     private final com.thecircle.contracts.client.GamificationClient gamificationClient;
+    private final com.thecircle.contracts.i18n.Messages messages;
 
     @Value("${signature.otp.length:6}")
     private int otpLength;
@@ -64,32 +65,30 @@ public class SignatureWorkflowService {
                                     ContractStorageService storageService,
                                     ContractService contractService,
                                     OtpDeliveryChannel otpDelivery,
-                                    com.thecircle.contracts.client.GamificationClient gamificationClient) {
+                                    com.thecircle.contracts.client.GamificationClient gamificationClient,
+                                    com.thecircle.contracts.i18n.Messages messages) {
         this.pdfService = pdfService;
         this.signatureService = signatureService;
         this.storageService = storageService;
         this.contractService = contractService;
         this.otpDelivery = otpDelivery;
         this.gamificationClient = gamificationClient;
+        this.messages = messages;
     }
 
     public SignRequestResponseDto requestOtp(SignRequestDto req) {
         if (req == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "The request body is empty. Please include 'signerEmail' and 'contract' and try again.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.sign.emptyBody"));
         }
         if (req.getSignerEmail() == null || req.getSignerEmail().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "The signer email is missing. Please provide the email address where the verification code should be sent.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.sign.emailMissing"));
         }
         if (req.getContract() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "The contract data is missing. Please fill in the contract form and try again.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.sign.contractMissing"));
         }
         String mode = req.getSignatureMode();
         if (mode != null && !SIGNATURE_MODE_ADVANCED.equalsIgnoreCase(mode)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "The signature mode '" + mode + "' cannot be used with email OTP. Please use signature mode 'ADVANCED' for this flow.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.sign.modeUnsupportedEmail", mode));
         }
 
         String rawOtp = generateOtp();
@@ -110,64 +109,55 @@ public class SignatureWorkflowService {
             } catch (RuntimeException ex) {
                 sessions.remove(sessionId);
                 log.error("Failed to send OTP email to {}", req.getSignerEmail(), ex);
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                        "We could not send the verification code by email right now. Please try again in a few minutes.", ex);
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, messages.get("api.sign.emailSendFailed"), ex);
             }
         }
 
         SignRequestResponseDto resp = new SignRequestResponseDto();
         resp.setSessionId(sessionId);
         if (exposeOtp) {
-            resp.setMessage("OTP generated (dev mode, not sent) for " + req.getSignerEmail());
+            resp.setMessage(messages.get("api.sign.otpDev", req.getSignerEmail()));
             resp.setOtp(rawOtp);
         } else {
-            resp.setMessage("OTP sent to " + req.getSignerEmail());
+            resp.setMessage(messages.get("api.sign.otpSent", req.getSignerEmail()));
         }
         return resp;
     }
 
     public SignConfirmResponseDto confirm(String sessionId, String otp, String ip, String ua) {
         if (sessionId == null || sessionId.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "The session id is missing. Please start the signing flow again from the beginning.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.confirm.sessionMissing"));
         }
         if (otp == null || otp.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "The verification code is missing. Please enter the 6-digit code we sent to your email.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.confirm.otpMissing"));
         }
 
         OtpSession session = sessions.get(sessionId);
         if (session == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "Your signing session was not found or has already expired. Please start the signing flow again.");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, messages.get("api.confirm.sessionNotFound"));
         }
         if (session.used) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "This signing session has already been used. Please start a new signing flow if you need to sign again.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, messages.get("api.confirm.sessionUsed"));
         }
         if (Instant.now().isAfter(session.expiry)) {
             sessions.remove(sessionId);
-            throw new ResponseStatusException(HttpStatus.GONE,
-                    "Your verification code has expired. Please request a new code and try again.");
+            throw new ResponseStatusException(HttpStatus.GONE, messages.get("api.confirm.expired"));
         }
 
         session.attempts++;
         if (session.attempts > maxAttempts) {
             sessions.remove(sessionId);
-            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
-                    "Too many incorrect attempts. For your security, please request a new verification code.");
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, messages.get("api.confirm.tooMany"));
         }
 
         if (!OTP_ENCODER.matches(otp, session.hashedOtp)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                    "The verification code is incorrect. Please check the code in your email and try again.");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, messages.get("api.confirm.incorrect"));
         }
 
         // Claim the session before any side effect so two concurrent confirms
         // with the same valid OTP cannot both produce a signed contract.
         if (!session.claim()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "This signing session has already been used. Please start a new signing flow if you need to sign again.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, messages.get("api.confirm.sessionUsed"));
         }
 
         // Resolve the signing role up front so we can stamp this party's signature
@@ -196,8 +186,7 @@ public class SignatureWorkflowService {
         } catch (IOException | RuntimeException ex) {
             // Release the claim so the signer can retry with the same OTP while it is still valid.
             session.release();
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Unexpected error. Please contact our support team.", ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, messages.get("api.error.unexpected"), ex);
         }
 
         // Record this party's signature and link the stored PDF. The contract turns
@@ -212,7 +201,7 @@ public class SignatureWorkflowService {
         resp.setStoredContractId(sc.getId());
         resp.setDownloadUrl(DOWNLOAD_PATH + sc.getId());
         resp.setSignedAt(signedAt);
-        resp.setMessage("Contract signed successfully");
+        resp.setMessage(messages.get("api.confirm.success"));
         // The deal just closed: award the gamification event (donation/rental/sale)
         // and, when this signer is the rewarded party, return the unlocked badges so
         // the UI can toast them. Best-effort — never lets gamification break signing.
@@ -225,8 +214,7 @@ public class SignatureWorkflowService {
     public SignatureVerificationDto verify(String storedContractId) {
         StoredContract sc = storageService.get(storedContractId);
         if (sc == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                    "We could not find the signed contract you requested. Please check the link or contact our support team.");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, messages.get("api.verify.notFound"));
         }
 
         SignatureVerificationDto dto = new SignatureVerificationDto();

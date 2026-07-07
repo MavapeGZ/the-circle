@@ -29,17 +29,17 @@ public record ReviewDto(
 
         Long targetUserId,
 
-        @Size(max = 64, message = "Contract id must be at most 64 characters")
-        @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Contract id " + ValidationPatterns.NO_ANGLE_MSG)
+        @Size(max = 64, message = "validation.contractId.size")
+        @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "validation.contractId.noAngle")
         String contractId,
 
-        @NotNull(message = "Rating is required")
-        @DecimalMin(value = "1.0", message = "Rating must be between 1 and 5")
-        @DecimalMax(value = "5.0", message = "Rating must be between 1 and 5")
+        @NotNull(message = "validation.rating.required")
+        @DecimalMin(value = "1.0", message = "validation.rating.range")
+        @DecimalMax(value = "5.0", message = "validation.rating.range")
         Double rating,
 
-        @Size(max = 1000, message = "Comment must be at most 1000 characters")
-        @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Comment " + ValidationPatterns.NO_ANGLE_MSG)
+        @Size(max = 1000, message = "validation.comment.size")
+        @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "validation.comment.noAngle")
         String comment,
 
         LocalDateTime createdAt

@@ -264,7 +264,7 @@ function CreateArticle() {
               <p className="text-xs text-gray-500 mb-2">{t('create.imagePreview')}</p>
               <img
                 src={imagePreview}
-                alt="Preview"
+                alt={t('article.imageAlt')}
                 className="h-48 w-auto object-cover rounded shadow-sm border border-gray-200"
               />
             </div>

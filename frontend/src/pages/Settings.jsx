@@ -129,9 +129,9 @@ function Settings() {
         zone: settings.zone,
         idNumber: settings.idNumber
       });
-      showMessage('Profile updated successfully!');
+      showMessage(t('settings.msg.profileUpdated'));
     } catch (err) {
-      showMessage(extractApiError(err, 'Failed to update profile.'), 'error');
+      showMessage(extractApiError(err, t('settings.msg.profileUpdateFailed')), 'error');
     }
   };
 
@@ -142,9 +142,9 @@ function Settings() {
         marketingEmailsOptIn: settings.marketingEmailsOptIn,
         systemEmailsOptIn: settings.systemEmailsOptIn
       });
-      showMessage('Notification preferences saved!');
+      showMessage(t('settings.msg.notificationsSaved'));
     } catch (err) {
-      showMessage(extractApiError(err, 'Failed to update notifications.'), 'error');
+      showMessage(extractApiError(err, t('settings.msg.notificationsFailed')), 'error');
     }
   };
 
@@ -174,9 +174,9 @@ function Settings() {
         newPassword: passwords.new
       });
       setPasswords({ current: '', new: '' });
-      showMessage('Password changed successfully!');
+      showMessage(t('settings.msg.passwordChanged'));
     } catch (err) {
-      showMessage(extractApiError(err, 'Incorrect current password.'), 'error');
+      showMessage(extractApiError(err, t('settings.msg.passwordIncorrect')), 'error');
     }
   };
 
@@ -186,9 +186,9 @@ function Settings() {
       const res = await api.patch('/users/me/iban', { iban: ibanInput });
       setSettings({ ...settings, ibanLast4: res.data.ibanLast4 });
       setIbanInput('');
-      showMessage(res.data.ibanLast4 ? 'Payout IBAN saved.' : 'Payout IBAN cleared.');
+      showMessage(res.data.ibanLast4 ? t('settings.msg.ibanSaved') : t('settings.msg.ibanCleared'));
     } catch (err) {
-      showMessage(extractApiError(err, 'Invalid IBAN. Please double-check the digits.'), 'error');
+      showMessage(extractApiError(err, t('settings.msg.ibanInvalid')), 'error');
     }
   };
 
@@ -201,9 +201,9 @@ function Settings() {
       const res = await api.post('/users/me/avatar', fd);
       setSettings((prev) => ({ ...prev, avatarUrl: res.data.avatarUrl }));
       updateUser({ avatarUrl: res.data.avatarUrl });
-      showMessage('Profile picture updated!');
+      showMessage(t('settings.msg.avatarUpdated'));
     } catch (err) {
-      showMessage(extractApiError(err, 'Could not upload the picture.'), 'error');
+      showMessage(extractApiError(err, t('settings.msg.avatarUploadFailed')), 'error');
     } finally {
       setAvatarUploading(false);
     }
@@ -215,9 +215,9 @@ function Settings() {
       await api.delete('/users/me/avatar');
       setSettings((prev) => ({ ...prev, avatarUrl: null }));
       updateUser({ avatarUrl: null });
-      showMessage('Profile picture removed.');
+      showMessage(t('settings.msg.avatarRemoved'));
     } catch (err) {
-      showMessage('Could not remove the picture.', 'error');
+      showMessage(t('settings.msg.avatarRemoveFailed'), 'error');
     } finally {
       setAvatarUploading(false);
     }
@@ -226,7 +226,7 @@ function Settings() {
   const handleKycSubmit = async (e) => {
     e.preventDefault();
     if (!kycFront || !kycBack) {
-      showMessage('Both front and back of your ID are required.', 'error');
+      showMessage(t('settings.msg.kycBothRequired'), 'error');
       return;
     }
     setKycSubmitting(true);
@@ -234,10 +234,10 @@ function Settings() {
       const result = await uploadKycDocuments(user.id, kycFront, kycBack);
       setKycFront(null);
       setKycBack(null);
-      showMessage(result?.message || 'Documents received.');
+      showMessage(result?.message || t('settings.msg.docsReceived'));
       await fetchKycStatus();
     } catch (err) {
-      showMessage(err.response?.data?.message || 'Could not upload your documents. Try again.', 'error');
+      showMessage(err.response?.data?.message || t('settings.msg.docsUploadFailed'), 'error');
     } finally {
       setKycSubmitting(false);
     }
@@ -247,23 +247,21 @@ function Settings() {
     try {
       await api.delete(`/users/me/devices/${deviceId}`);
       setDevices(devices.filter(d => d.id !== deviceId));
-      showMessage('Device revoked.');
+      showMessage(t('settings.msg.deviceRevoked'));
     } catch (err) {
-      showMessage('Failed to revoke device.', 'error');
+      showMessage(t('settings.msg.deviceRevokeFailed'), 'error');
     }
   };
 
   const handleDeleteAccount = async () => {
-    const confirmed = window.confirm(
-      'Are you absolutely sure? This will delete your profile and log you out immediately. This cannot be undone.'
-    );
+    const confirmed = window.confirm(t('settings.account.deleteConfirm'));
     if (confirmed) {
       try {
         await api.delete('/users/me');
         await logout();
         navigate('/login');
       } catch (err) {
-        showMessage('Failed to delete account.', 'error');
+        showMessage(t('settings.msg.deleteFailed'), 'error');
       }
     }
   };
@@ -304,13 +302,13 @@ function Settings() {
           {/* PROFILE TAB */}
           {activeTab === 'profile' && (
             <form onSubmit={handleProfileUpdate} className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">Profile Information</h2>
+              <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">{t('settings.profile.heading')}</h2>
 
               {/* PROFILE PICTURE */}
               <div className="flex items-center gap-5">
                 <div className="h-20 w-20 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
                   {settings.avatarUrl ? (
-                    <img src={resolveAssetUrl(settings.avatarUrl)} alt="Profile" className="h-full w-full object-cover" />
+                    <img src={resolveAssetUrl(settings.avatarUrl)} alt={t('settings.profile.avatarAlt')} className="h-full w-full object-cover" />
                   ) : (
                     <span className="text-2xl font-black text-gray-400">
                       {(settings.firstName?.[0] || '').toUpperCase() || 'U'}
@@ -335,7 +333,7 @@ function Settings() {
                       onClick={() => avatarInputRef.current?.click()}
                       className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60"
                     >
-                      {avatarUploading ? 'Uploading…' : settings.avatarUrl ? 'Change picture' : 'Upload picture'}
+                      {avatarUploading ? t('settings.profile.uploading') : settings.avatarUrl ? t('settings.profile.changePicture') : t('settings.profile.uploadPicture')}
                     </button>
                     {settings.avatarUrl && (
                       <button
@@ -344,17 +342,17 @@ function Settings() {
                         onClick={handleAvatarRemove}
                         className="bg-gray-100 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-200 transition disabled:opacity-60"
                       >
-                        Remove
+                        {t('settings.profile.remove')}
                       </button>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500">JPEG, JPG or PNG. Max 5 MB.</p>
+                  <p className="text-xs text-gray-500">{t('settings.profile.avatarHint')}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">First Name</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">{t('settings.profile.firstName')}</label>
                   <input
                     type="text"
                     value={settings.firstName}
@@ -364,7 +362,7 @@ function Settings() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Last Name</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">{t('settings.profile.lastName')}</label>
                   <input
                     type="text"
                     value={settings.lastName}
@@ -375,7 +373,7 @@ function Settings() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Email Address</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">{t('settings.profile.email')}</label>
                 <input
                   type="email"
                   value={settings.email}
@@ -384,45 +382,45 @@ function Settings() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">ID Number</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">{t('settings.profile.idNumber')}</label>
                 <input
                   type="text"
                   value={settings.idNumber || ''}
                   onChange={(e) => setSettings({ ...settings, idNumber: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
-                  placeholder="National ID / passport number"
+                  placeholder={t('settings.profile.idNumberPlaceholder')}
                 />
-                <p className="text-xs text-gray-500 mt-1">Required on signed contracts.</p>
+                <p className="text-xs text-gray-500 mt-1">{t('settings.profile.requiredOnContracts')}</p>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Address</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">{t('settings.profile.address')}</label>
                 <input
                   type="text"
                   value={settings.address || ''}
                   onChange={(e) => setSettings({ ...settings, address: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Street, number, city, postal code"
+                  placeholder={t('settings.profile.addressPlaceholder')}
                 />
-                <p className="text-xs text-gray-500 mt-1">Required on signed contracts.</p>
+                <p className="text-xs text-gray-500 mt-1">{t('settings.profile.requiredOnContracts')}</p>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Approximate Area</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">{t('settings.profile.area')}</label>
                 <select
                   value={settings.zone || ''}
                   onChange={(e) => setSettings({ ...settings, zone: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 bg-white"
                 >
-                  <option value="">Select your area</option>
+                  <option value="">{t('settings.profile.selectArea')}</option>
                   {ZONE_OPTIONS.map((zone) => (
                     <option key={zone.value} value={zone.value}>
-                      {zone.label}
+                      {t(`zone.${zone.value}`)}
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">This is a broad area used for catalog search filtering, not an exact location.</p>
+                <p className="text-xs text-gray-500 mt-1">{t('settings.profile.areaHint')}</p>
               </div>
               <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition">
-                Save Profile
+                {t('settings.profile.save')}
               </button>
             </form>
           )}
@@ -431,9 +429,9 @@ function Settings() {
           {activeTab === 'security' && (
             <div className="space-y-10">
               <form onSubmit={handlePasswordChange} className="space-y-6">
-                <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">Change Password</h2>
+                <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">{t('settings.security.changePassword')}</h2>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Current Password</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">{t('settings.security.currentPassword')}</label>
                   <input
                     type="password"
                     value={passwords.current}
@@ -443,7 +441,7 @@ function Settings() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">New Password</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">{t('settings.security.newPassword')}</label>
                   <input
                     type="password"
                     value={passwords.new}
@@ -453,27 +451,27 @@ function Settings() {
                   />
                 </div>
                 <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition">
-                  Update Password
+                  {t('settings.security.updatePassword')}
                 </button>
               </form>
 
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">Trusted Devices</h2>
+                <h2 className="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">{t('settings.security.trustedDevices')}</h2>
                 {devices.length === 0 ? (
-                  <p className="text-gray-500">No trusted devices found.</p>
+                  <p className="text-gray-500">{t('settings.security.noDevices')}</p>
                 ) : (
                   <ul className="divide-y divide-gray-100">
                     {devices.map(device => (
                       <li key={device.id} className="py-4 flex justify-between items-center">
                         <div>
-                          <p className="font-bold text-gray-800">{device.userAgent || 'Unknown Device'}</p>
-                          <p className="text-sm text-gray-500">Last seen: {new Date(device.lastSeenAt).toLocaleString()}</p>
+                          <p className="font-bold text-gray-800">{device.userAgent || t('settings.security.unknownDevice')}</p>
+                          <p className="text-sm text-gray-500">{t('settings.security.lastSeen', { date: new Date(device.lastSeenAt).toLocaleString() })}</p>
                         </div>
                         <button 
                           onClick={() => handleRevokeDevice(device.id)}
                           className="text-red-600 font-bold bg-red-50 px-3 py-1.5 rounded hover:bg-red-100 transition"
                         >
-                          Revoke
+                          {t('settings.security.revoke')}
                         </button>
                       </li>
                     ))}
@@ -486,27 +484,23 @@ function Settings() {
           {/* PAYMENTS TAB */}
           {activeTab === 'payments' && (
             <form onSubmit={handleIbanUpdate} className="space-y-6" data-testid="settings-payments-form">
-              <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">Payout Account</h2>
-              <p className="text-sm text-gray-600">
-                When someone pays for one of your listings, funds are released to this IBAN once both
-                parties have signed. Only the last 4 digits are shown after saving; the full IBAN is
-                stored encrypted.
-              </p>
+              <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">{t('settings.payments.title')}</h2>
+              <p className="text-sm text-gray-600">{t('settings.payments.intro')}</p>
               {settings.ibanLast4 ? (
                 <div className="p-4 bg-green-50 border border-green-100 rounded-lg flex justify-between items-center" data-testid="settings-iban-current">
                   <div>
-                    <p className="text-sm text-gray-500">Current payout IBAN</p>
+                    <p className="text-sm text-gray-500">{t('settings.payments.current')}</p>
                     <p className="font-mono text-lg text-gray-800">•••• {settings.ibanLast4}</p>
                   </div>
                 </div>
               ) : (
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-                  No payout IBAN on file. You need one before publishing paid items (sales or rentals).
+                  {t('settings.payments.none')}
                 </div>
               )}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">
-                  {settings.ibanLast4 ? 'Replace IBAN' : 'Add IBAN'}
+                  {settings.ibanLast4 ? t('settings.payments.replace') : t('settings.payments.add')}
                 </label>
                 <input
                   type="text"
@@ -516,12 +510,10 @@ function Settings() {
                   data-testid="settings-iban-input"
                   className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 font-mono tracking-wider"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Spaces are ignored. Leave empty and submit to remove the saved IBAN.
-                </p>
+                <p className="text-xs text-gray-500 mt-1">{t('settings.payments.hint')}</p>
               </div>
               <button type="submit" data-testid="settings-iban-submit" className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition">
-                {settings.ibanLast4 ? 'Update IBAN' : 'Save IBAN'}
+                {settings.ibanLast4 ? t('settings.payments.update') : t('settings.payments.save')}
               </button>
             </form>
           )}
@@ -529,23 +521,22 @@ function Settings() {
           {/* VERIFICATION (KYC) TAB */}
           {activeTab === 'verification' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">Identity Verification</h2>
+              <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">{t('settings.verification.title')}</h2>
 
               <div className="flex items-center gap-3">
-                <span className="text-sm font-bold text-gray-700">Current status:</span>
+                <span className="text-sm font-bold text-gray-700">{t('settings.verification.currentStatus')}</span>
                 <KycStatusBadge status={kycStatus} />
               </div>
 
               {kycStatus === 'VERIFIED' && (
                 <div className="p-4 bg-green-50 border border-green-100 rounded-lg text-sm text-green-800">
-                  Your identity has been verified. Nothing more to do here.
+                  {t('settings.verification.verified')}
                 </div>
               )}
 
               {kycStatus === 'PENDING_REVIEW' && (
                 <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-lg text-sm text-indigo-800">
-                  Your documents have been received and are under review. You can keep using The Circle
-                  in the meantime.
+                  {t('settings.verification.pending')}
                 </div>
               )}
 
@@ -553,15 +544,12 @@ function Settings() {
                 <form onSubmit={handleKycSubmit} className="space-y-4" data-testid="settings-kyc-form">
                   {kycStatus === 'REJECTED' && (
                     <div className="p-4 bg-red-50 border border-red-100 rounded-lg text-sm text-red-800">
-                      Your previous submission was rejected. Please upload clear photos of your ID and try again.
+                      {t('settings.verification.rejected')}
                     </div>
                   )}
-                  <p className="text-sm text-gray-600">
-                    If you skipped identity verification at sign-up, you can complete it now. Upload the
-                    front and back of your government-issued ID.
-                  </p>
+                  <p className="text-sm text-gray-600">{t('settings.verification.intro')}</p>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">ID — Front</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">{t('settings.verification.idFront')}</label>
                     <input
                       type="file" accept="image/*,application/pdf" data-testid="settings-kyc-front"
                       onChange={(e) => setKycFront(e.target.files?.[0] || null)}
@@ -569,7 +557,7 @@ function Settings() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">ID — Back</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">{t('settings.verification.idBack')}</label>
                     <input
                       type="file" accept="image/*,application/pdf" data-testid="settings-kyc-back"
                       onChange={(e) => setKycBack(e.target.files?.[0] || null)}
@@ -578,7 +566,7 @@ function Settings() {
                   </div>
                   <button type="submit" disabled={kycSubmitting} data-testid="settings-kyc-submit"
                     className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60">
-                    {kycSubmitting ? 'Uploading…' : 'Submit Documents'}
+                    {kycSubmitting ? t('settings.verification.uploading') : t('settings.verification.submitDocs')}
                   </button>
                 </form>
               )}
@@ -588,12 +576,12 @@ function Settings() {
           {/* NOTIFICATIONS TAB */}
           {activeTab === 'notifications' && (
             <form onSubmit={handleNotificationsUpdate} className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">Email Preferences</h2>
-              
+              <h2 className="text-2xl font-bold text-gray-800 border-b pb-2">{t('settings.notifications.title')}</h2>
+
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
                 <div>
-                  <h4 className="font-bold text-gray-800">Marketing & Promotional</h4>
-                  <p className="text-sm text-gray-500">Receive updates, offers, and platform news.</p>
+                  <h4 className="font-bold text-gray-800">{t('settings.notifications.marketing')}</h4>
+                  <p className="text-sm text-gray-500">{t('settings.notifications.marketingHelp')}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input 
@@ -608,8 +596,8 @@ function Settings() {
 
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
                 <div>
-                  <h4 className="font-bold text-gray-800">System & Security</h4>
-                  <p className="text-sm text-gray-500">Essential alerts like password changes and login attempts.</p>
+                  <h4 className="font-bold text-gray-800">{t('settings.notifications.system')}</h4>
+                  <p className="text-sm text-gray-500">{t('settings.notifications.systemHelp')}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input 
@@ -623,7 +611,7 @@ function Settings() {
               </div>
 
               <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition">
-                Save Preferences
+                {t('settings.preferences.save')}
               </button>
             </form>
           )}
@@ -685,17 +673,15 @@ function Settings() {
           {/* ACCOUNT TAB */}
           {activeTab === 'account' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-red-600 border-b border-red-100 pb-2">Danger Zone</h2>
+              <h2 className="text-2xl font-bold text-red-600 border-b border-red-100 pb-2">{t('settings.account.dangerZone')}</h2>
               <div className="bg-red-50 p-6 rounded-xl border border-red-100">
-                <h3 className="font-bold text-red-800 text-lg mb-2">Delete Account</h3>
-                <p className="text-red-600 mb-6">
-                  Once you delete your account, there is no going back. Please be certain. All your personal data will be anonymized and you will lose access immediately.
-                </p>
-                <button 
+                <h3 className="font-bold text-red-800 text-lg mb-2">{t('settings.account.deleteAccount')}</h3>
+                <p className="text-red-600 mb-6">{t('settings.account.deleteWarning')}</p>
+                <button
                   onClick={handleDeleteAccount}
                   className="bg-red-600 text-white font-extrabold py-3 px-6 rounded-lg hover:bg-red-700 transition w-full md:w-auto"
                 >
-                  Permanently Delete My Account
+                  {t('settings.account.deleteButton')}
                 </button>
               </div>
             </div>
@@ -708,11 +694,12 @@ function Settings() {
 }
 
 function KycStatusBadge({ status }) {
+  const { t } = useTranslation();
   const map = {
-    VERIFIED: { label: 'Verified', cls: 'bg-green-100 text-green-700' },
-    PENDING_REVIEW: { label: 'Pending review', cls: 'bg-indigo-100 text-indigo-700' },
-    REJECTED: { label: 'Rejected', cls: 'bg-red-100 text-red-700' },
-    UNVERIFIED: { label: 'Not verified', cls: 'bg-gray-100 text-gray-600' },
+    VERIFIED: { label: t('settings.kyc.status.verified'), cls: 'bg-green-100 text-green-700' },
+    PENDING_REVIEW: { label: t('settings.kyc.status.pending'), cls: 'bg-indigo-100 text-indigo-700' },
+    REJECTED: { label: t('settings.kyc.status.rejected'), cls: 'bg-red-100 text-red-700' },
+    UNVERIFIED: { label: t('settings.kyc.status.unverified'), cls: 'bg-gray-100 text-gray-600' },
   };
   const { label, cls } = map[status] || map.UNVERIFIED;
   return <span className={`px-3 py-1 rounded-full text-xs font-bold ${cls}`}>{label}</span>;

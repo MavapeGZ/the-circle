@@ -5,8 +5,9 @@ import { resolveAssetUrl } from '../services/api';
 import { ZONE_OPTIONS } from '../constants/zones';
 import { usePreferences } from '../context/PreferencesContext';
 
-function zoneLabel(zone, fallback) {
-  return ZONE_OPTIONS.find((option) => option.value === zone)?.label || zone || fallback;
+function zoneLabel(zone, t, fallback) {
+  const known = ZONE_OPTIONS.some((option) => option.value === zone);
+  return known ? t(`zone.${zone}`) : (zone || fallback);
 }
 
 function initials(name) {
@@ -58,7 +59,7 @@ export default function ArticleCard({ article, sellerProfile }) {
     : formatPrice(article.price);
   const sellerName = sellerProfile?.displayName || t('common.user', { name: `#${article.authorId || article.id}` });
   const sellerInitials = initials(sellerProfile?.displayName || sellerName);
-  const sellerZone = zoneLabel(sellerProfile?.approximateZone, t('common.notShared'));
+  const sellerZone = zoneLabel(sellerProfile?.approximateZone, t, t('common.notShared'));
 
   // Date arrives ISO from OpenSearch; show it in the user's locale + time zone.
   const formattedDate = formatDate(article.createdAt);
@@ -115,7 +116,7 @@ export default function ArticleCard({ article, sellerProfile }) {
             <div className="flex gap-2 flex-wrap">
               {renderBadge()}
               <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">
-                {zoneLabel(article.zone, t('common.notShared'))}
+                {zoneLabel(article.zone, t, t('common.notShared'))}
               </span>
               {article.status === 'RESERVED' && (
                 <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full border border-yellow-300">

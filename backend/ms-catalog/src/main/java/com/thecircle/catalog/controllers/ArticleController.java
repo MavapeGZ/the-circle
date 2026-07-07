@@ -29,6 +29,7 @@ public class ArticleController {
 
     private final ArticleService service;
     private final UsersClient usersClient;
+    private final com.thecircle.catalog.i18n.Messages messages;
 
     @Value("${jwt.secret}")
     private String secretKey;
@@ -75,12 +76,10 @@ public class ArticleController {
             if (article.getProductType() == ProductType.SYMBOLIC_SALE
                     || article.getProductType() == ProductType.SYMBOLIC_RENTAL) {
                 if (payout == null) {
-                    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                            "Could not verify your payout account right now. Please try again in a moment.");
+                    throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, messages.get("catalog.payout.unavailable"));
                 }
                 if (!payout.hasIban()) {
-                    throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-                            "A payout IBAN is required to publish paid items. Please add one in Settings → Payments before publishing.");
+                    throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, messages.get("catalog.payout.ibanRequired"));
                 }
             }
 

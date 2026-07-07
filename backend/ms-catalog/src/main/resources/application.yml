@@ -9,6 +9,12 @@ server:
 spring:
   application:
     name: ms-catalog
+  # i18n bundles for user-facing messages (exceptions, response bodies). Locale is
+  # resolved per request from the Accept-Language header.
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
   opensearch:
     uris: ${OPENSEARCH_URIS:http://127.0.0.1:9200}
 jwt:

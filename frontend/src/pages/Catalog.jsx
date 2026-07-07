@@ -150,7 +150,7 @@ function Catalog() {
           <option value="">{t('catalog.filter.allAreas')}</option>
           {ZONE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
-              {option.label}
+              {t(`zone.${option.value}`)}
             </option>
           ))}
         </select>

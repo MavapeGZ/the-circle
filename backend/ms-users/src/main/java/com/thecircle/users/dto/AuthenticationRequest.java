@@ -15,9 +15,9 @@ import lombok.ToString;
 @NoArgsConstructor
 public class AuthenticationRequest {
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Email must be a valid address")
-    @Size(max = 320, message = "Email must be at most 320 characters")
+    @NotBlank(message = "validation.email.required")
+    @Email(message = "validation.email.invalid")
+    @Size(max = 320, message = "validation.email.size")
     private String email;
 
     // Kept out of toString so accidental log.info("req={}", req) never leaks the
@@ -25,7 +25,7 @@ public class AuthenticationRequest {
     // No complexity rule here on purpose: login must accept whatever the user
     // registered with; only the length cap is enforced (BCrypt 72-byte ceiling).
     @ToString.Exclude
-    @NotBlank(message = "Password is required")
-    @Size(max = 72, message = "Password must be at most 72 characters")
+    @NotBlank(message = "validation.password.required")
+    @Size(max = 72, message = "validation.password.size")
     private String password;
 }
