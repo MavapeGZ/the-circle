@@ -24,14 +24,14 @@ public class Article {
     @Id
     private String id; // OpenSearch generates this automatically
 
-    @NotBlank(message = "Title is required")
-    @Size(max = 140, message = "Title must be at most 140 characters")
-    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Title " + ValidationPatterns.NO_ANGLE_MSG)
+    @NotBlank(message = "validation.title.required")
+    @Size(max = 140, message = "validation.title.size")
+    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "validation.title.noAngle")
     @Field(type = FieldType.Text, name = "title")
     private String title;
 
-    @Size(max = 4000, message = "Description must be at most 4000 characters")
-    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Description " + ValidationPatterns.NO_ANGLE_MSG)
+    @Size(max = 4000, message = "validation.description.size")
+    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "validation.description.noAngle")
     @Field(type = FieldType.Text, name = "description")
     private String description;
 
@@ -50,12 +50,12 @@ public class Article {
     @Field(type = FieldType.Keyword, name = "status")
     private ArticleStatus status;
 
-    @Size(max = 60, message = "Category must be at most 60 characters")
-    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Category " + ValidationPatterns.NO_ANGLE_MSG)
+    @Size(max = 60, message = "validation.category.size")
+    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "validation.category.noAngle")
     @Field(type = FieldType.Keyword, name = "category")
     private String category;
 
-    @PositiveOrZero(message = "Price cannot be negative")
+    @PositiveOrZero(message = "validation.price.negative")
     @Field(type = FieldType.Double, name = "price")
     private Double price; // Symbolic amount for SELL/RENT; 0.0 for donations/demands
 
@@ -63,7 +63,7 @@ public class Article {
     // Capped at 20€ (see ArticleService). Null for other product types. Held in
     // escrow by ms-contracts during the rental and released back to the receiver
     // on return (or claimed by the owner on damage).
-    @PositiveOrZero(message = "Guarantee amount cannot be negative")
+    @PositiveOrZero(message = "validation.guarantee.negative")
     @Field(type = FieldType.Double, name = "guarantee_amount")
     private Double guaranteeAmount;
 

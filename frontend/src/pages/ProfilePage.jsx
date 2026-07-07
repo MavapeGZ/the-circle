@@ -9,8 +9,9 @@ import ReviewsSection from '../components/ReviewsSection';
 import { ZONE_OPTIONS } from '../constants/zones';
 import usePageTitle from '../hooks/usePageTitle';
 
-function zoneLabel(zone, fallback) {
-  return ZONE_OPTIONS.find((option) => option.value === zone)?.label || zone || fallback;
+function zoneLabel(zone, t, fallback) {
+  const known = ZONE_OPTIONS.some((option) => option.value === zone);
+  return known ? t(`zone.${zone}`) : (zone || fallback);
 }
 
 function initials(name) {
@@ -132,7 +133,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex flex-wrap gap-3 text-sm text-indigo-50">
-              <span className="rounded-full bg-white/10 px-3 py-1 border border-white/10">{t('profile.zone', { zone: zoneLabel(profile.approximateZone, t('common.notShared')) })}</span>
+              <span className="rounded-full bg-white/10 px-3 py-1 border border-white/10">{t('profile.zone', { zone: zoneLabel(profile.approximateZone, t, t('common.notShared')) })}</span>
               <span className="rounded-full bg-white/10 px-3 py-1 border border-white/10">{t('profile.points', { points: profile.points })}</span>
               <span className="rounded-full bg-white/10 px-3 py-1 border border-white/10">{profile.memberSince ? t('profile.memberSince', { date: formatDate(profile.memberSince) }) : t('profile.unknown')}</span>
             </div>
@@ -170,7 +171,7 @@ export default function ProfilePage() {
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between gap-4">
                 <dt className="text-gray-500">{t('profile.aboutZone')}</dt>
-                <dd className="font-semibold text-gray-900 text-right">{zoneLabel(profile.approximateZone, t('common.notShared'))}</dd>
+                <dd className="font-semibold text-gray-900 text-right">{zoneLabel(profile.approximateZone, t, t('common.notShared'))}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-gray-500">{t('profile.aboutMemberSince')}</dt>

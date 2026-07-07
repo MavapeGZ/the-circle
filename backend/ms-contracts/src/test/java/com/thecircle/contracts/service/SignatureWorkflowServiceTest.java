@@ -42,6 +42,9 @@ class SignatureWorkflowServiceTest {
     @Mock
     private OtpDeliveryChannel otpDelivery;
 
+    @Mock
+    private com.thecircle.contracts.i18n.Messages messages;
+
     @InjectMocks
     private SignatureWorkflowService service;
 
@@ -55,6 +58,10 @@ class SignatureWorkflowServiceTest {
         // happy/retry paths reach it, hence lenient.
         lenient().when(contractService.enrichSigners(any(), any()))
                 .thenReturn(new ContractService.SignerProfiles(null, null));
+        // Localized response/error strings are resolved through Messages; return a
+        // non-null stand-in so assertions on response messages hold in unit tests.
+        lenient().when(messages.get(any())).thenReturn("msg");
+        lenient().when(messages.get(any(), any())).thenReturn("msg");
     }
 
     // --- helpers ---

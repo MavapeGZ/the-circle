@@ -73,6 +73,12 @@ class SecurityErrorDispatchTest {
     private GamificationClient gamificationClient;
     @MockBean
     private com.thecircle.users.service.ReviewService reviewService;
+    @MockBean
+    private com.thecircle.users.i18n.Messages messages;
+    // ValidationErrorHandler (@RestControllerAdvice) resolves field-error keys
+    // through a MessageSource; provide one so the web slice context loads.
+    @MockBean
+    private org.springframework.context.MessageSource messageSource;
 
     @Test
     @WithMockUser(username = "owner@example.com")

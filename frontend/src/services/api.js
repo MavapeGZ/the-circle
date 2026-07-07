@@ -1,4 +1,5 @@
 import axios from 'axios';
+import i18n from '../i18n';
 
 // Configure the base URL of the API Gateway or ms-users here
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
@@ -14,6 +15,12 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // Tell the backend which language to localize its response messages in.
+    // Mirrors the active UI language so server-side errors/notices come back
+    // already translated (the backend resolves this via Accept-Language).
+    if (i18n.language) {
+      config.headers['Accept-Language'] = i18n.language;
     }
     return config;
   },
@@ -95,7 +102,7 @@ export const extractApiError = (err, fallback) => {
     if (joined) return joined;
   }
   if (err?.code === 'ERR_NETWORK') {
-    return 'We could not connect to the server. Please try again in a moment.';
+    return i18n.t('error.network');
   }
   return fallback;
 };

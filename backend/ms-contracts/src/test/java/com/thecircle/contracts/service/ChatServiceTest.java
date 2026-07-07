@@ -27,6 +27,7 @@ class ChatServiceTest {
     @Mock ConversationRepository conversationRepository;
     @Mock MessageRepository messageRepository;
     @Mock CatalogClient catalogClient;
+    @Mock com.thecircle.contracts.i18n.Messages messages;
     @InjectMocks ChatService chatService;
 
     private CatalogClient.ArticleSnapshot article(long authorId) {

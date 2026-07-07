@@ -23,12 +23,14 @@ public class ContractsController {
     private final ContractService contractService;
     private final ContractPdfService pdfService;
     private final JwtAuthService jwtAuthService;
+    private final com.thecircle.contracts.i18n.Messages messages;
 
     public ContractsController(ContractService contractService, ContractPdfService pdfService,
-                               JwtAuthService jwtAuthService) {
+                               JwtAuthService jwtAuthService, com.thecircle.contracts.i18n.Messages messages) {
         this.contractService = contractService;
         this.pdfService = pdfService;
         this.jwtAuthService = jwtAuthService;
+        this.messages = messages;
     }
 
     @GetMapping("/health")
@@ -39,7 +41,7 @@ public class ContractsController {
     @PostMapping
     public ResponseEntity<ContractDto> createContract(@Valid @RequestBody ContractCreateRequest request) {
         if (request == null || request.itemId() == null || request.receiverId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "itemId and receiverId are required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.contract.itemReceiverRequired"));
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(contractService.create(request));
     }
@@ -70,7 +72,7 @@ public class ContractsController {
             return ResponseEntity.notFound().build();
         }
         if (!contractService.isParty(dto, callerId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a party to this contract");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, messages.get("api.contract.notParty"));
         }
         contractService.enrichSigners(dto, null);
         byte[] pdf;

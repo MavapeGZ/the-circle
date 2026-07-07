@@ -4,13 +4,14 @@ import com.thecircle.catalog.model.Article;
 import com.thecircle.catalog.model.ArticleStatus;
 import com.thecircle.catalog.model.ProductType;
 import com.thecircle.catalog.repository.ArticleRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -45,8 +46,20 @@ class ArticleServiceTest {
     @Mock
     private ArticleRepository repository;
 
-    @InjectMocks
     private ArticleService service;
+
+    // Use a real MessageSource-backed Messages so assertions can check the actual
+    // (English) copy resolved from the i18n bundle, matching production behaviour.
+    @BeforeEach
+    void setUpService() {
+        // Pin the request locale to English so message assertions match the
+        // English bundle regardless of the machine's default locale.
+        org.springframework.context.i18n.LocaleContextHolder.setLocale(java.util.Locale.ENGLISH);
+        ResourceBundleMessageSource source = new ResourceBundleMessageSource();
+        source.setBasename("i18n/messages");
+        source.setDefaultEncoding("UTF-8");
+        service = new ArticleService(repository, new com.thecircle.catalog.i18n.Messages(source));
+    }
 
     /** {@code save} echoes back the (already mutated) argument, as OpenSearch would. */
     private void echoSave() {

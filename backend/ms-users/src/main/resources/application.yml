@@ -4,7 +4,15 @@ server:
 spring:
   application:
     name: ms-users
-  
+
+  # i18n bundles for user-facing messages (exceptions, response bodies, bean
+  # validation). messages.properties is the English fallback; messages_es adds
+  # Spanish. Locale is resolved per request from the Accept-Language header.
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+
   datasource:
     url: jdbc:postgresql://localhost:5432/${DB_NAME:users_db}
     username: ${DB_USER}

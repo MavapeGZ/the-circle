@@ -125,10 +125,10 @@ function NavBar() {
 
   const authLinks = user ? (
     <>
-      <Link to="/profile" onClick={closeMenu} aria-label="Profile" title="Profile" className="flex items-center gap-2">
+      <Link to="/profile" onClick={closeMenu} aria-label={t('nav.profile')} title={t('nav.profile')} className="flex items-center gap-2">
         <span className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-800 flex items-center justify-center text-sm font-black overflow-hidden shrink-0 ring-2 ring-white/70 hover:ring-white transition-colors">
           {user.avatarUrl ? (
-            <img src={resolveAssetUrl(user.avatarUrl)} alt="Profile" className="h-full w-full object-cover" />
+            <img src={resolveAssetUrl(user.avatarUrl)} alt={t('nav.profile')} className="h-full w-full object-cover" />
           ) : (
             <span>{userInitials}</span>
           )}
@@ -168,8 +168,8 @@ function NavBar() {
         <button
           type="button"
           aria-label={mobileBadgeTotal > 0
-            ? `Toggle navigation menu, ${mobileBadgeTotal} new notifications`
-            : 'Toggle navigation menu'}
+            ? t('nav.toggleWithCount', { count: mobileBadgeTotal })
+            : t('nav.toggle')}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((open) => !open)}
           className="md:hidden relative inline-flex items-center justify-center p-2 rounded hover:bg-indigo-900 transition-colors"

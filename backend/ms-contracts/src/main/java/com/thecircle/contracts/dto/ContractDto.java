@@ -18,15 +18,15 @@ public class ContractDto {
     @JsonAlias({"contractId"})
     private String contractId;
 
-    @Size(max = 255, message = "Property address must be at most 255 characters")
-    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Property address " + ValidationPatterns.NO_ANGLE_MSG)
+    @Size(max = 255, message = "validation.propertyAddress.size")
+    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "validation.propertyAddress.noAngle")
     private String propertyAddress;
     private LocalDate startDate;
     private LocalDate endDate;
     private BigDecimal monthlyRent;
     private BigDecimal price;
-    private List<@Size(max = 2000, message = "Clause is too long")
-            @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Clause " + ValidationPatterns.NO_ANGLE_MSG) String> clauses;
+    private List<@Size(max = 2000, message = "validation.clause.size")
+            @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "validation.clause.noAngle") String> clauses;
     @Valid
     private SignerDto primarySigner;
     @Valid
@@ -39,8 +39,8 @@ public class ContractDto {
     private ContractStatus status;
     private BigDecimal guaranteeAmount;
     private GuaranteeStatus guaranteeStatus;
-    @Size(max = 2000, message = "Conditions must be at most 2000 characters")
-    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Conditions " + ValidationPatterns.NO_ANGLE_MSG)
+    @Size(max = 2000, message = "validation.conditions.size")
+    @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "validation.conditions.noAngle")
     private String conditions;
     private LocalDateTime returnDate;
     private LocalDateTime createdAt;

@@ -1,9 +1,11 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import BadgeChip from './BadgeChip';
 
-export default function BadgeList({ badges = [], emptyMessage = 'No badges yet.' }) {
+export default function BadgeList({ badges = [], emptyMessage }) {
+  const { t } = useTranslation();
   if (!badges.length) {
-    return <p className="text-sm text-gray-500">{emptyMessage}</p>;
+    return <p className="text-sm text-gray-500">{emptyMessage ?? t('badge.none')}</p>;
   }
 
   return (

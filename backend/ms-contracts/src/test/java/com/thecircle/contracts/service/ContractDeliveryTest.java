@@ -24,9 +24,10 @@ import static org.mockito.Mockito.when;
 class ContractDeliveryTest {
 
     @Mock ContractRepository repository;
+    @Mock com.thecircle.contracts.i18n.Messages messages;
 
     private ContractService service() {
-        return new ContractService(repository, null, null, null, null, null, null, null);
+        return new ContractService(repository, null, null, null, null, null, null, null, messages);
     }
 
     private Contract active(String owner, String receiver, ContractType type) {

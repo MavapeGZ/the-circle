@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // Renders five stars supporting half-star granularity. In read-only mode it just
 // displays `value` (e.g. 3.5). When `onChange` is provided it becomes an input:
 // hovering/clicking the left half of a star picks x.5, the right half picks x.0.
 export default function StarRating({ value = 0, onChange, size = 24, className = '' }) {
+  const { t } = useTranslation();
   const [hover, setHover] = useState(null);
   const readOnly = typeof onChange !== 'function';
   const shown = hover != null ? hover : value;
@@ -24,7 +26,7 @@ export default function StarRating({ value = 0, onChange, size = 24, className =
           <>
             <button
               type="button"
-              aria-label={`${i - 0.5} stars`}
+              aria-label={t('starRating.aria', { n: i - 0.5 })}
               className="absolute inset-y-0 left-0 w-1/2 cursor-pointer"
               onMouseEnter={() => setHover(i - 0.5)}
               onMouseLeave={() => setHover(null)}
@@ -32,7 +34,7 @@ export default function StarRating({ value = 0, onChange, size = 24, className =
             />
             <button
               type="button"
-              aria-label={`${i} stars`}
+              aria-label={t('starRating.aria', { n: i })}
               className="absolute inset-y-0 right-0 w-1/2 cursor-pointer"
               onMouseEnter={() => setHover(i)}
               onMouseLeave={() => setHover(null)}

@@ -18,13 +18,13 @@ public class ResetPasswordRequest {
     // as a secret: leaking it lets anyone (within the IP-binding window)
     // complete the reset.
     @ToString.Exclude
-    @NotBlank(message = "Reset token is required")
+    @NotBlank(message = "validation.resetToken.required")
     private String resetToken;
 
     // Same strength rule as registration: a reset must not be a back-door to a
     // weaker password than signup allows.
     @ToString.Exclude
-    @NotBlank(message = "New password is required")
-    @Pattern(regexp = ValidationPatterns.PASSWORD, message = "Password " + ValidationPatterns.PASSWORD_MSG)
+    @NotBlank(message = "validation.newPassword.required")
+    @Pattern(regexp = ValidationPatterns.PASSWORD, message = "validation.password.pattern")
     private String newPassword;
 }

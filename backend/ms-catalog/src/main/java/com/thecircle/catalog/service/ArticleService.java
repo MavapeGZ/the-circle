@@ -24,6 +24,7 @@ import java.util.Optional;
 public class ArticleService {
 
     private final ArticleRepository repository;
+    private final com.thecircle.catalog.i18n.Messages messages;
     private final double SYMBOLIC_LIMIT_PRICE = 10.0;
     private static final double GUARANTEE_LIMIT = 20.0;
     // Page size used to drain findAllNotSold below. Bounds per-request memory and
@@ -112,7 +113,7 @@ public class ArticleService {
         if (article.getPrice() == null) {
             article.setPrice(0.0);
         } else if (article.getPrice() < 0.0) {
-            throw new IllegalArgumentException("Price cannot be negative");
+            throw new IllegalArgumentException(messages.get("catalog.price.negative"));
         }
 
         if (article.getProductType() == ProductType.DONATION
@@ -141,16 +142,13 @@ public class ArticleService {
         Double amount = article.getGuaranteeAmount();
         if (article.getProductType() == ProductType.SYMBOLIC_RENTAL) {
             if (amount == null || amount <= 0.0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "guaranteeAmount is required for rentals and must be greater than 0.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("catalog.guarantee.required"));
             }
             if (amount > GUARANTEE_LIMIT) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "guaranteeAmount cannot exceed " + GUARANTEE_LIMIT + "€.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("catalog.guarantee.max", GUARANTEE_LIMIT));
             }
         } else if (amount != null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "guaranteeAmount is only allowed for SYMBOLIC_RENTAL articles.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("catalog.guarantee.onlyRental"));
         }
     }
 

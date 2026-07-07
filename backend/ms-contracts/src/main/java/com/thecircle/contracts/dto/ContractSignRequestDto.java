@@ -5,11 +5,11 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public class ContractSignRequestDto {
-    @NotNull(message = "Contract data is required")
+    @NotNull(message = "validation.contract.required")
     @Valid
     private ContractDto contract;
 
-    @Size(max = 20, message = "Signature mode is invalid")
+    @Size(max = 20, message = "validation.signatureMode.size")
     private String signatureMode; // VISUAL or CRYPTO
 
     @Valid

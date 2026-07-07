@@ -49,6 +49,7 @@ public class ContractService {
     private final StoredContractRepository storedContractRepository;
     private final SignatureRecordRepository signatureRecordRepository;
     private final SignatureSessionRepository signatureSessionRepository;
+    private final com.thecircle.contracts.i18n.Messages messages;
 
     /** TTL (hours) after which an unsigned PENDING contract is purged. */
     @Value("${contracts.pending-ttl-hours:72}")
@@ -59,7 +60,8 @@ public class ContractService {
                            PaymentRepository paymentRepository,
                            StoredContractRepository storedContractRepository,
                            SignatureRecordRepository signatureRecordRepository,
-                           SignatureSessionRepository signatureSessionRepository) {
+                           SignatureSessionRepository signatureSessionRepository,
+                           com.thecircle.contracts.i18n.Messages messages) {
         this.repository = repository;
         this.usersClient = usersClient;
         this.catalogClient = catalogClient;
@@ -68,6 +70,7 @@ public class ContractService {
         this.storedContractRepository = storedContractRepository;
         this.signatureRecordRepository = signatureRecordRepository;
         this.signatureSessionRepository = signatureSessionRepository;
+        this.messages = messages;
     }
 
     @Transactional
@@ -364,7 +367,7 @@ public class ContractService {
         Contract contract = require(contractId);
         if (callerId == null
                 || (!callerId.equals(contract.getOwnerId()) && !callerId.equals(contract.getReceiverId()))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a party to this contract");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, messages.get("api.contract.notParty"));
         }
         if (contract.getStatus() != ContractStatus.ACTIVE && contract.getStatus() != ContractStatus.DELIVERED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -409,7 +412,7 @@ public class ContractService {
 
     private Contract require(String contractId) {
         return repository.findById(contractId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contract not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, messages.get("api.contract.notFound")));
     }
 
     /**

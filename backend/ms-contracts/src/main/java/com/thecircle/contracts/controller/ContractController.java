@@ -42,19 +42,22 @@ public class ContractController {
     private final SignatureWorkflowService workflowService;
     private final ContractService contractService;
     private final JwtAuthService jwtAuthService;
+    private final com.thecircle.contracts.i18n.Messages messages;
 
     public ContractController(ContractPdfService pdfService,
                               SignatureService signatureService,
                               ContractStorageService storageService,
                               SignatureWorkflowService workflowService,
                               ContractService contractService,
-                              JwtAuthService jwtAuthService) {
+                              JwtAuthService jwtAuthService,
+                              com.thecircle.contracts.i18n.Messages messages) {
         this.pdfService = pdfService;
         this.signatureService = signatureService;
         this.storageService = storageService;
         this.workflowService = workflowService;
         this.contractService = contractService;
         this.jwtAuthService = jwtAuthService;
+        this.messages = messages;
     }
 
     @PostMapping(value = "/generate", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -67,21 +70,17 @@ public class ContractController {
     @PostMapping(value = "/generate-and-sign", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<byte[]> generateAndSign(@Valid @RequestBody ContractSignRequestDto req) {
         if (req == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "The request body is empty. Please include the contract data and try again.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.generate.emptyBody"));
         }
         if (req.getContract() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "The 'contract' field is missing from the request. Please include the full contract data and try again.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.generate.contractFieldMissing"));
         }
         String mode = req.getSignatureMode();
         if (mode == null || !SIGNATURE_MODE_VISUAL.equalsIgnoreCase(mode)) {
             if (SIGNATURE_MODE_ADVANCED.equalsIgnoreCase(mode) || SIGNATURE_MODE_CRYPTO.equalsIgnoreCase(mode)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Advanced and cryptographic signatures need an OTP. Please start the signing flow with /sign/request and then /sign/confirm.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.sign.needsOtp"));
             }
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "The signature mode '" + mode + "' is not supported. Please use 'VISUAL', 'ADVANCED' or 'CRYPTO'.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.sign.modeUnsupported", mode));
         }
 
         byte[] pdf = renderPdf(req.getContract());
@@ -89,8 +88,7 @@ public class ContractController {
         try {
             signed = signatureService.applyVisualSignature(pdf, req.getVisualOptions(), buildSignerMap(req.getContract()));
         } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Unexpected error. Please contact our support team.", ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, messages.get("api.error.unexpected"), ex);
         }
 
         StoredContract sc = persist(signed, req.getContract().getContractId());
@@ -131,22 +129,20 @@ public class ContractController {
         if (sc == null) return ResponseEntity.notFound().build();
         ContractDto contract = sc.getContractId() != null ? contractService.get(sc.getContractId()) : null;
         if (contract == null || !contractService.isParty(contract, callerId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to download this contract");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, messages.get("api.contract.downloadForbidden"));
         }
         return pdfResponse(sc);
     }
 
     private byte[] renderPdf(ContractDto dto) {
         if (dto == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "The contract data is missing from the request. Please fill in the contract form and try again.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, messages.get("api.contract.dataMissing"));
         }
         try {
             // Draft is rendered for the receiver (buyer) who initiates the deal.
             return pdfService.generatePdf(dto, contractService.getUserLanguage(dto.getReceiverId()));
         } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Unexpected error. Please contact our support team.", ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, messages.get("api.error.unexpected"), ex);
         }
     }
 
@@ -154,8 +150,7 @@ public class ContractController {
         try {
             return storageService.save(pdf, originalContractId);
         } catch (RuntimeException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Unexpected error. Please contact our support team.", ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, messages.get("api.error.unexpected"), ex);
         }
     }
 

@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
  * renders it as text (React-escaped), so stored-XSS is not a concern.
  */
 public record SendMessageRequest(
-        @NotBlank(message = "Message body is required")
-        @Size(max = 4000, message = "Message must be at most 4000 characters")
+        @NotBlank(message = "validation.messageBody.required")
+        @Size(max = 4000, message = "validation.messageBody.size")
         String body) {
 }

@@ -221,7 +221,7 @@ function EditArticle() {
           />
           {imagePreview && (
             <div className="mt-4">
-              <img src={imagePreview} alt="Preview" className="h-48 w-auto object-cover rounded border border-gray-200" />
+              <img src={imagePreview} alt={t('article.imageAlt')} className="h-48 w-auto object-cover rounded border border-gray-200" />
             </div>
           )}
         </div>

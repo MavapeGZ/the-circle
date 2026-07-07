@@ -12,21 +12,21 @@ import jakarta.validation.constraints.Size;
  * persistence.
  */
 public record PaymentRequestDto(
-        @NotBlank(message = "Card number is required")
-        @Size(max = 25, message = "Card number is too long")
-        @Pattern(regexp = "^[0-9 \\-]{12,25}$", message = "Card number must contain only digits, spaces or hyphens")
+        @NotBlank(message = "validation.cardNumber.required")
+        @Size(max = 25, message = "validation.cardNumber.size")
+        @Pattern(regexp = "^[0-9 \\-]{12,25}$", message = "validation.cardNumber.pattern")
         String cardNumber,
 
-        @NotBlank(message = "Card expiry is required")
-        @Pattern(regexp = "^\\d{1,2}/\\d{2,4}$", message = "Card expiry must be in MM/YY or MM/YYYY format")
+        @NotBlank(message = "validation.cardExpiry.required")
+        @Pattern(regexp = "^\\d{1,2}/\\d{2,4}$", message = "validation.cardExpiry.pattern")
         String expiry,
 
-        @NotBlank(message = "CVC is required")
-        @Pattern(regexp = "^\\d{3,4}$", message = "CVC must be 3 or 4 digits")
+        @NotBlank(message = "validation.cvc.required")
+        @Pattern(regexp = "^\\d{3,4}$", message = "validation.cvc.pattern")
         String cvc,
 
-        @Size(max = 100, message = "Cardholder name must be at most 100 characters")
-        @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "Cardholder name " + ValidationPatterns.NO_ANGLE_MSG)
+        @Size(max = 100, message = "validation.cardholder.size")
+        @Pattern(regexp = ValidationPatterns.NO_ANGLE, message = "validation.cardholder.noAngle")
         String holderName
 ) {
     /**

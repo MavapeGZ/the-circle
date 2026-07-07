@@ -72,6 +72,9 @@ class UserControllerTest {
     @Mock
     private com.thecircle.users.service.ReviewService reviewService;
 
+    @Mock
+    private com.thecircle.users.i18n.Messages messages;
+
     @InjectMocks
     private UserController userController;
 
@@ -153,6 +156,7 @@ class UserControllerTest {
         when(userRepository.findByEmail("owner@example.com")).thenReturn(Optional.of(buildUser(userId)));
         when(userRepository.findById(userId)).thenReturn(Optional.of(buildUser(userId)));
         when(kycService.processKyc(userId, front, back)).thenThrow(new RuntimeException("provider exploded"));
+        when(messages.get("kyc.failed")).thenReturn("Verification failed. Please try again later.");
 
         try {
             ResponseEntity<KycResponse> response = userController.uploadIdentity(userId, front, back, authentication);
