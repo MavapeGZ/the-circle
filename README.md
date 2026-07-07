@@ -109,11 +109,6 @@ OpenSearch requires a high virtual memory map limit. If the `opensearch` contain
 
 ---
 
-## 👥 Contributors
-
-- [MavapeGZ](https://github.com/MavapeGZ)
-- [grodriguez1722](https://github.com/grodriguez1722)
-
 ## Sessions & authentication
 
 Authentication uses a short-lived **access JWT** plus a long-lived **refresh token**:
@@ -142,3 +137,10 @@ Optional auth-related variables (sensible defaults exist for local dev):
 When a user deletes their account, ms-users anonymizes the profile, revokes sessions, deletes their published articles, and asks ms-contracts to remove that user's open owner-side contracts together with their payments and generated PDF/signature artifacts.
 
 Completed and cancelled contracts are kept as historical records. Receiver-side contracts are not removed by this flow, because they belong to the other party's product lifecycle.
+
+---
+
+## 👥 Contributors
+
+- [MavapeGZ](https://github.com/MavapeGZ)
+- [grodriguez1722](https://github.com/grodriguez1722)
