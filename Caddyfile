@@ -2,6 +2,6 @@
     email mavape4403@gmail.com
 }
 
-api.the-circle.duckdns.org {
+api.the-circle-omega.duckdns.org {
     reverse_proxy api-gateway:8080
 }

@@ -167,7 +167,7 @@ services:
     image: lscr.io/linuxserver/duckdns:latest
     container_name: thecircle-duckdns
     environment:
-      - SUBDOMAINS=the-circle
+      - SUBDOMAINS=the-circle-omega
       - TOKEN=${DUCKDNS_TOKEN}
       - UPDATE_IP=ipv4
     restart: unless-stopped
