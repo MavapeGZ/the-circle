@@ -3,7 +3,7 @@ x-common: &common
   networks: [thecircle]
 
 x-app-env: &app-env
-  JAVA_TOOL_OPTIONS: "-Xmx256m -XX:+UseSerialGC"
+  JAVA_TOOL_OPTIONS: "-Xmx96m -XX:MaxMetaspaceSize=96m -Xss256k -XX:+UseSerialGC -XX:TieredStopAtLevel=1"
   DB_USER: ${DB_USER}
   DB_PASSWORD: ${DB_PASSWORD}
   JWT_SECRET: ${JWT_SECRET}
@@ -13,6 +13,11 @@ services:
     image: postgres:15-alpine
     container_name: thecircle-postgres
     <<: *common
+    # Tuned down for a 2 GB host (t4g.small); defaults assume far more RAM.
+    command: >
+      postgres -c shared_buffers=64MB -c max_connections=60
+               -c effective_cache_size=256MB -c work_mem=2MB
+               -c maintenance_work_mem=32MB
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -33,7 +38,7 @@ services:
     environment:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "OPENSEARCH_JAVA_OPTS=-Xms256m -Xmx256m"
       - DISABLE_SECURITY_PLUGIN=true
     volumes:
       - opensearch_data:/usr/share/opensearch/data
@@ -48,7 +53,7 @@ services:
 
   api-gateway:
     <<: *common
-    build: { context: ./backend, dockerfile: api-gateway/Dockerfile }
+    image: ghcr.io/mavapegz/the-circle-api-gateway:latest
     container_name: thecircle-api-gateway
     environment:
       <<: *app-env
@@ -62,7 +67,7 @@ services:
 
   ms-users:
     <<: *common
-    build: { context: ./backend, dockerfile: ms-users/Dockerfile }
+    image: ghcr.io/mavapegz/the-circle-ms-users:latest
     container_name: thecircle-ms-users
     environment:
       <<: *app-env
@@ -91,7 +96,7 @@ services:
 
   ms-catalog:
     <<: *common
-    build: { context: ./backend, dockerfile: ms-catalog/Dockerfile }
+    image: ghcr.io/mavapegz/the-circle-ms-catalog:latest
     container_name: thecircle-ms-catalog
     environment:
       <<: *app-env
@@ -103,7 +108,7 @@ services:
 
   ms-contracts:
     <<: *common
-    build: { context: ./backend, dockerfile: ms-contracts/Dockerfile }
+    image: ghcr.io/mavapegz/the-circle-ms-contracts:latest
     container_name: thecircle-ms-contracts
     environment:
       <<: *app-env
@@ -121,7 +126,7 @@ services:
 
   ms-gamification:
     <<: *common
-    build: { context: ./backend, dockerfile: ms-gamification/Dockerfile }
+    image: ghcr.io/mavapegz/the-circle-ms-gamification:latest
     container_name: thecircle-ms-gamification
     environment:
       <<: *app-env
@@ -131,7 +136,7 @@ services:
 
   ms-notifications:
     <<: *common
-    build: { context: ./backend, dockerfile: ms-notifications/Dockerfile }
+    image: ghcr.io/mavapegz/the-circle-ms-notifications:latest
     container_name: thecircle-ms-notifications
     environment:
       <<: *app-env
