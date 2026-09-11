@@ -12,7 +12,7 @@ The stack is **Docker on a VM**, so migrating is basically: provision a new VM
 
 | Piece | Why |
 |---|---|
-| **Frontend (Vercel)** | Still points to `api.the-circle.duckdns.org`, which doesn't change. Zero changes. |
+| **Frontend (Vercel)** | Still points to `api.the-circle-omega.duckdns.org`, which doesn't change. Zero changes. |
 | **DNS (DuckDNS)** | The compose `duckdns` container updates the IP by itself on startup. |
 | **TLS certificate (Caddy)** | Let's Encrypt re-issues by itself on the new VM (same domain). |
 | **Config** | `docker-compose.prod.yml`, `Dockerfile`s, `Caddyfile`, `init.sql` — all in git. |
@@ -130,7 +130,7 @@ docker compose -f docker-compose.prod.yml ps
   it starts. Verify: `docker compose -f docker-compose.prod.yml logs duckdns`
   (should say `successful`). The Vercel frontend and CORS are not touched.
 - [ ] **Certificate** → Caddy re-issues the cert by itself. Verify:
-  `curl -sI https://api.the-circle.duckdns.org/actuator/health` → `200`.
+  `curl -sI https://api.the-circle-omega.duckdns.org/actuator/health` → `200`.
   (If DNS still points to the old IP, Caddy retries until DuckDNS updates.)
 - [ ] **Start/stop scheduler** → the IAM credentials of the old account **don't
   work** on the new sandbox. Create a new IAM user
