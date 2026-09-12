@@ -8,6 +8,7 @@ import com.thecircle.contracts.dto.SignerDto;
 import org.jsoup.Jsoup;
 import org.jsoup.helper.W3CDom;
 import org.jsoup.nodes.Document;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -55,6 +56,9 @@ public class ContractPdfService {
     private final String logoDataUri;
     private final Clock clock;
 
+    // Two constructors, so Spring will not infer which to use and falls back to a
+    // no-arg one that does not exist. Mark the production constructor explicitly.
+    @Autowired
     public ContractPdfService(SpringTemplateEngine templateEngine) {
         this(templateEngine, Clock.systemDefaultZone());
     }
